@@ -1,0 +1,16 @@
+name = "sketchy-backend"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+account_id = "your-cloudflare-account-id"
+
+[build]
+command = "npm install"
+
+[triggers]
+# Add schedule triggers here if you need scheduled cleanup tasks.
+
+[[r2_buckets]]
+binding = "SKETCHES_BUCKET"
+bucket_name = "sketchy"
