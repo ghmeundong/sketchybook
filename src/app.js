@@ -50,7 +50,7 @@ stageCards.forEach((card) => drawRoughFrame(card));
 
 if (startTitle && startPage && selectionPage) {
   startTitle.addEventListener("click", () => {
-    startTitle.textContent = "Loading";
+    startTitle.textContent = "Loading...";
 
     window.setTimeout(() => {
       startPage.classList.remove("is-active");
@@ -59,3 +59,9 @@ if (startTitle && startPage && selectionPage) {
     }, 800);
   });
 }
+stageCards.forEach((card, index) => {
+  card.addEventListener("click", () => {
+    const stageNumber = index + 1;
+    window.location.href = `./game.html?stage=${stageNumber}`;
+  });
+});
