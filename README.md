@@ -46,6 +46,7 @@ npx prettier --write .
 ```
 
 ## .husky example
+
 edit the hook files directly under `.husky`.
 
 Example `.husky/pre-commit`:

@@ -1,0 +1,81 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+@font-face {
+  font-family: MyeongjoFont;
+  src: url("/font/sketchy-font/Sketchy-1jX4.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+body {
+  min-height: 100dvh;
+  font-family: MyeongjoFont, serif;
+  color: #3c2f1f;
+  background-color: #f5ebcf;
+  position: relative;
+  isolation: isolate;
+}
+
+html,
+body,
+button,
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+span,
+div {
+  font-family: MyeongjoFont, serif;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, rgb(255 248 229 / 35%), rgb(112 82 45 / 8%));
+  pointer-events: none;
+  z-index: -1;
+}
+
+main {
+  min-height: 100dvh;
+  height: 100dvh;
+  display: grid;
+  place-items: start center;
+  padding: 2rem 2rem 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.book {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.page {
+  position: absolute;
+  inset: 0;
+  display: none;
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+
+.page.is-active {
+  display: flex;
+  opacity: 1;
+}

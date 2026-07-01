@@ -7,7 +7,7 @@ const CORS_HEADERS = {
 // 스케치북 컨셉에 맞춘 인메모리 저장소
 let sketchbookMemory = {
   imageData: null, // Rough.js 캔버스 캡처 이미지 데이터
-  vector: null,     // 유저가 그린 선들의 좌표 및 물리 엔진용 데이터 배열
+  vector: null, // 유저가 그린 선들의 좌표 및 물리 엔진용 데이터 배열
 };
 
 function jsonResponse(body, status = 200) {
@@ -67,7 +67,11 @@ async function handleRequest(request) {
 
   // 1. 서버 연결 및 상태 확인용 헬스체크
   if (url.pathname === "/api/health") {
-    return jsonResponse({ ok: true, scope: "sketchybook-api", timestamp: new Date().toISOString() });
+    return jsonResponse({
+      ok: true,
+      scope: "sketchybook-api",
+      timestamp: new Date().toISOString(),
+    });
   }
 
   // 2. 스케치북 그리기 데이터 교환 엔드포인트

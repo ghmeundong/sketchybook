@@ -1,5 +1,5 @@
 {
-  "name": "template-project",
+  "name": "sketchybook",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -40,5 +40,10 @@
     "stylelint-config-standard": "^40.0.0",
     "vite": "^8.1.0",
     "vitest": "^4.1.9"
+  },
+  "dependencies": {
+    "matter-js": "^0.20.0",
+    "roughjs": "^4.6.6",
+    "turn.js": "^1.0.5"
   }
 }
