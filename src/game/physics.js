@@ -1,20 +1,38 @@
 import planck from "planck";
 
-function createPlanckBody(stroke, floorY) {
-  const world = planck.World({ gravity: { x: 0, y: 200 } });
-  const groundBody = world.createBody();
-  groundBody.createFixture({
+const physicsWorld = planck.World({ gravity: { x: 0, y: 200 } });
+let physicsGround = null;
+let physicsFloorY = null;
+
+function ensurePhysicsGround(floorY) {
+  if (physicsGround && physicsFloorY === floorY) {
+    return;
+  }
+
+  if (physicsGround) {
+    physicsWorld.destroyBody(physicsGround);
+  }
+
+  physicsGround = physicsWorld.createBody();
+  physicsGround.createFixture({
     shape: planck.Edge(planck.Vec2(-1000, floorY), planck.Vec2(1000, floorY)),
     density: 0,
     friction: 1,
   });
+  physicsFloorY = floorY;
+}
 
-  const body = world.createBody({
+function createPlanckBody(stroke, floorY) {
+  ensurePhysicsGround(floorY);
+
+  const body = physicsWorld.createBody({
     type: "dynamic",
     position: { x: stroke.body.x, y: stroke.body.y },
   });
   body.setLinearDamping(0);
   body.setAngularDamping(0);
+  body.setBullet(true);
+  body.setSleepingAllowed(false);
 
   const segments = [];
   for (let i = 1; i < stroke.points.length; i += 1) {
@@ -31,16 +49,14 @@ function createPlanckBody(stroke, floorY) {
     const fixture = body.createFixture({
       shape: planck.Box(length / 2, thickness / 2, planck.Vec2(midpointX, midpointY), angle),
       density: 5,
-      friction: 0.2,
-      restitution: 0.05,
+      friction: 0.8,
+      restitution: 0,
     });
     segments.push(fixture);
   }
 
   body.setAngularVelocity(0.06);
-  stroke.physicsWorld = world;
   stroke.physicsBody = body;
-  stroke.physicsGround = groundBody;
   stroke.physicsSegments = segments;
 
   return body;
@@ -70,7 +86,7 @@ function syncStrokeFromPhysics(stroke) {
 
   stroke.centerOfMass.x = stroke.body.x;
   stroke.centerOfMass.y = stroke.body.y;
-  stroke.grounded = lowestPoint.y >= stroke.physicsGround.getPosition().y - 1;
+  stroke.grounded = lowestPoint.y >= physicsGround.getPosition().y - 1;
 
   if (stroke.grounded && stroke.angularVelocity >= 0) {
     stroke.angularVelocity = -Math.abs(stroke.angularVelocity || 0.01) - 0.001;
@@ -176,11 +192,6 @@ export function updateStrokeBody(stroke, floorY, options = {}) {
     createPlanckBody(stroke, floorY);
   }
 
-  if (stroke.physicsWorld) {
-    const step = options.deltaTime ?? 1 / 60;
-    stroke.physicsWorld.step(step);
-  }
-
   if (stroke.physicsBody) {
     syncStrokeFromPhysics(stroke);
   }
@@ -192,8 +203,25 @@ export function updateStrokeBody(stroke, floorY, options = {}) {
     };
   }
 
-  stroke.body.vx = stroke.physicsBody?.getLinearVelocity().x ?? 0;
-  stroke.body.vy = stroke.physicsBody?.getLinearVelocity().y ?? 0;
+  stroke.body.vx = stroke.physicsBody.getLinearVelocity().x;
+  stroke.body.vy = stroke.physicsBody.getLinearVelocity().y;
 
   return stroke;
+}
+
+export function resetPhysicsWorld() {
+  let body = physicsWorld.getBodyList();
+  while (body) {
+    const nextBody = body.getNext();
+    physicsWorld.destroyBody(body);
+    body = nextBody;
+  }
+
+  physicsGround = null;
+  physicsFloorY = null;
+}
+
+export function stepPhysicsWorld(options = {}) {
+  const step = options.deltaTime ?? 1 / 60;
+  physicsWorld.step(step, 10, 8);
 }
