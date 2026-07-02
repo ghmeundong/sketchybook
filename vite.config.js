@@ -5,6 +5,7 @@ const __dirname = path.resolve();
 
 export default defineConfig({
   root: "./",
+  base: "/sketchybook/",
   publicDir: "public",
   resolve: {
     alias: {
