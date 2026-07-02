@@ -11,8 +11,8 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
     "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run test",
+    "test:watch": "vitest test",
     "lint": "eslint . && stylelint \"src/**/*.css\" \"public/**/*.css\"",
     "format": "prettier --write .",
     "prepare": "husky"

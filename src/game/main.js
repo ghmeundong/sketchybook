@@ -3,6 +3,7 @@ import "../style.css";
 import "../styles/game.css";
 import paperTexture from "../img/paper-texture.jpg";
 import { createCoordinateSystem } from "./coordinates.js";
+import { loadStage } from "./stageLoader.js";
 import {
   createStrokeBody,
   initializeStrokeBody,
@@ -27,6 +28,7 @@ let ctx = null;
 let coordinateSystem = null;
 let currentStroke = null;
 let physicsStrokes = [];
+let currentStage = null;
 let animationFrameId = null;
 let lastPhysicsTime = 0;
 let canvasWidth = 0;
@@ -64,6 +66,20 @@ function resizeCanvas() {
 
   if (!animationFrameId) {
     animationFrameId = window.requestAnimationFrame(tick);
+  }
+}
+
+async function initializeStage() {
+  if (!canvas || !board) {
+    return;
+  }
+
+  currentStage = await loadStage(canvas, board);
+  if (currentStage?.coordinateSystem) {
+    coordinateSystem = currentStage.coordinateSystem;
+  }
+  if (typeof currentStage?.initialize === "function") {
+    currentStage.initialize();
   }
 }
 
@@ -208,15 +224,18 @@ function tick(timestamp = 0) {
   const floorY = height - 24;
 
   if (timestamp - lastPhysicsTime >= physicsFrameDuration) {
-    stepPhysicsWorld({ deltaTime: 1 / 30 });
+    if (currentStage && typeof currentStage.update === "function") {
+      currentStage.update(physicsStrokes, floorY);
+    } else {
+      stepPhysicsWorld({ deltaTime: 1 / 30 });
+      physicsStrokes.forEach((stroke) => {
+        if (!stroke?.points?.length || !stroke.body) {
+          return;
+        }
 
-    physicsStrokes.forEach((stroke) => {
-      if (!stroke?.points?.length || !stroke.body) {
-        return;
-      }
-
-      updateStrokeBody(stroke, floorY);
-    });
+        updateStrokeBody(stroke, floorY);
+      });
+    }
     lastPhysicsTime = timestamp;
   }
 
@@ -263,10 +282,13 @@ function stopDrawing() {
     return;
   }
 
-  const strokeBody = createStrokeBody(currentStroke);
+  const stageCreateStrokeBody = currentStage?.createStrokeBody || createStrokeBody;
+  const stageInitializeStrokeBody = currentStage?.initializeStrokeBody || initializeStrokeBody;
+
+  const strokeBody = stageCreateStrokeBody(currentStroke);
   if (strokeBody) {
     const floorY = (canvas?.clientHeight || 0) - 24;
-    initializeStrokeBody(strokeBody, floorY);
+    stageInitializeStrokeBody(strokeBody, floorY);
     createStrokeTexture(strokeBody);
     physicsStrokes.push(strokeBody);
   }
@@ -280,4 +302,5 @@ window.addEventListener("pointerup", stopDrawing);
 window.addEventListener("pointerleave", stopDrawing);
 window.addEventListener("resize", resizeCanvas);
 window.addEventListener("orientationchange", resizeCanvas);
+initializeStage();
 resizeCanvas();
