@@ -13,6 +13,8 @@ function createPlanckBody(stroke, floorY) {
     type: "dynamic",
     position: { x: stroke.body.x, y: stroke.body.y },
   });
+  body.setLinearDamping(0);
+  body.setAngularDamping(0);
 
   const segments = [];
   for (let i = 1; i < stroke.points.length; i += 1) {
@@ -28,7 +30,7 @@ function createPlanckBody(stroke, floorY) {
 
     const fixture = body.createFixture({
       shape: planck.Box(length / 2, thickness / 2, planck.Vec2(midpointX, midpointY), angle),
-      density: 1,
+      density: 5,
       friction: 0.2,
       restitution: 0.05,
     });
@@ -65,6 +67,7 @@ function syncStrokeFromPhysics(stroke) {
     (lowest, point) => (point.y > lowest.y ? point : lowest),
     stroke.points[0]
   );
+
   stroke.centerOfMass.x = stroke.body.x;
   stroke.centerOfMass.y = stroke.body.y;
   stroke.grounded = lowestPoint.y >= stroke.physicsGround.getPosition().y - 1;
