@@ -5,15 +5,15 @@
   display: grid;
   place-items: center;
   text-align: center;
-  padding: 2rem;
+  padding: var(--page-padding);
 }
 
 .selection-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(7rem, 9rem));
-  grid-template-rows: repeat(2, minmax(7rem, 9rem));
-  gap: 1.2rem;
-  width: min(100%, 32rem);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.9rem, 2.2vw, 1.5rem);
+  width: min(100%, clamp(30rem, 70vw, 44rem));
   justify-content: center;
   align-items: center;
 }
@@ -24,6 +24,9 @@
   place-items: center;
   aspect-ratio: 1;
   width: 100%;
+  min-height: clamp(7rem, 12vw, 10rem);
+  max-width: clamp(7rem, 12vw, 10rem);
+  justify-self: center;
   border: none;
   background: transparent;
   border-radius: 0;
@@ -31,7 +34,7 @@
   cursor: pointer;
   transition: transform 180ms ease;
   padding: 0;
-  font-size: clamp(1.2rem, 2.8vw, 1.8rem);
+  font-size: clamp(1rem, 2.6vw, 1.6rem);
   font-weight: 700;
   color: #4f3b24;
 }
@@ -52,8 +55,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.1rem;
-  margin-top: clamp(2.2rem, 6vh, 4rem);
+  gap: clamp(0.8rem, 2vw, 1.1rem);
+  margin-top: clamp(1.5rem, 5vh, 3.5rem);
 }
 
 .brand-title,
@@ -67,7 +70,7 @@
 }
 
 .brand-title {
-  font-size: clamp(2rem, 9vw, 3rem);
+  font-size: clamp(2.2rem, 8vw, 3.8rem);
   letter-spacing: 0.3em;
   text-transform: uppercase;
   font-weight: 800;
@@ -77,13 +80,13 @@
 }
 
 .game-title {
-  font-size: clamp(1.5rem, 6vw, 2.5rem);
+  font-size: clamp(1.4rem, 4.8vw, 2.4rem);
   line-height: 1.1;
   letter-spacing: 0.06em;
   cursor: pointer;
   user-select: none;
   font-weight: 700;
-  margin-top: 5rem;
+  margin-top: clamp(2.2rem, 6vh, 4rem);
 }
 
 @media (width <= 768px) {
@@ -94,5 +97,9 @@
   .start-screen,
   .selection-screen {
     padding: 1rem 1rem 0;
+  }
+
+  .selection-grid {
+    width: min(100%, 22rem);
   }
 }

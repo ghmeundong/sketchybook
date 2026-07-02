@@ -8,6 +8,8 @@
     "dev:backend": "cd backend && npm run dev",
     "dev:full": "concurrently \"vite\" \"cd backend && npm run dev\"",
     "build": "vite build",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -42,6 +44,7 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
+    "gh-pages": "^6.3.0",
     "matter-js": "^0.20.0",
     "roughjs": "^4.6.6",
     "turn.js": "^1.0.5"

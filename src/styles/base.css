@@ -1,3 +1,10 @@
+:root {
+  --page-padding: clamp(1rem, 2.2vw, 2rem);
+  --hud-padding: clamp(0.7rem, 1.3vw, 1rem);
+  --stage-size: clamp(5.2rem, 15vw, 8.8rem);
+  --body-font-size: clamp(15px, 1.1vw + 0.8rem, 18px);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -11,6 +18,10 @@ body {
   overflow: hidden;
 }
 
+html {
+  font-size: var(--body-font-size);
+}
+
 @font-face {
   font-family: MyeongjoFont;
   src: url("/font/sketchy-font/Sketchy-1jX4.ttf") format("truetype");
@@ -20,6 +31,7 @@ body {
 
 body {
   min-height: 100dvh;
+  font-size: 1rem;
   font-family: MyeongjoFont, serif;
   color: #3c2f1f;
   background-color: #f5ebcf;
@@ -56,7 +68,7 @@ main {
   height: 100dvh;
   display: grid;
   place-items: start center;
-  padding: 2rem 2rem 0;
+  padding: var(--page-padding) var(--page-padding) 0;
   overflow: hidden;
   background: transparent;
 }
