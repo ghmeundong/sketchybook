@@ -1,5 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { createStrokeBody, createStrokeSegments, updateStrokeBody } from "./physics.js";
+import { describe, expect, it, beforeEach } from "vitest";
+import planck from "planck";
+import {
+  createStrokeBody,
+  createStrokeSegments,
+  initializeStrokeBody,
+  updateStrokeBody,
+  resetPhysicsWorld,
+  stepPhysicsWorld,
+} from "./physics.js";
 
 describe("createStrokeSegments", () => {
   it("creates one segment per pair of points", () => {
@@ -39,15 +47,23 @@ describe("createStrokeBody", () => {
 });
 
 describe("updateStrokeBody", () => {
+  beforeEach(() => {
+    resetPhysicsWorld();
+  });
   it("grounds the stroke and rotates it toward the lower center of mass", () => {
     const stroke = createStrokeBody([
       { x: 0, y: 0 },
       { x: 10, y: 0 },
       { x: 10, y: 10 },
     ]);
+    const floorY = 40;
     stroke.body.y = 50;
+    initializeStrokeBody(stroke, floorY);
 
-    updateStrokeBody(stroke, 40, { gravity: 0.01, angularDamping: 0.999, rotationStep: 0.05 });
+    for (let i = 0; i < 60 && !stroke.grounded; i += 1) {
+      stepPhysicsWorld({ deltaTime: 1 / 30 });
+      updateStrokeBody(stroke, floorY);
+    }
 
     expect(stroke.grounded).toBe(true);
     expect(stroke.angle).not.toBe(0);
@@ -60,11 +76,21 @@ describe("updateStrokeBody", () => {
       { x: 10, y: 0 },
       { x: 10, y: 10 },
     ]);
+    const floorY = 20;
     stroke.body.y = 30;
     stroke.angle = 0.1;
     stroke.angularVelocity = 0.02;
+    initializeStrokeBody(stroke, floorY);
 
-    updateStrokeBody(stroke, 20, { gravity: 0.01, angularDamping: 0.999, rotationStep: 0.01 });
+    if (stroke.physicsBody) {
+      stroke.physicsBody.setTransform(planck.Vec2(stroke.body.x, stroke.body.y), stroke.angle);
+      stroke.physicsBody.setAngularVelocity(stroke.angularVelocity);
+    }
+
+    for (let i = 0; i < 60 && !stroke.grounded; i += 1) {
+      stepPhysicsWorld({ deltaTime: 1 / 30 });
+      updateStrokeBody(stroke, floorY);
+    }
 
     expect(stroke.grounded).toBe(true);
     expect(stroke.angularVelocity).toBeLessThan(0);

@@ -3,7 +3,12 @@ import "../style.css";
 import "../styles/game.css";
 import paperTexture from "../img/paper-texture.jpg";
 import { createCoordinateSystem } from "./coordinates.js";
-import { createStrokeBody, initializeStrokeBody, updateStrokeBody } from "./physics.js";
+import {
+  createStrokeBody,
+  initializeStrokeBody,
+  updateStrokeBody,
+  stepPhysicsWorld,
+} from "./physics.js";
 
 const board = document.querySelector("#game-board");
 const canvas = document.querySelector("#game-canvas");
@@ -203,12 +208,14 @@ function tick(timestamp = 0) {
   const floorY = height - 24;
 
   if (timestamp - lastPhysicsTime >= physicsFrameDuration) {
+    stepPhysicsWorld({ deltaTime: 1 / 30 });
+
     physicsStrokes.forEach((stroke) => {
       if (!stroke?.points?.length || !stroke.body) {
         return;
       }
 
-      updateStrokeBody(stroke, floorY, { deltaTime: 1 / 30 });
+      updateStrokeBody(stroke, floorY);
     });
     lastPhysicsTime = timestamp;
   }
