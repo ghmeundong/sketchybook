@@ -219,7 +219,7 @@ export function createCircleBody(x, y, radius, floorY = 0, options = {}) {
   });
   body.setLinearDamping(options.linearDamping ?? 0.5);
   body.setAngularDamping(options.angularDamping ?? 0.5);
-  body.setBullet(!!options.bullet);
+  body.setBullet(!!options.bullet || true);
   body.setSleepingAllowed(false);
 
   const fixture = body.createFixture({
@@ -271,6 +271,112 @@ export function createEdgeBody(x1, y1, x2, y2, floorY = 0, options = {}) {
     friction: options.friction ?? 0.8,
     restitution: options.restitution ?? 0,
   });
+
+  return body;
+}
+
+export function createPolygonBody(points, floorY = 0, options = {}) {
+  if (!Array.isArray(points) || points.length < 3) {
+    return null;
+  }
+
+  ensurePhysicsGround(floorY);
+
+  const pts = points.map((p) => ({ x: p.x, y: p.y }));
+  const center = pts.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
+  center.x /= pts.length;
+  center.y /= pts.length;
+
+  const bodyType = options.isStatic ? "static" : (options.type ?? "dynamic");
+  const body = physicsWorld.createBody({
+    type: bodyType,
+    position: planck.Vec2(center.x, center.y),
+  });
+  body.setLinearDamping(options.linearDamping ?? 0);
+  body.setAngularDamping(options.angularDamping ?? 0);
+  body.setBullet(!!options.bullet);
+  body.setSleepingAllowed(false);
+
+  const verts = pts.map((p) => planck.Vec2(p.x - center.x, p.y - center.y));
+  try {
+    body.createFixture({
+      shape: planck.Polygon(verts),
+      density: options.density ?? (bodyType === "dynamic" ? 1 : 0),
+      friction: options.friction ?? 0.8,
+      restitution: options.restitution ?? 0,
+    });
+  } catch (e) {
+    console.warn("createPolygonBody failed:", e);
+    return null;
+  }
+
+  return body;
+}
+
+export function createRotorBody(points, axis = {}, floorY = 0, options = {}) {
+  if (!Array.isArray(points) || points.length < 2) {
+    return null;
+  }
+
+  ensurePhysicsGround(floorY);
+
+  const pts = points.map((p) => ({ x: p.x, y: p.y }));
+  const center = pts.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
+  center.x /= pts.length;
+  center.y /= pts.length;
+
+  const bodyType = options.isStatic ? "static" : (options.type ?? "dynamic");
+  const body = physicsWorld.createBody({
+    type: bodyType,
+    position: planck.Vec2(center.x, center.y),
+  });
+  body.setLinearDamping(options.linearDamping ?? 0);
+  body.setAngularDamping(options.angularDamping ?? 0);
+  body.setBullet(!!options.bullet || bodyType === "dynamic");
+  body.setSleepingAllowed(false);
+
+  const thickness = typeof options.thickness === "number" ? options.thickness : 8;
+  const makeSegmentFixture = (start, end) => {
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const length = Math.hypot(dx, dy) || 1;
+    const angle = Math.atan2(dy, dx);
+    const midX = (start.x + end.x) / 2 - center.x;
+    const midY = (start.y + end.y) / 2 - center.y;
+    body.createFixture({
+      shape: planck.Box(length / 2, thickness / 2, planck.Vec2(midX, midY), angle),
+      density: options.density ?? (bodyType === "dynamic" ? 1 : 0),
+      friction: options.friction ?? 0.8,
+      restitution: options.restitution ?? 0,
+    });
+  };
+
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    makeSegmentFixture(pts[i], pts[i + 1]);
+  }
+  if (options.closed && pts.length > 2) {
+    makeSegmentFixture(pts[pts.length - 1], pts[0]);
+  }
+
+  if (!options.isStatic) {
+    const anchorX = typeof axis.x === "number" ? axis.x : center.x;
+    const anchorY = typeof axis.y === "number" ? axis.y : center.y;
+    const anchorBody = physicsWorld.createBody();
+    physicsWorld.createJoint(
+      planck.RevoluteJoint(
+        {
+          enableMotor: !!options.motor,
+          motorSpeed: typeof options.motorSpeed === "number" ? options.motorSpeed : 0,
+          maxMotorTorque:
+            typeof options.maxMotorTorque === "number" ? options.maxMotorTorque : 1000,
+          collideConnected: false,
+        },
+        anchorBody,
+        body,
+        planck.Vec2(anchorX, anchorY)
+      )
+    );
+  }
 
   return body;
 }
