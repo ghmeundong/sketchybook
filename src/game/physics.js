@@ -254,6 +254,27 @@ export function createBoxBody(x, y, width, height, floorY = 0, options = {}) {
   return body;
 }
 
+export function createEdgeBody(x1, y1, x2, y2, floorY = 0, options = {}) {
+  ensurePhysicsGround(floorY);
+
+  const body = physicsWorld.createBody({
+    type: options.type ?? "static",
+    position: planck.Vec2(0, 0),
+  });
+  body.setLinearDamping(options.linearDamping ?? 0);
+  body.setAngularDamping(options.angularDamping ?? 0);
+  body.setSleepingAllowed(false);
+
+  body.createFixture({
+    shape: planck.Edge(planck.Vec2(x1, y1), planck.Vec2(x2, y2)),
+    density: options.density ?? 0,
+    friction: options.friction ?? 0.8,
+    restitution: options.restitution ?? 0,
+  });
+
+  return body;
+}
+
 export function applyImpulseToBody(body, ix, iy) {
   if (!body) return;
   try {
