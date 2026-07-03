@@ -28,6 +28,9 @@ function revealStartPage() {
   if (titleText) {
     titleText.textContent = initialTitle;
   }
+  if (startTitle) {
+    startTitle.dataset.loading = "false";
+  }
   showStartButton(true);
   if (pageLoader) {
     pageLoader.style.display = "none";
@@ -46,6 +49,9 @@ function prepareInitialState() {
   body.style.backgroundColor = "#000";
   body.style.backgroundImage = "none";
   setLoaderText("Loading background…");
+  if (startTitle) {
+    startTitle.dataset.loading = "false";
+  }
   showStartButton(false);
 }
 
