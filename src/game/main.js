@@ -483,10 +483,11 @@ let currentStageNumber = 1;
 class Ball {
   // x, y: normalized (0..1) positions relative to canvas width/height
   // radius: normalized (0..1) relative to min(canvasWidth, canvasHeight) or pixels if >1
-  constructor({ x = 0.5, y = 0.5, radius = 0.05 } = {}) {
-    this.nx = x;
-    this.ny = y;
-    this.radius = radius;
+  constructor(opts = {}) {
+    const { x, y, radius } = opts || {};
+    this.nx = typeof x === "number" ? x : 0.5;
+    this.ny = typeof y === "number" ? y : 0.5;
+    this.radius = typeof radius === "number" ? radius : 0.02;
   }
 
   // Create an offscreen texture (hollow circle) sized for the current canvas.
@@ -569,10 +570,11 @@ class Ball {
 }
 
 class Star {
-  constructor({ x = 0.5, y = 0.5, radius = 0.035 } = {}) {
-    this.nx = x;
-    this.ny = y;
-    this.radius = radius;
+  constructor(opts = {}) {
+    const { x, y, radius } = opts || {};
+    this.nx = typeof x === "number" ? x : 0.5;
+    this.ny = typeof y === "number" ? y : 0.5;
+    this.radius = typeof radius === "number" ? radius : 0.02;
     this.collected = false;
   }
 
@@ -649,11 +651,12 @@ class Star {
 }
 
 class Platform {
-  constructor({ x = 0.5, y = 0.75, width = 0.5, height = 0.08 } = {}) {
-    this.nx = x;
-    this.ny = y;
-    this.width = width;
-    this.height = height;
+  constructor(opts = {}) {
+    const { x, y, width, height } = opts || {};
+    this.nx = typeof x === "number" ? x : 0.5;
+    this.ny = typeof y === "number" ? y : 0.75;
+    this.width = typeof width === "number" ? width : 0.1;
+    this.height = typeof height === "number" ? height : 0.05;
     this.physicsBody = null;
     this.texture = null;
     this.textureOffset = null;
@@ -806,21 +809,154 @@ class Segment {
   }
 }
 
+class ComplexObject {
+  constructor({ points = [], closed = false, isStatic = true } = {}) {
+    // points expected normalized (0..1) objects: [{x, y}, ...]
+    this.normalizedPoints = Array.isArray(points) ? points.slice() : [];
+    this.closed = !!closed;
+    this.isStatic = !!isStatic;
+    this.pixelPoints = null; // filled by createTexture
+    this.physicsBodies = null;
+    this.texture = null;
+    this.textureOffset = null;
+    this._lastCanvasSize = null;
+  }
+
+  createTexture(canvasW, canvasH) {
+    if (!Array.isArray(this.normalizedPoints) || this.normalizedPoints.length < 2) return;
+
+    // compute pixel points
+    const pts = this.normalizedPoints.map((p) => ({ x: p.x * canvasW, y: p.y * canvasH }));
+    this.pixelPoints = pts;
+
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    for (const p of pts) {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    }
+
+    const padding = 12;
+    const width = Math.max(2, Math.ceil(maxX - minX + padding * 2));
+    const height = Math.max(2, Math.ceil(maxY - minY + padding * 2));
+
+    const off = document.createElement("canvas");
+    off.width = width;
+    off.height = height;
+    const offCtx = off.getContext("2d");
+    offCtx.clearRect(0, 0, width, height);
+
+    const offRough = rough.canvas(off);
+
+    // draw segments
+    for (let i = 0; i < pts.length - 1; i += 1) {
+      const a = pts[i];
+      const b = pts[i + 1];
+      offRough.line(
+        a.x - minX + padding,
+        a.y - minY + padding,
+        b.x - minX + padding,
+        b.y - minY + padding,
+        {
+          stroke: "#4f3b24",
+          strokeWidth: 3,
+          roughness: 2.6,
+        }
+      );
+    }
+    if (this.closed && pts.length > 2) {
+      const a = pts[pts.length - 1];
+      const b = pts[0];
+      offRough.line(
+        a.x - minX + padding,
+        a.y - minY + padding,
+        b.x - minX + padding,
+        b.y - minY + padding,
+        {
+          stroke: "#4f3b24",
+          strokeWidth: 3,
+          roughness: 2.6,
+        }
+      );
+    }
+
+    this.texture = off;
+    this.textureOffset = { left: minX - padding, top: minY - padding, width, height };
+    this._lastCanvasSize = { w: canvasW, h: canvasH };
+  }
+
+  createPhysics(floorY) {
+    if (!Array.isArray(this.pixelPoints) || this.pixelPoints.length < 2) return;
+    if (this.physicsBodies && this.physicsBodies.length) return; // already created
+
+    this.physicsBodies = [];
+    const pts = this.pixelPoints;
+    for (let i = 0; i < pts.length - 1; i += 1) {
+      const a = pts[i];
+      const b = pts[i + 1];
+      try {
+        const body = createEdgeBody(a.x, a.y, b.x, b.y, floorY, {
+          type: this.isStatic ? "static" : "dynamic",
+          friction: 0.8,
+        });
+        this.physicsBodies.push(body);
+      } catch (e) {
+        console.warn("createEdgeBody failed for complex object segment:", e);
+      }
+    }
+    if (this.closed && pts.length > 2) {
+      const a = pts[pts.length - 1];
+      const b = pts[0];
+      try {
+        const body = createEdgeBody(a.x, a.y, b.x, b.y, floorY, {
+          type: this.isStatic ? "static" : "dynamic",
+          friction: 0.8,
+        });
+        this.physicsBodies.push(body);
+      } catch (e) {
+        console.warn("createEdgeBody failed for complex object closing segment:", e);
+      }
+    }
+  }
+
+  draw(canvasW, canvasH) {
+    if (!ctx) return;
+    if (
+      !this.texture ||
+      !this._lastCanvasSize ||
+      this._lastCanvasSize.w !== canvasW ||
+      this._lastCanvasSize.h !== canvasH
+    ) {
+      this.createTexture(canvasW, canvasH);
+    }
+    if (this.texture && this.textureOffset) {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.drawImage(
+        this.texture,
+        this.textureOffset.left,
+        this.textureOffset.top,
+        this.textureOffset.width,
+        this.textureOffset.height
+      );
+      ctx.restore();
+    }
+  }
+}
+
 class TextLabel {
-  constructor({
-    x = 0.5,
-    y = 0.2,
-    text = "",
-    fontSize = 0.04,
-    color = "#4f3b24",
-    fontFamily = "MyeongjoFont, serif",
-  } = {}) {
-    this.nx = x;
-    this.ny = y;
+  constructor(opts = {}) {
+    const { x, y, text, fontSize, color, fontFamily } = opts || {};
+    this.nx = typeof x === "number" ? x : 0.5;
+    this.ny = typeof y === "number" ? y : 0.2;
     this.text = text || "";
-    this.fontSize = fontSize;
-    this.color = color;
-    this.fontFamily = fontFamily;
+    this.fontSize = typeof fontSize === "number" ? fontSize : 0.04;
+    this.color = typeof color === "string" ? color : "#4f3b24";
+    this.fontFamily = typeof fontFamily === "string" ? fontFamily : "MyeongjoFont, serif";
     this.texture = null;
     this.textureOffset = null;
     this._lastCanvasSize = null;
@@ -1000,6 +1136,17 @@ function resizeCanvas() {
         } catch (e) {
           console.warn("createEdgeBody failed:", e);
         }
+      } else if (
+        obj instanceof ComplexObject &&
+        (!obj.physicsBodies || !obj.physicsBodies.length)
+      ) {
+        // ensure texture/pixel points available
+        try {
+          obj.createTexture(canvasWidth, canvasHeight);
+          obj.createPhysics(floorYForPhysics);
+        } catch (e) {
+          console.warn("ComplexObject physics creation failed:", e);
+        }
       }
     }
   }
@@ -1062,6 +1209,15 @@ async function initializeStage(stageNumberOverride) {
             y1: obj.y1,
             x2: obj.x2,
             y2: obj.y2,
+          })
+        );
+      } else if (obj.type === "poly" || obj.type === "complex") {
+        // points provided as normalized coordinates [{x,y}, ...]
+        gameObjects.push(
+          new ComplexObject({
+            points: obj.points || [],
+            closed: !!obj.closed,
+            isStatic: obj.isStatic !== false,
           })
         );
       } else if (obj.type === "text") {
