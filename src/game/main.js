@@ -78,6 +78,7 @@ function resetStageState() {
   lastPoint = null;
   stageCleared = false;
   currentStage = null;
+  stageHasSimulated = false;
   hideStageClearOverlay();
   hideGameRetryButton();
   hideGameExitButton();
@@ -494,6 +495,7 @@ const physicsFrameDuration = 1000 / 60;
 const renderFrameDuration = 1000 / 60;
 
 let stageCleared = false;
+let stageHasSimulated = false;
 
 // Game objects (balls, stars, etc.) that stages can declare.
 let gameObjects = [];
@@ -1342,6 +1344,25 @@ function resizeCanvas() {
   previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
 
+  // If the stage was loaded but not yet simulated, recreate physics bodies
+  // when the canvas size changes (e.g. entering fullscreen after refresh).
+  const shouldRebuildPhysics =
+    currentStage &&
+    !stageHasSimulated &&
+    physicsStrokes.length === 0 &&
+    gameObjects.some((obj) => obj.physicsBody || (obj.physicsBodies && obj.physicsBodies.length));
+  if (shouldRebuildPhysics) {
+    resetPhysicsWorld();
+    for (const obj of gameObjects) {
+      if (obj.physicsBody) {
+        obj.physicsBody = null;
+      }
+      if (obj.physicsBodies) {
+        obj.physicsBodies = null;
+      }
+    }
+  }
+
   // Ensure circular game object physics bodies exist now that canvas size is known
   const floorYForPhysics = canvas?.clientHeight ? canvas.clientHeight - 24 : canvasHeight - 24;
   if (gameObjects && gameObjects.length) {
@@ -1764,6 +1785,7 @@ function tick(timestamp = 0) {
         });
       }
       lastPhysicsTime += physicsFrameDuration;
+      stageHasSimulated = true;
     }
   }
 
@@ -2041,6 +2063,12 @@ window.addEventListener("pointerleave", stopDrawing);
 
 window.addEventListener("resize", resizeCanvas);
 window.addEventListener("orientationchange", resizeCanvas);
+window.addEventListener("fullscreenchange", async () => {
+  if (!document.fullscreenElement) return;
+  if (!currentStage || stageHasSimulated || physicsStrokes.length > 0) return;
+  await initializeStage(currentStageNumber);
+  resizeCanvas();
+});
 
 stageButtons.forEach((button) => {
   button.addEventListener("click", async () => {
