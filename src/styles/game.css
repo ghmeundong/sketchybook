@@ -55,7 +55,7 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -60%) scale(0.92);
   width: min(90%, 28rem);
   display: grid;
   place-items: center;
@@ -63,8 +63,8 @@
   visibility: hidden;
   pointer-events: none;
   transition:
-    opacity 180ms ease,
-    visibility 180ms ease;
+    opacity 120ms ease,
+    visibility 120ms ease;
   z-index: 9999;
 }
 
@@ -72,6 +72,24 @@
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
+  animation: stage-clear-stamp 340ms cubic-bezier(0.25, 0.8, 0.35, 1) forwards;
+}
+
+@keyframes stage-clear-stamp {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -110%) rotate(-8deg) scale(0.7);
+  }
+
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(6deg) scale(1.08);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+  }
 }
 
 .stage-clear-box {

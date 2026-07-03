@@ -23,7 +23,7 @@ export function initStage4(canvas, board) {
     objects: [
       { type: "text", x: 0.5, y: 0.3, text: "It looks like a see-saw, right?" },
       { type: "ball", x: 0.35, y: 0.5 },
-      { type: "star", x: 0.35, y: 0.4 },
+      { type: "star", x: 0.65, y: 0.4 },
       {
         type: "rotor",
         points: [
