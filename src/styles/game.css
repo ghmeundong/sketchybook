@@ -203,6 +203,21 @@
   opacity: 0.85;
 }
 
+.game-retry-btn {
+  opacity: 0.7;
+  transition: opacity 150ms ease;
+}
+
+.game-retry-btn:hover,
+.game-retry-btn:focus {
+  opacity: 1;
+  outline: none;
+}
+
+.game-retry-btn:active {
+  opacity: 0.85;
+}
+
 @media (width <= 768px) {
   .game-page {
     padding: 1rem;

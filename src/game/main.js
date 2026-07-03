@@ -15,6 +15,7 @@ import {
   applyImpulseToBody,
   applyAngularImpulseToBody,
   applyImpulseAtLocalPoint,
+  resetPhysicsWorld,
 } from "./physics.js";
 
 const board = document.querySelector("#game-board");
@@ -26,6 +27,7 @@ const stageButtons = Array.from(document.querySelectorAll(".stage-card"));
 let stageClearOverlay = null;
 let stageClearMessage = null;
 let gameExitButton = null;
+let gameRetryButton = null;
 
 const body = document.body;
 body.style.backgroundImage = `url(${paperTexture})`;
@@ -68,6 +70,7 @@ function setActivePage(page) {
   });
   if (page === selectionPage) {
     hideGameExitButton();
+    hideGameRetryButton();
   }
 }
 
@@ -339,10 +342,75 @@ function createGameExitButton() {
   board.appendChild(gameExitButton);
 }
 
+function createGameRetryButton() {
+  if (!board || gameRetryButton) return;
+
+  gameRetryButton = document.createElement("button");
+  gameRetryButton.className = "game-retry-btn";
+  gameRetryButton.setAttribute("type", "button");
+  gameRetryButton.setAttribute("aria-label", "Retry current stage");
+  gameRetryButton.style.position = "absolute";
+  gameRetryButton.style.top = "1rem";
+  gameRetryButton.style.right = "1rem";
+  gameRetryButton.style.zIndex = "100";
+  gameRetryButton.style.background = "transparent";
+  gameRetryButton.style.border = "none";
+  gameRetryButton.style.cursor = "pointer";
+  gameRetryButton.style.padding = "0.5rem";
+  gameRetryButton.style.display = "flex";
+  gameRetryButton.style.alignItems = "center";
+  gameRetryButton.style.justifyContent = "center";
+
+  const canvas = document.createElement("canvas");
+  const w = 48;
+  const h = 32;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  ctx.strokeStyle = "#4f3b24";
+  ctx.fillStyle = "#4f3b24";
+  ctx.lineWidth = 2.5;
+
+  // Retry icon: two 90-degree turns with arrowhead
+  ctx.beginPath();
+  ctx.moveTo(22, 30);
+  ctx.lineTo(42, 30); // right
+  ctx.lineTo(42, 10); // up
+  ctx.lineTo(22, 10); // left
+  ctx.lineTo(22, 20); // down
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(16, 14);
+  ctx.lineTo(22, 20);
+  ctx.lineTo(28, 14);
+  ctx.stroke();
+
+  gameRetryButton.appendChild(canvas);
+  gameRetryButton.addEventListener("click", async () => {
+    hideStageClearOverlay();
+    await initializeStage(currentStageNumber);
+    resizeCanvas();
+  });
+
+  board.appendChild(gameRetryButton);
+}
+
 function hideGameExitButton() {
   if (gameExitButton) {
     gameExitButton.remove();
     gameExitButton = null;
+  }
+}
+
+function hideGameRetryButton() {
+  if (gameRetryButton) {
+    gameRetryButton.remove();
+    gameRetryButton = null;
   }
 }
 
@@ -911,6 +979,8 @@ async function initializeStage(stageNumberOverride) {
     return;
   }
 
+  resetPhysicsWorld();
+
   currentStage = await loadStage(canvas, board, stageNumberOverride);
   if (currentStage?.coordinateSystem) {
     coordinateSystem = currentStage.coordinateSystem;
@@ -975,6 +1045,7 @@ async function initializeStage(stageNumberOverride) {
   }
 
   createGameExitButton();
+  createGameRetryButton();
 }
 
 function getPoint(event) {
