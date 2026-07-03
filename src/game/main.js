@@ -435,8 +435,10 @@ async function startStage(stageNumber) {
 async function initializePageFlow() {
   const requestedStage = getRequestedStageFromUrl();
   if (requestedStage) {
+    currentStageNumber = requestedStage;
     setActivePage(playPage);
     await initializeStage(requestedStage);
+    resizeCanvas();
   } else {
     setActivePage(selectionPage);
   }
@@ -1185,26 +1187,39 @@ function drawPhysicsStroke(stroke) {
 }
 
 function tick(timestamp = 0) {
+  // Stop physics when not in fullscreen mode
+  const isFullscreen = document.fullscreenElement || window.innerHeight === screen.height;
+  const isGameActive = playPage?.classList.contains("is-active");
+
+  if (!isGameActive) {
+    // Still schedule next frame to check game state
+    animationFrameId = window.requestAnimationFrame(tick);
+    return;
+  }
+
   const width = canvas?.clientWidth || 0;
   const height = canvas?.clientHeight || 0;
 
   const floorY = height - 24;
 
-  // Catch up physics: run as many 1/60s sub-steps as needed to reach current timestamp
-  while (timestamp - lastPhysicsTime >= physicsFrameDuration) {
-    if (currentStage && typeof currentStage.update === "function") {
-      currentStage.update(physicsStrokes, floorY);
-    } else {
-      stepPhysicsWorld({ deltaTime: 1 / 60 });
-      physicsStrokes.forEach((stroke) => {
-        if (!stroke?.points?.length || !stroke.body) {
-          return;
-        }
+  // Only update physics when in fullscreen mode
+  if (isFullscreen) {
+    // Catch up physics: run as many 1/60s sub-steps as needed to reach current timestamp
+    while (timestamp - lastPhysicsTime >= physicsFrameDuration) {
+      if (currentStage && typeof currentStage.update === "function") {
+        currentStage.update(physicsStrokes, floorY);
+      } else {
+        stepPhysicsWorld({ deltaTime: 1 / 60 });
+        physicsStrokes.forEach((stroke) => {
+          if (!stroke?.points?.length || !stroke.body) {
+            return;
+          }
 
-        updateStrokeBody(stroke, floorY);
-      });
+          updateStrokeBody(stroke, floorY);
+        });
+      }
+      lastPhysicsTime += physicsFrameDuration;
     }
-    lastPhysicsTime += physicsFrameDuration;
   }
 
   // Sync circular game object positions from physics bodies (perfect circle hitboxes)
@@ -1266,6 +1281,7 @@ function tick(timestamp = 0) {
     }
   }
   render();
+  // Continue animation loop
   animationFrameId = window.requestAnimationFrame(tick);
 }
 
@@ -1273,6 +1289,27 @@ function render() {
   if (!roughCanvas || !ctx) return;
 
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+  // Check if in fullscreen mode
+  const isFullscreen = document.fullscreenElement || window.innerHeight === screen.height;
+
+  // If not fullscreen, show guidance message
+  if (!isFullscreen) {
+    ctx.save();
+
+    const fontSize = Math.max(24, Math.round(canvasHeight * 0.08));
+    ctx.font = `bold ${fontSize}px MyeongjoFont, serif`;
+    ctx.fillStyle = "#4f3b24";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const centerY = canvasHeight / 2;
+    ctx.fillText("Press F11 to enter fullscreen", canvasWidth / 2, centerY - fontSize * 0.8);
+    ctx.fillText("to continue playing", canvasWidth / 2, centerY + fontSize * 0.2);
+
+    ctx.restore();
+    return;
+  }
 
   if (currentStroke && currentStroke.length > 1) {
     drawStrokePreview(currentStroke, 8);
@@ -1300,7 +1337,8 @@ function startDrawing(event) {
 }
 
 function continueDrawing(event) {
-  if (stageCleared || !isDrawing || !lastPoint) {
+  const isFullscreen = document.fullscreenElement || window.innerHeight === screen.height;
+  if (!isFullscreen || stageCleared || !isDrawing || !lastPoint) {
     return;
   }
 
