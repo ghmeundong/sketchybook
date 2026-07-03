@@ -51,6 +51,114 @@
   touch-action: none;
 }
 
+.stage-clear-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(90%, 28rem);
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    visibility 180ms ease;
+  z-index: 9999;
+}
+
+.stage-clear-overlay.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.stage-clear-box {
+  width: 100%;
+  padding: 1.75rem 1.5rem;
+  border-radius: 0;
+  text-align: center;
+  background: rgb(255 248 232 / 95%);
+  box-shadow: none;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.stage-clear-box::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgb(255 248 232 / 45%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.stage-clear-frame {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: calc(100% + 16px);
+  height: calc(100% + 16px);
+  z-index: 0;
+}
+
+.stage-clear-title {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.55rem, 3vw, 2.25rem);
+  font-weight: 800;
+  color: #4f3b24;
+  position: relative;
+  z-index: 1;
+}
+
+.stage-clear-subtitle {
+  margin: 0;
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  line-height: 1.5;
+  color: #4f3b24;
+}
+
+.stage-clear-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-top: 0.85rem;
+  position: relative;
+  z-index: 1;
+}
+
+.stage-clear-btn {
+  --pad-y: 0.5rem;
+  --pad-x: 0.9rem;
+
+  background: transparent;
+  border: none;
+  padding: var(--pad-y) var(--pad-x);
+  font-weight: 700;
+  color: #4f3b24;
+  position: relative;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stage-clear-btn:focus {
+  outline: none;
+}
+
+.stage-clear-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 24px;
+}
+
+/* merged duplicate .stage-clear-btn above */
+
 .game-surface {
   position: absolute;
   inset: 0;

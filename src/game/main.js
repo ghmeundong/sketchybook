@@ -23,6 +23,9 @@ const selectionPage = document.querySelector(".page-selection");
 const playPage = document.querySelector(".page-play");
 const stageButtons = Array.from(document.querySelectorAll(".stage-card"));
 
+let stageClearOverlay = null;
+let stageClearMessage = null;
+
 const body = document.body;
 body.style.backgroundImage = `url(${paperTexture})`;
 body.style.backgroundSize = "cover";
@@ -77,6 +80,200 @@ async function tryEnterFullscreen() {
   }
 }
 
+function createStageClearOverlay() {
+  if (!board) {
+    return;
+  }
+  if (stageClearOverlay) return;
+
+  stageClearOverlay = document.createElement("div");
+  stageClearOverlay.className = "stage-clear-overlay";
+  stageClearOverlay.setAttribute("aria-hidden", "true");
+  stageClearOverlay.style.display = "grid";
+
+  stageClearMessage = document.createElement("div");
+  stageClearMessage.className = "stage-clear-box";
+  stageClearMessage.innerHTML = `
+    <p class="stage-clear-title">Stage Cleared!</p>
+    <div class="stage-clear-actions">
+      <button class="stage-clear-btn stage-clear-exit"></button>
+      <button class="stage-clear-btn stage-clear-retry"></button>
+      <button class="stage-clear-btn stage-clear-next"></button>
+    </div>
+  `;
+
+  stageClearMessage.style.backgroundImage = `url(${paperTexture})`;
+  stageClearMessage.style.backgroundSize = "cover";
+  stageClearMessage.style.backgroundPosition = "center";
+  stageClearMessage.style.backgroundRepeat = "no-repeat";
+  stageClearMessage.style.position = "relative";
+  stageClearMessage.style.zIndex = "1";
+
+  const frameCanvas = document.createElement("canvas");
+  frameCanvas.className = "stage-clear-frame";
+  frameCanvas.width = 420;
+  frameCanvas.height = 420;
+  frameCanvas.style.position = "absolute";
+  frameCanvas.style.inset = "0";
+  frameCanvas.style.width = "100%";
+  frameCanvas.style.height = "100%";
+  frameCanvas.style.pointerEvents = "none";
+  frameCanvas.style.zIndex = "0";
+
+  const rc = rough.canvas(frameCanvas);
+  rc.rectangle(12, 12, frameCanvas.width - 24, frameCanvas.height - 24, {
+    stroke: "#4f3b24",
+    strokeWidth: 3.2,
+    roughness: 1.7,
+    bowing: 1.6,
+    fill: "transparent",
+  });
+
+  stageClearOverlay.appendChild(frameCanvas);
+  stageClearOverlay.appendChild(stageClearMessage);
+  board.appendChild(stageClearOverlay);
+
+  // Decorate action buttons with rough borders and wire handlers
+  const drawIcon = (btn, type) => {
+    if (!btn) return;
+    const iconWrap = document.createElement("span");
+    iconWrap.className = "stage-clear-icon";
+    const canvas = document.createElement("canvas");
+    const w = 64;
+    const h = 40;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = "#4f3b24";
+    ctx.fillStyle = "#4f3b24";
+    ctx.lineWidth = 3;
+
+    if (type === "exit") {
+      // taller vertical rectangle with left-pointing arrow
+      ctx.strokeRect(18, 6, 20, 28);
+      ctx.beginPath();
+      ctx.moveTo(50, 20);
+      ctx.lineTo(24, 20);
+      ctx.lineTo(30, 14);
+      ctx.moveTo(24, 20);
+      ctx.lineTo(30, 26);
+      ctx.stroke();
+    } else if (type === "retry") {
+      // two 90-degree turns: right, up, then right with arrowhead
+      ctx.beginPath();
+      ctx.moveTo(22, 30);
+      ctx.lineTo(42, 30); // right
+      ctx.lineTo(42, 10); // up
+      ctx.lineTo(22, 10); // left
+      ctx.lineTo(22, 20); // down
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(16, 14);
+      ctx.lineTo(22, 20);
+      ctx.lineTo(28, 14);
+      ctx.stroke();
+    } else if (type === "next") {
+      // right-pointing triangle
+      ctx.beginPath();
+      ctx.moveTo(18, 8);
+      ctx.lineTo(18, 32);
+      ctx.lineTo(46, 20);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    iconWrap.appendChild(canvas);
+    btn.insertBefore(iconWrap, btn.firstChild);
+  };
+
+  const decorate = (btn) => {
+    if (!btn) return;
+    btn.style.position = "relative";
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 100 40");
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.style.position = "absolute";
+    svg.style.inset = "0";
+    svg.style.pointerEvents = "none";
+    svg.style.width = "100%";
+    svg.style.height = "100%";
+    const rcBtn = rough.svg(svg);
+    rcBtn.rectangle(4, 4, 92, 32, {
+      stroke: "#4f3b24",
+      strokeWidth: 1.8,
+      roughness: 1.5,
+      bowing: 1.2,
+      fill: "transparent",
+    });
+    btn.appendChild(svg);
+  };
+
+  const exitBtn = stageClearMessage.querySelector(".stage-clear-exit");
+  const retryBtn = stageClearMessage.querySelector(".stage-clear-retry");
+  const nextBtn = stageClearMessage.querySelector(".stage-clear-next");
+
+  [exitBtn, retryBtn, nextBtn].forEach((b) => {
+    decorate(b);
+    if (b) {
+      if (b.classList.contains("stage-clear-exit")) drawIcon(b, "exit");
+      if (b.classList.contains("stage-clear-retry")) drawIcon(b, "retry");
+      if (b.classList.contains("stage-clear-next")) drawIcon(b, "next");
+    }
+  });
+
+  if (exitBtn) {
+    exitBtn.addEventListener("click", () => {
+      hideStageClearOverlay();
+      setActivePage(selectionPage);
+      // stop physics animation when leaving
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    });
+  }
+  if (retryBtn) {
+    retryBtn.addEventListener("click", async () => {
+      hideStageClearOverlay();
+      await initializeStage(currentStageNumber);
+      resizeCanvas();
+    });
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener("click", async () => {
+      hideStageClearOverlay();
+      const next = Math.min((currentStageNumber || 1) + 1, 6);
+      await startStage(next);
+    });
+  }
+}
+
+function showStageClearOverlay(message = "Stage Cleared!") {
+  if (!stageClearOverlay || !stageClearMessage) {
+    createStageClearOverlay();
+  }
+  if (!stageClearOverlay || !stageClearMessage) return;
+
+  stageClearMessage.querySelector(".stage-clear-title").textContent = message;
+  stageClearOverlay.classList.add("is-visible");
+  stageClearOverlay.setAttribute("aria-hidden", "false");
+  stageClearOverlay.style.display = "grid";
+  stageClearOverlay.style.opacity = "1";
+  stageClearOverlay.style.visibility = "visible";
+  canvas?.style.setProperty("pointer-events", "none");
+}
+
+function hideStageClearOverlay() {
+  if (!stageClearOverlay) return;
+  stageClearOverlay.classList.remove("is-visible");
+  stageClearOverlay.setAttribute("aria-hidden", "true");
+  stageClearOverlay.style.opacity = "0";
+  stageClearOverlay.style.visibility = "hidden";
+  canvas?.style.setProperty("pointer-events", "auto");
+}
+
 function getRequestedStageFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const value = Number(params.get("stage"));
@@ -87,6 +284,7 @@ async function startStage(stageNumber) {
   if (!stageNumber) {
     return;
   }
+  currentStageNumber = stageNumber;
   await tryEnterFullscreen();
   setActivePage(playPage);
   window.history.replaceState(null, "", `?stage=${stageNumber}`);
@@ -123,6 +321,7 @@ let stageCleared = false;
 
 // Game objects (balls, stars, etc.) that stages can declare.
 let gameObjects = [];
+let currentStageNumber = 1;
 
 class Ball {
   // x, y: normalized (0..1) positions relative to canvas width/height
@@ -546,9 +745,17 @@ async function initializeStage(stageNumberOverride) {
   if (typeof currentStage?.initialize === "function") {
     currentStage.initialize();
   }
+
+  try {
+    createStageClearOverlay();
+  } catch (error) {
+    console.warn("stage clear overlay creation failed:", error);
+  }
+
   // Populate gameObjects from stage data (if any)
   gameObjects = [];
   stageCleared = false;
+  hideStageClearOverlay();
   if (Array.isArray(currentStage?.objects)) {
     for (const obj of currentStage.objects) {
       if (obj.type === "ball") {
@@ -785,6 +992,7 @@ function tick(timestamp = 0) {
     const remaining = gameObjects.filter((g) => g instanceof Star && !g.collected);
     if (remaining.length === 0 && !stageCleared) {
       stageCleared = true;
+      showStageClearOverlay("Stage Cleared!");
       if (currentStage && typeof currentStage.onClear === "function") {
         try {
           currentStage.onClear();
@@ -821,13 +1029,16 @@ function render() {
 }
 
 function startDrawing(event) {
+  if (stageCleared) {
+    return;
+  }
   isDrawing = true;
   lastPoint = getPoint(event);
   currentStroke = [];
 }
 
 function continueDrawing(event) {
-  if (!isDrawing || !lastPoint) {
+  if (stageCleared || !isDrawing || !lastPoint) {
     return;
   }
 
@@ -839,6 +1050,13 @@ function continueDrawing(event) {
 
 function stopDrawing(event) {
   if (!isDrawing) {
+    return;
+  }
+
+  if (stageCleared) {
+    isDrawing = false;
+    lastPoint = null;
+    currentStroke = null;
     return;
   }
 
