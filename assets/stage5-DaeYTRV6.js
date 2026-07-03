@@ -1,1 +1,0 @@
-import{a as e,i as t,n,r,t as i}from"./game-BD7R29UW.js";function a(a,o){return{coordinateSystem:e({viewportWidth:o.clientWidth,viewportHeight:o.clientHeight}),initialize:()=>{},update:(e,n)=>{r({deltaTime:1/60}),e.forEach(e=>t(e,n))},createStrokeBody:i,initializeStrokeBody:n}}export{a as initStage5};
