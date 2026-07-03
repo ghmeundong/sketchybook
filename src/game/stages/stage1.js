@@ -23,8 +23,9 @@ export function initStage1(canvas, board) {
     objects: [
       { type: "ball", x: 0.3, y: 0.4, radius: 0.02 },
       { type: "platform", x: 0.3, y: 0.45, width: 0.1, height: 0.05 },
-      { type: "star", x: 0.7, y: 0.5, radius: 0.02 },
       { type: "platform", x: 0.7, y: 0.55, width: 0.1, height: 0.05 },
+      { type: "segment", x1: 0.35, y1: 0.425, x2: 0.65, y2: 0.525 },
+      { type: "star", x: 0.7, y: 0.5, radius: 0.02 },
     ],
     createStrokeBody,
     initializeStrokeBody,
