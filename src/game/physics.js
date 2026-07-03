@@ -232,6 +232,28 @@ export function createCircleBody(x, y, radius, floorY = 0, options = {}) {
   return body;
 }
 
+export function createBoxBody(x, y, width, height, floorY = 0, options = {}) {
+  ensurePhysicsGround(floorY);
+
+  const body = physicsWorld.createBody({
+    type: options.type ?? "static",
+    position: planck.Vec2(x, y),
+  });
+  body.setLinearDamping(options.linearDamping ?? 0);
+  body.setAngularDamping(options.angularDamping ?? 0);
+  body.setBullet(!!options.bullet);
+  body.setSleepingAllowed(false);
+
+  const fixture = body.createFixture({
+    shape: planck.Box(width / 2, height / 2),
+    density: options.density ?? 0,
+    friction: options.friction ?? 0.8,
+    restitution: options.restitution ?? 0,
+  });
+
+  return body;
+}
+
 export function applyImpulseToBody(body, ix, iy) {
   if (!body) return;
   try {
