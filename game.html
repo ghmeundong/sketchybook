@@ -8,8 +8,24 @@
   </head>
   <body>
     <main class="game-page">
-      <div class="game-board" id="game-board">
-        <canvas id="game-canvas"></canvas>
+      <div class="page page-selection is-active">
+        <section class="selection-screen" aria-label="Game selection screen">
+          <div class="selection-grid" aria-label="Stage selection grid">
+            <button class="stage-card" type="button" data-stage="1" aria-label="Stage 1">Stage 1</button>
+            <button class="stage-card" type="button" data-stage="2" aria-label="Stage 2">Stage 2</button>
+            <button class="stage-card" type="button" data-stage="3" aria-label="Stage 3">Stage 3</button>
+            <button class="stage-card" type="button" data-stage="4" aria-label="Stage 4">Stage 4</button>
+            <button class="stage-card" type="button" data-stage="5" aria-label="Stage 5">Stage 5</button>
+            <button class="stage-card" type="button" data-stage="6" aria-label="Stage 6">Stage 6</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="page page-play">
+        <div class="game-board" id="game-board">
+          <div class="game-grid"></div>
+          <canvas id="game-canvas"></canvas>
+        </div>
       </div>
     </main>
     <script type="module" src="./src/game/main.js"></script>

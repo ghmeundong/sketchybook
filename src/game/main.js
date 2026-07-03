@@ -17,6 +17,9 @@ import {
 
 const board = document.querySelector("#game-board");
 const canvas = document.querySelector("#game-canvas");
+const selectionPage = document.querySelector(".page-selection");
+const playPage = document.querySelector(".page-play");
+const stageButtons = Array.from(document.querySelectorAll(".stage-card"));
 
 const body = document.body;
 body.style.backgroundImage = `url(${paperTexture})`;
@@ -24,6 +27,80 @@ body.style.backgroundSize = "cover";
 body.style.backgroundPosition = "center";
 body.style.backgroundRepeat = "no-repeat";
 body.style.backgroundAttachment = "fixed";
+
+function drawRoughFrame(card) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.setAttribute("width", "100%");
+  svg.setAttribute("height", "100%");
+  svg.style.display = "block";
+  svg.style.position = "absolute";
+  svg.style.inset = "0";
+  svg.style.pointerEvents = "none";
+  svg.style.overflow = "visible";
+
+  const rc = rough.svg(svg);
+  const shape = rc.rectangle(8, 8, 84, 84, {
+    stroke: "#4f3b24",
+    strokeWidth: 1.3,
+    roughness: 1.6,
+    bowing: 1.2,
+    fill: "transparent",
+  });
+
+  svg.appendChild(shape);
+  card.appendChild(svg);
+}
+
+stageButtons.forEach((card) => drawRoughFrame(card));
+
+function setActivePage(page) {
+  [selectionPage, playPage].forEach((item) => {
+    if (!item) return;
+    item.classList.toggle("is-active", item === page);
+  });
+}
+
+async function tryEnterFullscreen() {
+  if (document.fullscreenElement) {
+    return;
+  }
+  if (document.documentElement.requestFullscreen) {
+    try {
+      await document.documentElement.requestFullscreen();
+    } catch (err) {
+      console.warn("전체화면 전환 실패:", err);
+    }
+  }
+}
+
+function getRequestedStageFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const value = Number(params.get("stage"));
+  return Number.isInteger(value) && value >= 1 && value <= 6 ? value : null;
+}
+
+async function startStage(stageNumber) {
+  if (!stageNumber) {
+    return;
+  }
+  await tryEnterFullscreen();
+  setActivePage(playPage);
+  window.history.replaceState(null, "", `?stage=${stageNumber}`);
+  await initializeStage(stageNumber);
+  resizeCanvas();
+}
+
+async function initializePageFlow() {
+  const requestedStage = getRequestedStageFromUrl();
+  if (requestedStage) {
+    setActivePage(playPage);
+    await initializeStage(requestedStage);
+  } else {
+    setActivePage(selectionPage);
+  }
+}
 
 let isDrawing = false;
 let lastPoint = null;
@@ -39,8 +116,6 @@ let canvasWidth = 0;
 let canvasHeight = 0;
 const physicsFrameDuration = 1000 / 60;
 const renderFrameDuration = 1000 / 60;
-
-let renderIntervalId = null;
 
 let stageCleared = false;
 
@@ -265,30 +340,18 @@ function resizeCanvas() {
     }
   }
 
-  if (!animationFrameId) {
-    animationFrameId = window.requestAnimationFrame(tick);
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
   }
-
-  // start or restart render interval at desired rate
-  if (renderIntervalId) {
-    clearInterval(renderIntervalId);
-    renderIntervalId = null;
-  }
-  renderIntervalId = setInterval(() => {
-    try {
-      render();
-    } catch (e) {
-      console.warn("render error", e);
-    }
-  }, renderFrameDuration);
+  animationFrameId = window.requestAnimationFrame(tick);
 }
 
-async function initializeStage() {
+async function initializeStage(stageNumberOverride) {
   if (!canvas || !board) {
     return;
   }
 
-  currentStage = await loadStage(canvas, board);
+  currentStage = await loadStage(canvas, board, stageNumberOverride);
   if (currentStage?.coordinateSystem) {
     coordinateSystem = currentStage.coordinateSystem;
   }
@@ -452,7 +515,7 @@ function tick(timestamp = 0) {
 
   const floorY = height - 24;
 
-  // Catch up physics: run as many 1/120s sub-steps as needed to reach current timestamp
+  // Catch up physics: run as many 1/60s sub-steps as needed to reach current timestamp
   while (timestamp - lastPhysicsTime >= physicsFrameDuration) {
     if (currentStage && typeof currentStage.update === "function") {
       currentStage.update(physicsStrokes, floorY);
@@ -526,6 +589,7 @@ function tick(timestamp = 0) {
       window.dispatchEvent(new CustomEvent("stageClear", { detail: { stage: currentStage } }));
     }
   }
+  render();
   animationFrameId = window.requestAnimationFrame(tick);
 }
 
@@ -687,14 +751,6 @@ function stopDrawing(event) {
   currentStroke = null;
 }
 
-canvas?.addEventListener("pointerdown", () => {
-  if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-    document.documentElement.requestFullscreen().catch((err) => {
-      console.log("게임 진입 후 전체화면 자동 전환 실패:", err.message);
-    });
-  }
-});
-
 canvas?.addEventListener("pointerdown", startDrawing);
 canvas?.addEventListener("pointermove", continueDrawing);
 window.addEventListener("pointerup", stopDrawing);
@@ -703,5 +759,15 @@ window.addEventListener("pointerleave", stopDrawing);
 window.addEventListener("resize", resizeCanvas);
 window.addEventListener("orientationchange", resizeCanvas);
 
-initializeStage();
+stageButtons.forEach((button) => {
+  button.addEventListener("click", async () => {
+    const stageNumber = Number(button.dataset.stage);
+    if (!stageNumber) {
+      return;
+    }
+    await startStage(stageNumber);
+  });
+});
+
+initializePageFlow();
 resizeCanvas();

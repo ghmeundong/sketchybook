@@ -57,13 +57,7 @@
 }
 
 .game-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgb(79 59 36 / 8%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(79 59 36 / 8%) 1px, transparent 1px);
-  background-size: 40px 40px;
-  opacity: 0.7;
+  display: none;
 }
 
 .game-ball,
