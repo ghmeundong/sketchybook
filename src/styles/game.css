@@ -188,6 +188,21 @@
   border-radius: 50%;
 }
 
+.game-exit-btn {
+  opacity: 0.7;
+  transition: opacity 150ms ease;
+}
+
+.game-exit-btn:hover,
+.game-exit-btn:focus {
+  opacity: 1;
+  outline: none;
+}
+
+.game-exit-btn:active {
+  opacity: 0.85;
+}
+
 @media (width <= 768px) {
   .game-page {
     padding: 1rem;
