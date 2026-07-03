@@ -1,24 +1,51 @@
 import planck from "planck";
 
-const physicsWorld = planck.World({ gravity: { x: 0, y: 200 } });
+planck.Settings.maxTranslation = 200.0;
+planck.Settings.maxRotation = 100.0;
+
+const physicsWorld = planck.World({ gravity: { x: 0, y: 238 } });
 let physicsGround = null;
 let physicsFloorY = null;
+let physicsLeftWall = null;
+let physicsRightWall = null;
 
 function ensurePhysicsGround(floorY) {
   if (physicsGround && physicsFloorY === floorY) {
     return;
   }
 
-  if (physicsGround) {
-    physicsWorld.destroyBody(physicsGround);
-  }
+  if (physicsGround) physicsWorld.destroyBody(physicsGround);
+  if (physicsLeftWall) physicsWorld.destroyBody(physicsLeftWall);
+  if (physicsRightWall) physicsWorld.destroyBody(physicsRightWall);
 
+  // 1. 브라우저 창 대신 실제 canvas의 너비를 가져옵니다.
+  const canvas = document.querySelector("canvas");
+  const gameWidth = canvas ? canvas.width : window.innerWidth; // 예외 처리 포함
+
+  // 2. 바닥 생성 (0부터 gameWidth까지)
   physicsGround = physicsWorld.createBody();
   physicsGround.createFixture({
-    shape: planck.Edge(planck.Vec2(-1000, floorY), planck.Vec2(1000, floorY)),
+    shape: planck.Edge(planck.Vec2(0, floorY), planck.Vec2(gameWidth, floorY)),
     density: 0,
     friction: 1,
   });
+
+  // 3. 왼쪽 벽 (X: 0)
+  physicsLeftWall = physicsWorld.createBody();
+  physicsLeftWall.createFixture({
+    shape: planck.Edge(planck.Vec2(0, -10000), planck.Vec2(0, floorY)),
+    density: 0,
+    friction: 0.5,
+  });
+
+  // 4. 오른쪽 벽 (X: gameWidth)
+  physicsRightWall = physicsWorld.createBody();
+  physicsRightWall.createFixture({
+    shape: planck.Edge(planck.Vec2(gameWidth, -10000), planck.Vec2(gameWidth, floorY)),
+    density: 0,
+    friction: 0.5,
+  });
+
   physicsFloorY = floorY;
 }
 
@@ -223,5 +250,5 @@ export function resetPhysicsWorld() {
 
 export function stepPhysicsWorld(options = {}) {
   const step = options.deltaTime ?? 1 / 60;
-  physicsWorld.step(step, 10, 8);
+  physicsWorld.step(step, 8, 3);
 }

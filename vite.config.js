@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { resolve } from "path";
 import path from "path";
 
 const __dirname = path.resolve();
@@ -24,6 +25,12 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, "index.html"),
+        game: resolve(__dirname, "game.html"),
+      },
+    },
   },
   server: {
     host: true,

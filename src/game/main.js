@@ -33,7 +33,7 @@ let animationFrameId = null;
 let lastPhysicsTime = 0;
 let canvasWidth = 0;
 let canvasHeight = 0;
-const physicsFrameDuration = 1000 / 30;
+const physicsFrameDuration = 1000 / 60;
 
 function resizeCanvas() {
   if (!board || !canvas) {
