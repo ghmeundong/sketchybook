@@ -1172,7 +1172,7 @@ function drawStrokePreview(points, width = 8) {
   }
 }
 
-function createStrokeTexture(stroke) {
+function createStrokeTexture(stroke, previewSource) {
   if (!stroke?.points?.length) {
     return;
   }
@@ -1201,18 +1201,51 @@ function createStrokeTexture(stroke) {
   if (width <= 0 || height <= 0) {
     return;
   }
+  const offsetPoints = localPoints.map((node) => ({
+    x: node.x - minX + padding,
+    y: node.y - minY + padding,
+  }));
 
+  // If a preview source canvas is provided, copy the relevant region from
+  // that canvas into the stroke texture so the appearance remains identical
+  // between preview and finalized physics stroke.
+  if (previewSource && previewSource instanceof HTMLCanvasElement) {
+    const offscreen = document.createElement("canvas");
+    offscreen.width = width;
+    offscreen.height = height;
+    const offscreenCtx = offscreen.getContext("2d");
+    offscreenCtx.clearRect(0, 0, width, height);
+
+    // previewSource is a high-DPR canvas (internal pixels = css * dpr).
+    const dpr = window.devicePixelRatio || 1;
+    const sx = (centerX + minX - padding) * dpr;
+    const sy = (centerY + minY - padding) * dpr;
+    const sw = width * dpr;
+    const sh = height * dpr;
+
+    try {
+      offscreenCtx.drawImage(previewSource, sx, sy, sw, sh, 0, 0, width, height);
+      stroke.texture = offscreen;
+      stroke.textureOffset = {
+        centerX: -minX + padding,
+        centerY: -minY + padding,
+        width,
+        height,
+      };
+      return;
+    } catch (e) {
+      console.warn("createStrokeTexture: drawImage from previewSource failed:", e);
+      // fall through to generate texture procedurally
+    }
+  }
+
+  // Fall back: procedurally render the textured stroke into an offscreen canvas.
   const offscreen = document.createElement("canvas");
   offscreen.width = width;
   offscreen.height = height;
   const offscreenCtx = offscreen.getContext("2d");
   const offscreenRough = rough.canvas(offscreen);
   offscreenCtx.clearRect(0, 0, width, height);
-
-  const offsetPoints = localPoints.map((node) => ({
-    x: node.x - minX + padding,
-    y: node.y - minY + padding,
-  }));
 
   for (let i = 0; i < offsetPoints.length - 1; i += 1) {
     drawStroke(offsetPoints[i], offsetPoints[i + 1], 8, {
@@ -1551,11 +1584,13 @@ function stopDrawing(event) {
   if (strokeBody) {
     const floorY = (canvas?.clientHeight || 0) - 24;
     stageInitializeStrokeBody(strokeBody, floorY);
-    createStrokeTexture(strokeBody);
+    // Prefer using the preview canvas snapshot so the finalized texture
+    // matches exactly what the player saw during drawing.
+    createStrokeTexture(strokeBody, previewCanvas);
     physicsStrokes.push(strokeBody);
   }
 
-  // clear preview overlay after finalizing the stroke (moved to physics)
+  // clear preview overlay after capturing snapshot for the finalized stroke
   if (previewCtx) previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
   currentStrokePreviewDirty = false;
   currentStrokePreviewLastIndex = 0;
