@@ -25,6 +25,7 @@ const stageButtons = Array.from(document.querySelectorAll(".stage-card"));
 
 let stageClearOverlay = null;
 let stageClearMessage = null;
+let gameExitButton = null;
 
 const body = document.body;
 body.style.backgroundImage = `url(${paperTexture})`;
@@ -65,6 +66,9 @@ function setActivePage(page) {
     if (!item) return;
     item.classList.toggle("is-active", item === page);
   });
+  if (page === selectionPage) {
+    hideGameExitButton();
+  }
 }
 
 async function tryEnterFullscreen() {
@@ -232,6 +236,10 @@ function createStageClearOverlay() {
       setActivePage(selectionPage);
       // stop physics animation when leaving
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      // exit fullscreen
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
     });
   }
   if (retryBtn) {
@@ -272,6 +280,70 @@ function hideStageClearOverlay() {
   stageClearOverlay.style.opacity = "0";
   stageClearOverlay.style.visibility = "hidden";
   canvas?.style.setProperty("pointer-events", "auto");
+}
+
+function createGameExitButton() {
+  if (!board || gameExitButton) return;
+
+  gameExitButton = document.createElement("button");
+  gameExitButton.className = "game-exit-btn";
+  gameExitButton.setAttribute("type", "button");
+  gameExitButton.setAttribute("aria-label", "Exit to stage selection");
+  gameExitButton.style.position = "absolute";
+  gameExitButton.style.top = "1rem";
+  gameExitButton.style.left = "1rem";
+  gameExitButton.style.zIndex = "100";
+  gameExitButton.style.background = "transparent";
+  gameExitButton.style.border = "none";
+  gameExitButton.style.cursor = "pointer";
+  gameExitButton.style.padding = "0.5rem";
+  gameExitButton.style.display = "flex";
+  gameExitButton.style.alignItems = "center";
+  gameExitButton.style.justifyContent = "center";
+
+  const canvas = document.createElement("canvas");
+  const w = 48;
+  const h = 32;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  ctx.strokeStyle = "#4f3b24";
+  ctx.fillStyle = "#4f3b24";
+  ctx.lineWidth = 2.5;
+
+  // Exit icon: vertical rectangle with left-pointing arrow
+  ctx.strokeRect(13, 4, 15, 22);
+  ctx.beginPath();
+  ctx.moveTo(37, 15);
+  ctx.lineTo(18, 15);
+  ctx.lineTo(23, 10);
+  ctx.moveTo(18, 15);
+  ctx.lineTo(23, 20);
+  ctx.stroke();
+
+  gameExitButton.appendChild(canvas);
+  gameExitButton.addEventListener("click", () => {
+    hideStageClearOverlay();
+    setActivePage(selectionPage);
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    // exit fullscreen
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+  });
+
+  board.appendChild(gameExitButton);
+}
+
+function hideGameExitButton() {
+  if (gameExitButton) {
+    gameExitButton.remove();
+    gameExitButton = null;
+  }
 }
 
 function getRequestedStageFromUrl() {
@@ -856,6 +928,11 @@ async function initializeStage(stageNumberOverride) {
   // Populate gameObjects from stage data (if any)
   gameObjects = [];
   stageCleared = false;
+  physicsStrokes = [];
+  currentStroke = null;
+  isDrawing = false;
+  lastPoint = null;
+  lastPhysicsTime = 0;
   hideStageClearOverlay();
   if (Array.isArray(currentStage?.objects)) {
     for (const obj of currentStage.objects) {
@@ -896,6 +973,8 @@ async function initializeStage(stageNumberOverride) {
       // future: handle other types (star, obstacle, etc.)
     }
   }
+
+  createGameExitButton();
 }
 
 function getPoint(event) {
