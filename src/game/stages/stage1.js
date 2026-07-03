@@ -16,9 +16,11 @@ export function initStage1(canvas, board) {
     coordinateSystem,
     initialize: () => {},
     update: (physicsStrokes, floorY) => {
-      stepPhysicsWorld({ deltaTime: 1 / 30 });
+      stepPhysicsWorld({ deltaTime: 1 / 60 });
       physicsStrokes.forEach((stroke) => updateStrokeBody(stroke, floorY));
     },
+    // Stage-declared objects. Positions are normalized (0..1).
+    objects: [{ type: "ball", x: 0.5, y: 0.5, radius: 0.02 }],
     createStrokeBody,
     initializeStrokeBody,
   };

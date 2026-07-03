@@ -16,7 +16,7 @@ export function initStage6(canvas, board) {
     coordinateSystem,
     initialize: () => {},
     update: (physicsStrokes, floorY) => {
-      stepPhysicsWorld({ deltaTime: 1 / 30 });
+      stepPhysicsWorld({ deltaTime: 1 / 60 });
       physicsStrokes.forEach((stroke) => updateStrokeBody(stroke, floorY));
     },
     createStrokeBody,
