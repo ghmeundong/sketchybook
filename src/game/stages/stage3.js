@@ -26,9 +26,9 @@ export function initStage3(canvas, board) {
       { type: "platform", x: 0.7, y: 0.35, width: 0.1, height: 0.05 },
       {
         type: "text",
-        x: 0.3,
-        y: 0.3,
-        text: "draw a line to connect the platforms",
+        x: 0.7,
+        y: 0.2,
+        text: "that's all! click and draw, enjoy it!",
         fontSize: 0.03,
         color: "#4f3b24",
       },
