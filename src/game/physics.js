@@ -18,9 +18,9 @@ function ensurePhysicsGround(floorY) {
   if (physicsLeftWall) physicsWorld.destroyBody(physicsLeftWall);
   if (physicsRightWall) physicsWorld.destroyBody(physicsRightWall);
 
-  // 1. 브라우저 창 대신 실제 canvas의 너비를 가져옵니다.
+  // 1. 물리 시뮬레이션은 CSS 픽셀 좌표계를 기준으로 합니다.
   const canvas = document.querySelector("canvas");
-  const gameWidth = canvas ? canvas.width : window.innerWidth; // 예외 처리 포함
+  const gameWidth = canvas ? canvas.clientWidth : window.innerWidth; // 예외 처리 포함
 
   // 2. 바닥 생성 (0부터 gameWidth까지)
   physicsGround = physicsWorld.createBody();
