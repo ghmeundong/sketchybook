@@ -6,7 +6,7 @@ import {
   stepPhysicsWorld,
 } from "../physics.js";
 
-export function initStage1(canvas, board) {
+export function initStage5(canvas, board) {
   const coordinateSystem = createCoordinateSystem({
     viewportWidth: board.clientWidth,
     viewportHeight: board.clientHeight,
@@ -24,14 +24,26 @@ export function initStage1(canvas, board) {
       {
         type: "text",
         x: 0.3,
-        y: 0.3,
-        text: "click a ball to move it",
+        y: 0.5,
+        text: "A red dot is a axis",
       },
-      { type: "ball", x: 0.3, y: 0.4 },
-      { type: "platform", x: 0.3, y: 0.45 },
-      { type: "platform", x: 0.7, y: 0.55 },
-      { type: "segment", x1: 0.35, y1: 0.425, x2: 0.65, y2: 0.525 },
-      { type: "star", x: 0.7, y: 0.5 },
+      {
+        type: "rotor",
+        points: [
+          { x: 0.25, y: 0.25 },
+          { x: 0.35, y: 0.25 },
+          { x: 0.35, y: 0.35 },
+          { x: 0.25, y: 0.35 },
+        ],
+        closed: true,
+        axisX: 0.3,
+        axisY: 0.3,
+        spinMode: "free",
+      },
+      { type: "ball", x: 0.3, y: 0.6 },
+      { type: "platform", x: 0.3, y: 0.65 },
+      { type: "platform", x: 0.7, y: 0.75 },
+      { type: "star", x: 0.7, y: 0.7 },
     ],
     createStrokeBody,
     initializeStrokeBody,

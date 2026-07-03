@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: 'main' # main 브랜치에 푸시될 때마다 실행
+    branches: "main" # main 브랜치에 푸시될 때마다 실행
 
 # 외부 배포 권한 설정
 permissions:
@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: 'pages'
+  group: "pages"
   cancel-in-progress: true
 
 jobs:
@@ -39,7 +39,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist' # Vite 빌드 결과물 폴더 지정
+          path: "./dist" # Vite 빌드 결과물 폴더 지정
 
       - name: Deploy to GitHub Pages
         id: deployment

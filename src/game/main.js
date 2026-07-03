@@ -1763,8 +1763,8 @@ function tick(timestamp = 0) {
 
   const floorY = height - 24;
 
-  // Only update physics when in fullscreen mode
-  if (isFullscreen) {
+  // Update physics whenever the game page is active.
+  if (isGameActive) {
     // Initialize physics timing on the first tick after stage load so we
     // don't simulate a huge time gap from page load or navigation.
     if (lastPhysicsTime === 0) {
@@ -2082,3 +2082,9 @@ stageButtons.forEach((button) => {
 
 initializePageFlow();
 resizeCanvas();
+
+window.addEventListener("load", () => {
+  document.documentElement.classList.add("js-ready");
+  const loader = document.getElementById("page-loader");
+  if (loader) loader.remove();
+});
