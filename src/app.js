@@ -51,7 +51,6 @@ stageCards.forEach((card) => drawRoughFrame(card));
 if (startTitle && startPage && selectionPage) {
   startTitle.addEventListener("click", () => {
     startTitle.textContent = "Loading...";
-
     window.setTimeout(() => {
       startPage.classList.remove("is-active");
       selectionPage.classList.add("is-active");
