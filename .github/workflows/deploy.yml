@@ -2,16 +2,15 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: "main" # main 브랜치에 푸시될 때마다 실행
+    branches: 'main'
 
-# 외부 배포 권한 설정
 permissions:
   contents: read
   pages: write
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: 'pages'
   cancel-in-progress: true
 
 jobs:
@@ -25,10 +24,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Node
-        uses: actions/configure-pages@v4
+        uses: actions/setup-node@v4
         with:
-          node-version: 24
-          cache: npm
+          node-version: 20
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
@@ -39,7 +38,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "./dist" # Vite 빌드 결과물 폴더 지정
+          path: './dist'
 
       - name: Deploy to GitHub Pages
         id: deployment
