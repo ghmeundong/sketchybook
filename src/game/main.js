@@ -234,14 +234,18 @@ function createStageClearOverlay() {
   });
 
   if (exitBtn) {
-    exitBtn.addEventListener("click", () => {
+    exitBtn.addEventListener("click", async () => {
       hideStageClearOverlay();
       setActivePage(selectionPage);
       // stop physics animation when leaving
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
       // exit fullscreen
       if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
+        try {
+          await document.exitFullscreen();
+        } catch (err) {
+          console.warn("전체화면 해제 실패:", err);
+        }
       }
     });
   }
@@ -329,13 +333,17 @@ function createGameExitButton() {
   ctx.stroke();
 
   gameExitButton.appendChild(canvas);
-  gameExitButton.addEventListener("click", () => {
+  gameExitButton.addEventListener("click", async () => {
     hideStageClearOverlay();
     setActivePage(selectionPage);
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     // exit fullscreen
     if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
+      try {
+        await document.exitFullscreen();
+      } catch (err) {
+        console.warn("전체화면 해제 실패:", err);
+      }
     }
   });
 
@@ -456,6 +464,13 @@ let animationFrameId = null;
 let lastPhysicsTime = 0;
 let canvasWidth = 0;
 let canvasHeight = 0;
+// Preview cache for the stroke currently being drawn. We only re-create
+// this offscreen texture when the stroke changes (point added), avoiding
+// repeated rough rendering each frame which caused the jittery look.
+let currentStrokePreviewDirty = false;
+let currentStrokePreviewLastIndex = 0;
+let previewCanvas = null;
+let previewCtx = null;
 const physicsFrameDuration = 1000 / 60;
 const renderFrameDuration = 1000 / 60;
 
@@ -921,6 +936,25 @@ function resizeCanvas() {
   roughCanvas = rough.canvas(canvas);
   roughCanvas.ctx.globalAlpha = 1;
 
+  // Create or resize the preview overlay canvas. This canvas sits above
+  // the main game canvas and is only updated when the stroke changes.
+  if (!previewCanvas) {
+    previewCanvas = document.createElement("canvas");
+    previewCanvas.className = "game-preview-canvas";
+    previewCanvas.style.position = "absolute";
+    previewCanvas.style.inset = "0";
+    previewCanvas.style.pointerEvents = "none";
+    previewCanvas.style.zIndex = "50";
+    if (board) board.appendChild(previewCanvas);
+  }
+  previewCanvas.width = Math.max(1, canvasWidth) * dpr;
+  previewCanvas.height = Math.max(1, canvasHeight) * dpr;
+  previewCanvas.style.width = `${Math.max(1, canvasWidth)}px`;
+  previewCanvas.style.height = `${Math.max(1, canvasHeight)}px`;
+  previewCtx = previewCanvas.getContext("2d");
+  previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+
   // Ensure circular game object physics bodies exist now that canvas size is known
   const floorYForPhysics = canvas?.clientHeight ? canvas.clientHeight - 24 : canvasHeight - 24;
   if (gameObjects && gameObjects.length) {
@@ -1088,12 +1122,53 @@ function drawStroke(start, end, width = 8, options = {}) {
 }
 
 function drawStrokePreview(points, width = 8) {
-  if (!points || points.length < 2) {
+  if (!points || points.length < 2 || !ctx) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  if (!previewCtx || !previewCanvas) return;
+
+  // Ensure preview canvas uses same pixel size as main canvas
+  if (
+    previewCanvas.width !== Math.max(1, canvasWidth) * dpr ||
+    previewCanvas.height !== Math.max(1, canvasHeight) * dpr
+  ) {
+    previewCanvas.width = Math.max(1, canvasWidth) * dpr;
+    previewCanvas.height = Math.max(1, canvasHeight) * dpr;
+    previewCanvas.style.width = `${Math.max(1, canvasWidth)}px`;
+    previewCanvas.style.height = `${Math.max(1, canvasHeight)}px`;
+    previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    currentStrokePreviewLastIndex = 0; // force full redraw on resize
+  }
+
+  const lastIdx = currentStrokePreviewLastIndex ?? 0;
+
+  // If we haven't drawn the stroke yet, draw all segments once into the
+  // persistent preview canvas. Subsequent pointer events will only append
+  // newly added segments (no full re-render).
+  if (lastIdx === 0) {
+    previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+    const rc = rough.canvas(previewCanvas);
+    for (let i = 0; i < points.length - 1; i += 1) {
+      drawStroke(points[i], points[i + 1], width, {
+        targetCanvas: previewCanvas,
+        roughCanvasOverride: rc,
+      });
+    }
+    currentStrokePreviewLastIndex = Math.max(0, points.length - 1);
+    currentStrokePreviewDirty = false;
     return;
   }
 
-  for (let i = 0; i < points.length - 1; i += 1) {
-    drawStroke(points[i], points[i + 1], width);
+  if (lastIdx < points.length - 1) {
+    const rc = rough.canvas(previewCanvas);
+    for (let i = Math.max(0, lastIdx); i < points.length - 1; i += 1) {
+      drawStroke(points[i], points[i + 1], width, {
+        targetCanvas: previewCanvas,
+        roughCanvasOverride: rc,
+      });
+    }
+    currentStrokePreviewLastIndex = Math.max(0, points.length - 1);
+    currentStrokePreviewDirty = false;
   }
 }
 
@@ -1334,6 +1409,10 @@ function startDrawing(event) {
   isDrawing = true;
   lastPoint = getPoint(event);
   currentStroke = [];
+  // reset preview cache for a new stroke
+  if (previewCtx) previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+  currentStrokePreviewDirty = false;
+  currentStrokePreviewLastIndex = 0;
 }
 
 function continueDrawing(event) {
@@ -1343,9 +1422,10 @@ function continueDrawing(event) {
   }
 
   const currentPoint = getPoint(event);
-  drawStroke(lastPoint, currentPoint, 8);
   currentStroke.push(currentPoint);
   lastPoint = currentPoint;
+  // mark preview cache dirty so it'll be re-generated once per change
+  currentStrokePreviewDirty = true;
 }
 
 function stopDrawing(event) {
@@ -1356,6 +1436,9 @@ function stopDrawing(event) {
   if (stageCleared) {
     isDrawing = false;
     lastPoint = null;
+    if (previewCtx) previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+    currentStrokePreviewDirty = false;
+    currentStrokePreviewLastIndex = 0;
     currentStroke = null;
     return;
   }
@@ -1472,6 +1555,10 @@ function stopDrawing(event) {
     physicsStrokes.push(strokeBody);
   }
 
+  // clear preview overlay after finalizing the stroke (moved to physics)
+  if (previewCtx) previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+  currentStrokePreviewDirty = false;
+  currentStrokePreviewLastIndex = 0;
   currentStroke = null;
 }
 
