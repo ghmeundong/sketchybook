@@ -296,17 +296,13 @@ function stopDrawing() {
   currentStroke = null;
 }
 
-canvas?.addEventListener(
-  "pointerdown",
-  () => {
-    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen().catch((err) => {
-        console.log("게임 진입 후 전체화면 자동 전환 실패:", err.message);
-      });
-    }
-  },
-  { once: true }
-);
+canvas?.addEventListener("pointerdown", () => {
+  if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+    document.documentElement.requestFullscreen().catch((err) => {
+      console.log("게임 진입 후 전체화면 자동 전환 실패:", err.message);
+    });
+  }
+});
 
 canvas?.addEventListener("pointerdown", startDrawing);
 canvas?.addEventListener("pointermove", continueDrawing);
