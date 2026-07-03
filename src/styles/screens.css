@@ -87,6 +87,9 @@
   user-select: none;
   font-weight: 700;
   margin-top: clamp(2.2rem, 6vh, 4rem);
+  background: transparent;
+  border: none;
+  color: inherit;
 }
 
 @media (width <= 768px) {
