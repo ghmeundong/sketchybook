@@ -210,6 +210,81 @@ export function initializeStrokeBody(stroke, floorY = 0) {
   return stroke;
 }
 
+export function createCircleBody(x, y, radius, floorY = 0, options = {}) {
+  ensurePhysicsGround(floorY);
+
+  const body = physicsWorld.createBody({
+    type: "dynamic",
+    position: planck.Vec2(x, y),
+  });
+  body.setLinearDamping(options.linearDamping ?? 0.5);
+  body.setAngularDamping(options.angularDamping ?? 0.5);
+  body.setBullet(!!options.bullet);
+  body.setSleepingAllowed(false);
+
+  const fixture = body.createFixture({
+    shape: planck.Circle(planck.Vec2(0, 0), radius),
+    density: options.density ?? 0.05,
+    friction: options.friction ?? 0.1,
+    restitution: options.restitution ?? 0.1,
+  });
+
+  return body;
+}
+
+export function applyImpulseToBody(body, ix, iy) {
+  if (!body) return;
+  try {
+    body.applyLinearImpulse(planck.Vec2(ix, iy), body.getWorldCenter());
+  } catch (e) {
+    // fallback: try without Vec2 wrapper
+    try {
+      body.applyLinearImpulse({ x: ix, y: iy }, body.getWorldCenter());
+    } catch (err) {
+      console.warn("applyImpulseToBody failed:", err);
+    }
+  }
+}
+
+export function applyImpulseAtLocalPoint(body, ix, iy, localX = 0, localY = 0) {
+  if (!body) return;
+  try {
+    const worldPoint = body.getWorldPoint({ x: localX, y: localY });
+    body.applyLinearImpulse(planck.Vec2(ix, iy), worldPoint, true);
+  } catch (e) {
+    try {
+      const worldPoint = body.getWorldPoint({ x: localX, y: localY });
+      body.applyLinearImpulse({ x: ix, y: iy }, worldPoint, true);
+    } catch (err) {
+      console.warn("applyImpulseAtLocalPoint failed:", err);
+    }
+  }
+}
+
+export function applyAngularImpulseToBody(body, impulse) {
+  if (!body) return;
+  try {
+    // Planck.js: applyAngularImpulse exists
+    if (typeof body.applyAngularImpulse === "function") {
+      body.applyAngularImpulse(impulse);
+      return;
+    }
+    // fallback: adjust angular velocity
+    const av = body.getAngularVelocity ? body.getAngularVelocity() : 0;
+    if (typeof body.setAngularVelocity === "function") {
+      body.setAngularVelocity(av + impulse);
+      return;
+    }
+  } catch (e) {
+    try {
+      const av = body.getAngularVelocity ? body.getAngularVelocity() : 0;
+      if (typeof body.setAngularVelocity === "function") body.setAngularVelocity(av + impulse);
+    } catch (err) {
+      console.warn("applyAngularImpulseToBody failed:", err);
+    }
+  }
+}
+
 export function updateStrokeBody(stroke, floorY, options = {}) {
   if (!stroke || !stroke.points?.length || !stroke.body) {
     return stroke;

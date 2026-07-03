@@ -61,7 +61,7 @@ describe("updateStrokeBody", () => {
     initializeStrokeBody(stroke, floorY);
 
     for (let i = 0; i < 60 && !stroke.grounded; i += 1) {
-      stepPhysicsWorld({ deltaTime: 1 / 30 });
+      stepPhysicsWorld({ deltaTime: 1 / 60 });
       updateStrokeBody(stroke, floorY);
     }
 
@@ -88,7 +88,7 @@ describe("updateStrokeBody", () => {
     }
 
     for (let i = 0; i < 60 && !stroke.grounded; i += 1) {
-      stepPhysicsWorld({ deltaTime: 1 / 30 });
+      stepPhysicsWorld({ deltaTime: 1 / 60 });
       updateStrokeBody(stroke, floorY);
     }
 

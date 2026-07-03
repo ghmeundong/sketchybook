@@ -9,6 +9,10 @@ import {
   initializeStrokeBody,
   updateStrokeBody,
   stepPhysicsWorld,
+  createCircleBody,
+  applyImpulseToBody,
+  applyAngularImpulseToBody,
+  applyImpulseAtLocalPoint,
 } from "./physics.js";
 
 const board = document.querySelector("#game-board");
@@ -34,6 +38,100 @@ let lastPhysicsTime = 0;
 let canvasWidth = 0;
 let canvasHeight = 0;
 const physicsFrameDuration = 1000 / 60;
+const renderFrameDuration = 1000 / 60;
+
+let renderIntervalId = null;
+
+// Game objects (balls, stars, etc.) that stages can declare.
+let gameObjects = [];
+
+class Ball {
+  // x, y: normalized (0..1) positions relative to canvas width/height
+  // radius: normalized (0..1) relative to min(canvasWidth, canvasHeight) or pixels if >1
+  constructor({ x = 0.5, y = 0.5, radius = 0.05 } = {}) {
+    this.nx = x;
+    this.ny = y;
+    this.radius = radius;
+  }
+
+  // Create an offscreen texture (hollow circle) sized for the current canvas.
+  createTexture(canvasW, canvasH) {
+    const minDim = Math.min(canvasW, canvasH);
+    const r = this.physicalRadius ?? (this.radius > 1 ? this.radius : this.radius * minDim);
+    const diameter = Math.max(2, Math.ceil(r * 2));
+    const padding = 8;
+    const size = diameter + padding * 2;
+
+    const off = document.createElement("canvas");
+    off.width = size;
+    off.height = size;
+    const offCtx = off.getContext("2d");
+    offCtx.clearRect(0, 0, size, size);
+
+    const offRough = rough.canvas(off);
+    const cx = size / 2;
+    const cy = size / 2;
+
+    // Draw outline only (no fill)
+    offRough.circle(cx, cy, diameter, {
+      stroke: "black",
+      strokeWidth: 2,
+      fill: "none",
+      roughness: 1.4,
+    });
+
+    // no rotation mark — texture is outline-only
+
+    this.texture = off;
+    this.textureOffset = {
+      centerX: cx,
+      centerY: cy,
+      width: size,
+      height: size,
+    };
+    this._lastCanvasSize = { w: canvasW, h: canvasH };
+  }
+
+  draw(canvasW, canvasH, roughCanvasInstance) {
+    if (!ctx) return;
+    // Re-create texture when canvas size changes
+    if (
+      !this.texture ||
+      !this._lastCanvasSize ||
+      this._lastCanvasSize.w !== canvasW ||
+      this._lastCanvasSize.h !== canvasH
+    ) {
+      this.createTexture(canvasW, canvasH);
+    }
+
+    const px = this.screenX != null ? this.screenX : this.nx * canvasW;
+    const py = this.screenY != null ? this.screenY : this.ny * canvasH;
+    const { centerX, centerY, width, height } = this.textureOffset || {};
+
+    if (this.texture && centerX != null) {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      // apply rotation about center so the radial mark shows rolling
+      const angle = this.angle || 0;
+      ctx.translate(px, py);
+      if (angle) ctx.rotate(angle);
+      ctx.drawImage(this.texture, -centerX, -centerY, width, height);
+      ctx.restore();
+      return;
+    }
+
+    // Fallback: draw simple outline
+    ctx.save();
+    ctx.beginPath();
+    const minDim = Math.min(canvasW, canvasH);
+    const r = this.radius > 1 ? this.radius : this.radius * minDim;
+    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
 
 function resizeCanvas() {
   if (!board || !canvas) {
@@ -64,9 +162,43 @@ function resizeCanvas() {
   roughCanvas = rough.canvas(canvas);
   roughCanvas.ctx.globalAlpha = 1;
 
+  // Ensure circular game object physics bodies exist now that canvas size is known
+  const floorYForPhysics = canvas?.clientHeight ? canvas.clientHeight - 24 : canvasHeight - 24;
+  if (gameObjects && gameObjects.length) {
+    for (const obj of gameObjects) {
+      if (obj instanceof Ball && !obj.physicsBody) {
+        const px = obj.nx * canvasWidth;
+        const py = obj.ny * canvasHeight;
+        const minDim = Math.min(canvasWidth, canvasHeight);
+        const rPixels = obj.radius > 1 ? obj.radius : Math.max(2, obj.radius * minDim);
+        try {
+          const body = createCircleBody(px, py, rPixels, floorYForPhysics, { density: 1 });
+          obj.physicsBody = body;
+          obj.physicalRadius = rPixels;
+        } catch (e) {
+          // ignore physics creation errors
+          console.warn("createCircleBody failed:", e);
+        }
+      }
+    }
+  }
+
   if (!animationFrameId) {
     animationFrameId = window.requestAnimationFrame(tick);
   }
+
+  // start or restart render interval at desired rate
+  if (renderIntervalId) {
+    clearInterval(renderIntervalId);
+    renderIntervalId = null;
+  }
+  renderIntervalId = setInterval(() => {
+    try {
+      render();
+    } catch (e) {
+      console.warn("render error", e);
+    }
+  }, renderFrameDuration);
 }
 
 async function initializeStage() {
@@ -80,6 +212,16 @@ async function initializeStage() {
   }
   if (typeof currentStage?.initialize === "function") {
     currentStage.initialize();
+  }
+  // Populate gameObjects from stage data (if any)
+  gameObjects = [];
+  if (Array.isArray(currentStage?.objects)) {
+    for (const obj of currentStage.objects) {
+      if (obj.type === "ball") {
+        gameObjects.push(new Ball({ x: obj.x, y: obj.y, radius: obj.radius }));
+      }
+      // future: handle other types (star, obstacle, etc.)
+    }
   }
 }
 
@@ -223,11 +365,12 @@ function tick(timestamp = 0) {
 
   const floorY = height - 24;
 
-  if (timestamp - lastPhysicsTime >= physicsFrameDuration) {
+  // Catch up physics: run as many 1/120s sub-steps as needed to reach current timestamp
+  while (timestamp - lastPhysicsTime >= physicsFrameDuration) {
     if (currentStage && typeof currentStage.update === "function") {
       currentStage.update(physicsStrokes, floorY);
     } else {
-      stepPhysicsWorld({ deltaTime: 1 / 30 });
+      stepPhysicsWorld({ deltaTime: 1 / 60 });
       physicsStrokes.forEach((stroke) => {
         if (!stroke?.points?.length || !stroke.body) {
           return;
@@ -236,20 +379,44 @@ function tick(timestamp = 0) {
         updateStrokeBody(stroke, floorY);
       });
     }
-    lastPhysicsTime = timestamp;
+    lastPhysicsTime += physicsFrameDuration;
   }
 
-  if (roughCanvas && ctx) {
-    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-
-    if (currentStroke && currentStroke.length > 1) {
-      drawStrokePreview(currentStroke, 8);
+  // Sync circular game object positions from physics bodies (perfect circle hitboxes)
+  if (gameObjects && gameObjects.length) {
+    for (const obj of gameObjects) {
+      if (obj.physicsBody) {
+        const pos = obj.physicsBody.getPosition();
+        obj.screenX = pos.x;
+        obj.screenY = pos.y;
+        if (typeof obj.physicsBody.getAngle === "function") {
+          obj.angle = obj.physicsBody.getAngle();
+        }
+      }
     }
+  }
+  animationFrameId = window.requestAnimationFrame(tick);
+}
 
-    physicsStrokes.forEach((stroke) => drawPhysicsStroke(stroke));
+function render() {
+  if (!roughCanvas || !ctx) return;
+
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+  if (currentStroke && currentStroke.length > 1) {
+    drawStrokePreview(currentStroke, 8);
   }
 
-  animationFrameId = window.requestAnimationFrame(tick);
+  physicsStrokes.forEach((stroke) => drawPhysicsStroke(stroke));
+
+  // Draw stage-declared objects (balls, stars...)
+  if (gameObjects && gameObjects.length) {
+    for (const obj of gameObjects) {
+      if (typeof obj.draw === "function") {
+        obj.draw(canvasWidth, canvasHeight, roughCanvas);
+      }
+    }
+  }
 }
 
 function startDrawing(event) {
@@ -269,7 +436,7 @@ function continueDrawing(event) {
   lastPoint = currentPoint;
 }
 
-function stopDrawing() {
+function stopDrawing(event) {
   if (!isDrawing) {
     return;
   }
@@ -278,6 +445,99 @@ function stopDrawing() {
   lastPoint = null;
 
   if (!currentStroke || currentStroke.length < 2) {
+    // treat as a click if user didn't draw a stroke
+    const clickPos = event ? getPoint(event) : null;
+    if (clickPos && gameObjects && gameObjects.length) {
+      for (const obj of gameObjects) {
+        if (obj instanceof Ball) {
+          const bx = obj.screenX != null ? obj.screenX : obj.nx * canvasWidth;
+          const by = obj.screenY != null ? obj.screenY : obj.ny * canvasHeight;
+          const pr =
+            obj.physicalRadius ??
+            (obj.radius > 1 ? obj.radius : obj.radius * Math.min(canvasWidth, canvasHeight));
+          const dx = clickPos.x - bx;
+          const dy = clickPos.y - by;
+          const dist = Math.hypot(dx, dy);
+          if (dist <= pr + 6) {
+            // apply impulse to the right
+            // Apply an off-center impulse to produce immediate torque (less sliding)
+            const IMPULSE_LINEAR = 80023; // reduced linear impulse
+            const ANGULAR_IMPULSE = 1000000; // stronger angular impulse for visible rolling
+            if (obj.physicsBody) {
+              try {
+                const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
+                applyImpulseAtLocalPoint(obj.physicsBody, IMPULSE_LINEAR, 0, 0, offsetY);
+                applyAngularImpulseToBody(obj.physicsBody, ANGULAR_IMPULSE);
+                console.debug(
+                  "applied off-center impulse",
+                  IMPULSE_LINEAR,
+                  "and angular impulse",
+                  ANGULAR_IMPULSE,
+                  "to ball at",
+                  bx,
+                  by
+                );
+              } catch (e) {
+                console.warn("failed to apply impulse:", e);
+              }
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    currentStroke = null;
+    return;
+  }
+
+  // If the user drew a very short stroke (tiny jitter), treat it as a click.
+  const CLICK_DISTANCE_THRESHOLD = 6; // pixels
+  let totalDist = 0;
+  for (let i = 1; i < currentStroke.length; i += 1) {
+    const a = currentStroke[i - 1];
+    const b = currentStroke[i];
+    totalDist += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  if (totalDist <= CLICK_DISTANCE_THRESHOLD) {
+    const clickPos = currentStroke[currentStroke.length - 1];
+    if (clickPos && gameObjects && gameObjects.length) {
+      for (const obj of gameObjects) {
+        if (obj instanceof Ball) {
+          const bx = obj.screenX != null ? obj.screenX : obj.nx * canvasWidth;
+          const by = obj.screenY != null ? obj.screenY : obj.ny * canvasHeight;
+          const pr =
+            obj.physicalRadius ??
+            (obj.radius > 1 ? obj.radius : obj.radius * Math.min(canvasWidth, canvasHeight));
+          const dx = clickPos.x - bx;
+          const dy = clickPos.y - by;
+          const dist = Math.hypot(dx, dy);
+          if (dist <= pr + 6) {
+            const IMPULSE_LINEAR = 3500;
+            const ANGULAR_IMPULSE = -1.2;
+            if (obj.physicsBody) {
+              try {
+                const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
+                applyImpulseAtLocalPoint(obj.physicsBody, IMPULSE_LINEAR, 0, 0, offsetY);
+                applyAngularImpulseToBody(obj.physicsBody, ANGULAR_IMPULSE);
+                console.debug(
+                  "applied impulse (short drag)",
+                  IMPULSE_LINEAR,
+                  "and angular impulse",
+                  ANGULAR_IMPULSE,
+                  "to ball at",
+                  bx,
+                  by
+                );
+              } catch (e) {
+                console.warn("failed to apply impulse:", e);
+              }
+            }
+            break;
+          }
+        }
+      }
+    }
     currentStroke = null;
     return;
   }
