@@ -42,6 +42,8 @@ const renderFrameDuration = 1000 / 60;
 
 let renderIntervalId = null;
 
+let stageCleared = false;
+
 // Game objects (balls, stars, etc.) that stages can declare.
 let gameObjects = [];
 
@@ -133,6 +135,86 @@ class Ball {
   }
 }
 
+class Star {
+  constructor({ x = 0.5, y = 0.5, radius = 0.035 } = {}) {
+    this.nx = x;
+    this.ny = y;
+    this.radius = radius;
+    this.collected = false;
+  }
+
+  createTexture(canvasW, canvasH) {
+    const minDim = Math.min(canvasW, canvasH);
+    const r = this.radius > 1 ? this.radius : this.radius * minDim;
+    const diameter = Math.max(2, Math.ceil(r * 2));
+    const padding = 8;
+    const size = diameter + padding * 2;
+    const dpr = window.devicePixelRatio || 1;
+
+    const off = document.createElement("canvas");
+    off.width = size * dpr;
+    off.height = size * dpr;
+    off.style.width = `${size}px`;
+    off.style.height = `${size}px`;
+
+    const offCtx = off.getContext("2d");
+    offCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    offCtx.clearRect(0, 0, size, size);
+
+    const offRough = rough.canvas(off);
+    const center = size / 2;
+    const points = [];
+    for (let i = 0; i < 5; i += 1) {
+      const outer = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+      const inner = outer + Math.PI / 5;
+      points.push([Math.cos(outer) * r + center, Math.sin(outer) * r + center]);
+      points.push([Math.cos(inner) * (r * 0.5) + center, Math.sin(inner) * (r * 0.5) + center]);
+    }
+
+    offRough.polygon(points, {
+      stroke: "#b8860b",
+      strokeWidth: 2,
+      fill: "#ffd54f",
+      fillStyle: "solid",
+      roughness: 1.5,
+    });
+
+    this.texture = off;
+    this.textureOffset = {
+      centerX: center,
+      centerY: center,
+      width: size,
+      height: size,
+    };
+    this._lastCanvasSize = { w: canvasW, h: canvasH };
+  }
+
+  draw(canvasW, canvasH, roughCanvasInstance) {
+    if (!ctx || this.collected) return;
+    if (
+      !this.texture ||
+      !this._lastCanvasSize ||
+      this._lastCanvasSize.w !== canvasW ||
+      this._lastCanvasSize.h !== canvasH
+    ) {
+      this.createTexture(canvasW, canvasH);
+    }
+
+    const px = this.screenX != null ? this.screenX : this.nx * canvasW;
+    const py = this.screenY != null ? this.screenY : this.ny * canvasH;
+    const { centerX, centerY, width, height } = this.textureOffset || {};
+
+    if (this.texture && centerX != null && width != null && height != null) {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(this.texture, px - centerX, py - centerY, width, height);
+      ctx.restore();
+      return;
+    }
+  }
+}
+
 function resizeCanvas() {
   if (!board || !canvas) {
     return;
@@ -215,10 +297,13 @@ async function initializeStage() {
   }
   // Populate gameObjects from stage data (if any)
   gameObjects = [];
+  stageCleared = false;
   if (Array.isArray(currentStage?.objects)) {
     for (const obj of currentStage.objects) {
       if (obj.type === "ball") {
         gameObjects.push(new Ball({ x: obj.x, y: obj.y, radius: obj.radius }));
+      } else if (obj.type === "star") {
+        gameObjects.push(new Star({ x: obj.x, y: obj.y, radius: obj.radius }));
       }
       // future: handle other types (star, obstacle, etc.)
     }
@@ -247,6 +332,7 @@ function drawStroke(start, end, width = 8, options = {}) {
   const dy = end.y - start.y;
   const distance = Math.hypot(dx, dy);
 
+  targetRough.ctx.save();
   targetRough.ctx.globalAlpha = alpha;
   const step = Math.max(1.5, scaledWidth * 0.4);
   for (let i = 0; i <= distance; i += step) {
@@ -258,6 +344,7 @@ function drawStroke(start, end, width = 8, options = {}) {
       roughness: options.roughness ?? 2.0,
     });
   }
+  targetRough.ctx.restore();
 }
 
 function drawStrokePreview(points, width = 8) {
@@ -392,7 +479,51 @@ function tick(timestamp = 0) {
         if (typeof obj.physicsBody.getAngle === "function") {
           obj.angle = obj.physicsBody.getAngle();
         }
+      } else {
+        // non-physical objects (stars) use normalized coords
+        obj.screenX = obj.nx * canvasWidth;
+        obj.screenY = obj.ny * canvasHeight;
       }
+    }
+  }
+
+  // Check collisions between balls and stars (simple circle overlap)
+  if (gameObjects && gameObjects.length) {
+    const balls = gameObjects.filter((g) => g instanceof Ball);
+    const stars = gameObjects.filter((g) => g instanceof Star && !g.collected);
+    for (const star of stars) {
+      for (const ball of balls) {
+        const bx = ball.screenX != null ? ball.screenX : ball.nx * canvasWidth;
+        const by = ball.screenY != null ? ball.screenY : ball.ny * canvasHeight;
+        const br =
+          ball.physicalRadius ??
+          (ball.radius > 1 ? ball.radius : ball.radius * Math.min(canvasWidth, canvasHeight));
+        const sx = star.screenX != null ? star.screenX : star.nx * canvasWidth;
+        const sy = star.screenY != null ? star.screenY : star.ny * canvasHeight;
+        const sr =
+          star.radius > 1 ? star.radius : star.radius * Math.min(canvasWidth, canvasHeight);
+        const d = Math.hypot(bx - sx, by - sy);
+        if (d <= br + sr) {
+          star.collected = true;
+          console.debug("star collected", star, "by", ball);
+          // optional: remove from gameObjects array later
+          break;
+        }
+      }
+    }
+
+    // If all stars collected, signal stage clear
+    const remaining = gameObjects.filter((g) => g instanceof Star && !g.collected);
+    if (remaining.length === 0 && !stageCleared) {
+      stageCleared = true;
+      if (currentStage && typeof currentStage.onClear === "function") {
+        try {
+          currentStage.onClear();
+        } catch (e) {
+          console.warn("currentStage.onClear failed:", e);
+        }
+      }
+      window.dispatchEvent(new CustomEvent("stageClear", { detail: { stage: currentStage } }));
     }
   }
   animationFrameId = window.requestAnimationFrame(tick);
@@ -462,7 +593,7 @@ function stopDrawing(event) {
             // apply impulse to the right
             // Apply an off-center impulse to produce immediate torque (less sliding)
             const IMPULSE_LINEAR = 80023; // reduced linear impulse
-            const ANGULAR_IMPULSE = 1000000; // stronger angular impulse for visible rolling
+            const ANGULAR_IMPULSE = 999999; // stronger angular impulse for visible rolling
             if (obj.physicsBody) {
               try {
                 const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
