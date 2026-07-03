@@ -1,0 +1,1 @@
+import{t as e}from"./paper-texture-DUp2LR6s.js";var t=document.querySelector(`[data-start-button]`),n=document.body;n.style.backgroundImage=`url(${e})`,n.style.backgroundSize=`cover`,n.style.backgroundPosition=`center`,n.style.backgroundRepeat=`no-repeat`,n.style.backgroundAttachment=`fixed`,t&&t.addEventListener(`click`,()=>{window.location.href=`./game.html`});
