@@ -12,6 +12,8 @@ import {
   createCircleBody,
   createBoxBody,
   createEdgeBody,
+  createPolygonBody,
+  createRotorBody,
   applyImpulseToBody,
   applyAngularImpulseToBody,
   applyImpulseAtLocalPoint,
@@ -63,14 +65,31 @@ function drawRoughFrame(card) {
 
 stageButtons.forEach((card) => drawRoughFrame(card));
 
+function resetStageState() {
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+  resetPhysicsWorld();
+  gameObjects = [];
+  physicsStrokes = [];
+  currentStroke = null;
+  isDrawing = false;
+  lastPoint = null;
+  stageCleared = false;
+  currentStage = null;
+  hideStageClearOverlay();
+  hideGameRetryButton();
+  hideGameExitButton();
+}
+
 function setActivePage(page) {
   [selectionPage, playPage].forEach((item) => {
     if (!item) return;
     item.classList.toggle("is-active", item === page);
   });
   if (page === selectionPage) {
-    hideGameExitButton();
-    hideGameRetryButton();
+    resetStageState();
   }
 }
 
@@ -851,37 +870,36 @@ class ComplexObject {
     offCtx.clearRect(0, 0, width, height);
 
     const offRough = rough.canvas(off);
+    const normalizedPts = pts.map((p) => ({ x: p.x - minX + padding, y: p.y - minY + padding }));
+
+    if (this.closed && pts.length > 2) {
+      offRough.polygon(normalizedPts, {
+        stroke: "#4f3b24",
+        strokeWidth: 3,
+        roughness: 2.6,
+        fill: "#fff6eb",
+        fillStyle: "solid",
+      });
+    }
 
     // draw segments
     for (let i = 0; i < pts.length - 1; i += 1) {
-      const a = pts[i];
-      const b = pts[i + 1];
-      offRough.line(
-        a.x - minX + padding,
-        a.y - minY + padding,
-        b.x - minX + padding,
-        b.y - minY + padding,
-        {
-          stroke: "#4f3b24",
-          strokeWidth: 3,
-          roughness: 2.6,
-        }
-      );
+      const a = normalizedPts[i];
+      const b = normalizedPts[i + 1];
+      offRough.line(a.x, a.y, b.x, b.y, {
+        stroke: "#4f3b24",
+        strokeWidth: 3,
+        roughness: 2.6,
+      });
     }
     if (this.closed && pts.length > 2) {
-      const a = pts[pts.length - 1];
-      const b = pts[0];
-      offRough.line(
-        a.x - minX + padding,
-        a.y - minY + padding,
-        b.x - minX + padding,
-        b.y - minY + padding,
-        {
-          stroke: "#4f3b24",
-          strokeWidth: 3,
-          roughness: 2.6,
-        }
-      );
+      const a = normalizedPts[pts.length - 1];
+      const b = normalizedPts[0];
+      offRough.line(a.x, a.y, b.x, b.y, {
+        stroke: "#4f3b24",
+        strokeWidth: 3,
+        roughness: 2.6,
+      });
     }
 
     this.texture = off;
@@ -895,6 +913,22 @@ class ComplexObject {
 
     this.physicsBodies = [];
     const pts = this.pixelPoints;
+    if (this.closed && pts.length >= 3) {
+      try {
+        const body = createPolygonBody(pts, floorY, {
+          isStatic: this.isStatic,
+          friction: 0.8,
+          density: this.isStatic ? 0 : 1,
+        });
+        if (body) {
+          this.physicsBodies.push(body);
+          return;
+        }
+      } catch (e) {
+        console.warn("createPolygonBody failed for complex object:", e);
+      }
+    }
+
     for (let i = 0; i < pts.length - 1; i += 1) {
       const a = pts[i];
       const b = pts[i + 1];
@@ -942,6 +976,223 @@ class ComplexObject {
         this.textureOffset.top,
         this.textureOffset.width,
         this.textureOffset.height
+      );
+      ctx.restore();
+    }
+  }
+}
+
+class Rotor {
+  constructor({
+    points = [],
+    closed = false,
+    x = 0.5,
+    y = 0.5,
+    radius = null,
+    pointCount = 24,
+    axisX,
+    axisY,
+    spinMode = "free",
+    motorSpeed = 0,
+    maxMotorTorque = 1000,
+    isStatic = false,
+  } = {}) {
+    const normalizedPoints = Array.isArray(points) ? points.slice() : [];
+    if (
+      (!Array.isArray(normalizedPoints) || normalizedPoints.length < 2) &&
+      typeof radius === "number"
+    ) {
+      const count = Math.max(3, Math.min(64, Math.round(pointCount)));
+      for (let i = 0; i < count; i += 1) {
+        const angle = (i / count) * Math.PI * 2;
+        normalizedPoints.push({
+          x: x + Math.cos(angle) * radius,
+          y: y + Math.sin(angle) * radius,
+        });
+      }
+      this.closed = true;
+    } else {
+      this.closed = !!closed;
+    }
+
+    this.normalizedPoints = normalizedPoints;
+    this.cx = typeof x === "number" ? x : 0.5;
+    this.cy = typeof y === "number" ? y : 0.5;
+    this.radius = typeof radius === "number" ? radius : null;
+    this.pointCount = Math.max(3, Math.min(64, Math.round(pointCount)));
+    this.axisX = typeof axisX === "number" ? axisX : this.cx;
+    this.axisY = typeof axisY === "number" ? axisY : this.cy;
+    this.spinMode = spinMode === "auto" ? "auto" : "free";
+    this.motorSpeed =
+      typeof motorSpeed === "number" ? motorSpeed : this.spinMode === "auto" ? 1.5 : 0;
+    this.maxMotorTorque = typeof maxMotorTorque === "number" ? maxMotorTorque : 1000;
+    this.isStatic = !!isStatic;
+    this.pixelPoints = null;
+    this.physicsBody = null;
+    this.texture = null;
+    this.textureOffset = null;
+    this._lastCanvasSize = null;
+  }
+
+  createTexture(canvasW, canvasH) {
+    if (!Array.isArray(this.normalizedPoints) || this.normalizedPoints.length < 2) return;
+
+    const pts = this.normalizedPoints.map((p) => ({ x: p.x * canvasW, y: p.y * canvasH }));
+    this.pixelPoints = pts;
+
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    const center = pts.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
+    center.x /= pts.length;
+    center.y /= pts.length;
+
+    for (const p of pts) {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    }
+
+    const padding = 12;
+    const width = Math.max(2, Math.ceil(maxX - minX + padding * 2));
+    const height = Math.max(2, Math.ceil(maxY - minY + padding * 2));
+    const centerOffsetX = center.x - minX + padding;
+    const centerOffsetY = center.y - minY + padding;
+
+    const off = document.createElement("canvas");
+    off.width = width;
+    off.height = height;
+    const offCtx = off.getContext("2d");
+    offCtx.clearRect(0, 0, width, height);
+
+    const offRough = rough.canvas(off);
+    for (let i = 0; i < pts.length - 1; i += 1) {
+      const a = pts[i];
+      const b = pts[i + 1];
+      offRough.line(
+        a.x - minX + padding,
+        a.y - minY + padding,
+        b.x - minX + padding,
+        b.y - minY + padding,
+        {
+          stroke: "#4f3b24",
+          strokeWidth: 3,
+          roughness: 2.6,
+        }
+      );
+    }
+    if (this.closed && pts.length > 2) {
+      const a = pts[pts.length - 1];
+      const b = pts[0];
+      offRough.line(
+        a.x - minX + padding,
+        a.y - minY + padding,
+        b.x - minX + padding,
+        b.y - minY + padding,
+        {
+          stroke: "#4f3b24",
+          strokeWidth: 3,
+          roughness: 2.6,
+        }
+      );
+    }
+
+    this.texture = off;
+    this.textureOffset = {
+      left: minX - padding,
+      top: minY - padding,
+      width,
+      height,
+      centerOffsetX,
+      centerOffsetY,
+    };
+
+    if (typeof this.axisX === "number" && typeof this.axisY === "number") {
+      const markerSize = 5;
+      const markerCanvas = document.createElement("canvas");
+      markerCanvas.width = markerSize * 2;
+      markerCanvas.height = markerSize * 2;
+      const markerCtx = markerCanvas.getContext("2d");
+      const markerRough = rough.canvas(markerCanvas);
+      markerRough.circle(markerSize, markerSize, markerSize * 1.4, {
+        stroke: "#c92d39",
+        strokeWidth: 1.5,
+        fill: "#e64956",
+        roughness: 1.8,
+        fillStyle: "solid",
+      });
+      this.axisMarker = {
+        texture: markerCanvas,
+        size: markerSize,
+      };
+    } else {
+      this.axisMarker = null;
+    }
+
+    this._lastCanvasSize = { w: canvasW, h: canvasH };
+  }
+
+  createPhysics(canvasW, canvasH, floorY) {
+    if (!Array.isArray(this.pixelPoints) || this.pixelPoints.length < 2) {
+      this.createTexture(canvasW, canvasH);
+    }
+    if (!Array.isArray(this.pixelPoints) || this.pixelPoints.length < 2) return;
+    if (this.physicsBody) return;
+
+    const axisPixel = {
+      x: typeof this.axisX === "number" ? this.axisX * canvasW : null,
+      y: typeof this.axisY === "number" ? this.axisY * canvasH : null,
+    };
+
+    this.physicsBody = createRotorBody(this.pixelPoints, axisPixel, floorY, {
+      closed: this.closed,
+      isStatic: this.isStatic,
+      motor: this.spinMode === "auto",
+      motorSpeed: this.motorSpeed,
+      maxMotorTorque: this.maxMotorTorque,
+      friction: 0.8,
+      density: this.isStatic ? 0 : 1,
+    });
+  }
+
+  draw(canvasW, canvasH, roughCanvasInstance) {
+    if (!ctx) return;
+    if (
+      !this.texture ||
+      !this._lastCanvasSize ||
+      this._lastCanvasSize.w !== canvasW ||
+      this._lastCanvasSize.h !== canvasH
+    ) {
+      this.createTexture(canvasW, canvasH);
+    }
+    if (!this.texture || !this.textureOffset) return;
+
+    const px = this.screenX != null ? this.screenX : 0;
+    const py = this.screenY != null ? this.screenY : 0;
+    const angle = this.angle || 0;
+    const { centerOffsetX, centerOffsetY, width, height } = this.textureOffset;
+
+    ctx.save();
+    ctx.translate(px, py);
+    if (angle) ctx.rotate(angle);
+    ctx.globalAlpha = 1;
+    ctx.drawImage(this.texture, -centerOffsetX, -centerOffsetY, width, height);
+    ctx.restore();
+
+    if (this.axisMarker && typeof this.axisX === "number" && typeof this.axisY === "number") {
+      const axisPx = this.axisX * canvasW;
+      const axisPy = this.axisY * canvasH;
+      const { texture: markerCanvas, size: markerSize } = this.axisMarker;
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.drawImage(
+        markerCanvas,
+        axisPx - markerSize,
+        axisPy - markerSize,
+        markerSize * 2,
+        markerSize * 2
       );
       ctx.restore();
     }
@@ -1147,6 +1398,13 @@ function resizeCanvas() {
         } catch (e) {
           console.warn("ComplexObject physics creation failed:", e);
         }
+      } else if (obj instanceof Rotor && !obj.physicsBody) {
+        try {
+          obj.createTexture(canvasWidth, canvasHeight);
+          obj.createPhysics(canvasWidth, canvasHeight, floorYForPhysics);
+        } catch (e) {
+          console.warn("Rotor physics creation failed:", e);
+        }
       }
     }
   }
@@ -1162,7 +1420,7 @@ async function initializeStage(stageNumberOverride) {
     return;
   }
 
-  resetPhysicsWorld();
+  resetStageState();
 
   currentStage = await loadStage(canvas, board, stageNumberOverride);
   if (currentStage?.coordinateSystem) {
@@ -1218,6 +1476,24 @@ async function initializeStage(stageNumberOverride) {
             points: obj.points || [],
             closed: !!obj.closed,
             isStatic: obj.isStatic !== false,
+          })
+        );
+      } else if (obj.type === "rotor") {
+        const spinMode = obj.spinMode === "auto" ? "auto" : "free";
+        gameObjects.push(
+          new Rotor({
+            points: obj.points || [],
+            closed: obj.closed !== false,
+            x: obj.x,
+            y: obj.y,
+            radius: obj.radius,
+            pointCount: obj.pointCount,
+            axisX: obj.axisX,
+            axisY: obj.axisY,
+            spinMode,
+            motorSpeed: obj.motorSpeed,
+            maxMotorTorque: obj.maxMotorTorque,
+            isStatic: obj.isStatic === true,
           })
         );
       } else if (obj.type === "text") {
@@ -1468,6 +1744,11 @@ function tick(timestamp = 0) {
 
   // Only update physics when in fullscreen mode
   if (isFullscreen) {
+    // Initialize physics timing on the first tick after stage load so we
+    // don't simulate a huge time gap from page load or navigation.
+    if (lastPhysicsTime === 0) {
+      lastPhysicsTime = timestamp;
+    }
     // Catch up physics: run as many 1/60s sub-steps as needed to reach current timestamp
     while (timestamp - lastPhysicsTime >= physicsFrameDuration) {
       if (currentStage && typeof currentStage.update === "function") {
