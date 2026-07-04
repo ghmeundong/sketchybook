@@ -51,6 +51,22 @@
   pointer-events: none;
 }
 
+.stage-score-badge {
+  position: absolute;
+  left: 50%;
+  bottom: 1.1rem;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  font-family: MyeongjoFont, serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #4f3b24;
+  pointer-events: none;
+}
+
 .title-stack {
   display: flex;
   flex-direction: column;

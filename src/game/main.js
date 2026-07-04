@@ -4,6 +4,7 @@ import "../styles/game.css";
 import paperTexture from "../img/paper-texture.jpg";
 import { createCoordinateSystem } from "./coordinates.js";
 import { loadStage } from "./stageLoader.js";
+import { getStageStarRating } from "./stageScoring.js";
 import {
   createStrokeBody,
   initializeStrokeBody,
@@ -25,6 +26,7 @@ const canvas = document.querySelector("#game-canvas");
 const selectionPage = document.querySelector(".page-selection");
 const playPage = document.querySelector(".page-play");
 const stageButtons = Array.from(document.querySelectorAll(".stage-card"));
+const stageScoreStorageKey = "sketchybook-stage-scores";
 
 let stageClearOverlay = null;
 let stageClearMessage = null;
@@ -37,6 +39,107 @@ body.style.backgroundSize = "cover";
 body.style.backgroundPosition = "center";
 body.style.backgroundRepeat = "no-repeat";
 body.style.backgroundAttachment = "fixed";
+
+function getStoredStageScores() {
+  try {
+    const raw = window.localStorage.getItem(stageScoreStorageKey);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    console.warn("Failed to read stage scores:", error);
+    return {};
+  }
+}
+
+function saveStageScore(stageNumber, stars) {
+  const safeStageNumber = Number(stageNumber);
+  const safeStars = Math.max(0, Math.min(3, Number.isFinite(stars) ? Math.round(stars) : 0));
+  if (!safeStageNumber || !safeStars) return;
+
+  const storedScores = getStoredStageScores();
+  const previousScore = Number(storedScores[safeStageNumber]);
+  if (Number.isFinite(previousScore) && previousScore >= safeStars) {
+    return;
+  }
+
+  const nextScores = { ...storedScores, [safeStageNumber]: safeStars };
+  try {
+    window.localStorage.setItem(stageScoreStorageKey, JSON.stringify(nextScores));
+  } catch (error) {
+    console.warn("Failed to save stage score:", error);
+  }
+}
+
+function createRoughStarCanvas(stars = 0, { size = 24, gap = 6 } = {}) {
+  const safeStars = Math.max(0, Math.min(3, Number.isFinite(stars) ? Math.round(stars) : 0));
+  const canvasWidth = safeStars * size + (safeStars - 1) * gap;
+  const canvasHeight = size;
+  const dpr = window.devicePixelRatio || 1;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvasWidth * dpr;
+  canvas.height = canvasHeight * dpr;
+  canvas.style.width = `${canvasWidth}px`;
+  canvas.style.height = `${canvasHeight}px`;
+
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+  const rc = rough.canvas(canvas);
+  for (let index = 0; index < safeStars; index += 1) {
+    const centerX = index * (size + gap) + size / 2;
+    const centerY = size / 2;
+    const points = [];
+    for (let i = 0; i < 5; i += 1) {
+      const outer = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+      const inner = outer + Math.PI / 5;
+      points.push([
+        Math.cos(outer) * (size / 2.2) + centerX,
+        Math.sin(outer) * (size / 2.2) + centerY,
+      ]);
+      points.push([
+        Math.cos(inner) * (size / 4.6) + centerX,
+        Math.sin(inner) * (size / 4.6) + centerY,
+      ]);
+    }
+
+    rc.polygon(points, {
+      stroke: "#b8860b",
+      strokeWidth: 1.8,
+      fill: "#ffd54f",
+      fillStyle: "solid",
+      roughness: 1.5,
+    });
+  }
+
+  return canvas;
+}
+
+function renderStageScoreBadge(card, stageNumber) {
+  const score = getStoredStageScores()[stageNumber];
+  if (!card || !score) return;
+
+  let badge = card.querySelector(".stage-score-badge");
+  if (!badge) {
+    badge = document.createElement("div");
+    badge.className = "stage-score-badge";
+    card.appendChild(badge);
+  }
+
+  badge.innerHTML = "";
+  badge.style.display = "flex";
+  badge.style.alignItems = "center";
+  badge.style.justifyContent = "center";
+  badge.style.gap = "0.2rem";
+  badge.style.marginTop = "0.45rem";
+  badge.style.fontSize = "0.95rem";
+  badge.style.fontWeight = "700";
+  badge.style.color = "#4f3b24";
+  badge.style.fontFamily = "MyeongjoFont, serif";
+
+  badge.appendChild(createRoughStarCanvas(score, { size: 14, gap: 3 }));
+}
 
 function drawRoughFrame(card) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -63,7 +166,11 @@ function drawRoughFrame(card) {
   card.appendChild(svg);
 }
 
-stageButtons.forEach((card) => drawRoughFrame(card));
+stageButtons.forEach((card) => {
+  drawRoughFrame(card);
+  const stageNumber = Number(card.dataset.stage);
+  renderStageScoreBadge(card, stageNumber);
+});
 
 function resetStageState() {
   if (animationFrameId) {
@@ -79,6 +186,8 @@ function resetStageState() {
   stageCleared = false;
   currentStage = null;
   stageHasSimulated = false;
+  stageEventCount = 0;
+  stageMinEvents = 0;
   hideStageClearOverlay();
   hideGameRetryButton();
   hideGameExitButton();
@@ -107,6 +216,38 @@ async function tryEnterFullscreen() {
   }
 }
 
+function renderStageScoreStars(stars = 0) {
+  if (!stageClearMessage) return;
+
+  const scoreContainer = stageClearMessage.querySelector(".stage-clear-score");
+  if (!scoreContainer) return;
+
+  scoreContainer.innerHTML = "";
+  const safeStars = Math.max(0, Math.min(3, Number.isFinite(stars) ? Math.round(stars) : 0));
+  if (!safeStars) {
+    scoreContainer.style.display = "none";
+    return;
+  }
+
+  scoreContainer.style.display = "flex";
+  scoreContainer.style.justifyContent = "center";
+  scoreContainer.style.alignItems = "center";
+  scoreContainer.style.gap = "0.45rem";
+  scoreContainer.style.marginTop = "0.7rem";
+  scoreContainer.style.fontFamily = "MyeongjoFont, serif";
+  scoreContainer.style.fontSize = "1.05rem";
+  scoreContainer.style.color = "#4f3b24";
+  scoreContainer.style.fontWeight = "800";
+  scoreContainer.style.letterSpacing = "0.04em";
+  scoreContainer.style.textShadow = "0 1px 0 rgba(255,255,255,0.4)";
+
+  const label = document.createElement("span");
+  label.textContent = "Score:";
+  scoreContainer.appendChild(label);
+
+  scoreContainer.appendChild(createRoughStarCanvas(safeStars, { size: 24, gap: 6 }));
+}
+
 function createStageClearOverlay() {
   if (!board) {
     return;
@@ -121,7 +262,8 @@ function createStageClearOverlay() {
   stageClearMessage = document.createElement("div");
   stageClearMessage.className = "stage-clear-box";
   stageClearMessage.innerHTML = `
-    <p class="stage-clear-title">Stage Cleared!</p>
+    <p class="stage-clear-title" style="font-weight: 800; letter-spacing: 0.04em; text-shadow: 0 1px 0 rgba(255,255,255,0.4);">Stage Cleared!</p>
+    <div class="stage-clear-score" aria-label="Stage score"></div>
     <div class="stage-clear-actions">
       <button class="stage-clear-btn stage-clear-exit"></button>
       <button class="stage-clear-btn stage-clear-retry"></button>
@@ -291,7 +433,18 @@ function showStageClearOverlay(message = "Stage Cleared!") {
   }
   if (!stageClearOverlay || !stageClearMessage) return;
 
+  const stars = getStageStarRating(stageMinEvents, stageEventCount);
   stageClearMessage.querySelector(".stage-clear-title").textContent = message;
+  renderStageScoreStars(stars);
+  if (currentStageNumber) {
+    saveStageScore(currentStageNumber, stars);
+    const stageButton = stageButtons.find(
+      (button) => Number(button.dataset.stage) === currentStageNumber
+    );
+    if (stageButton) {
+      renderStageScoreBadge(stageButton, currentStageNumber);
+    }
+  }
   stageClearOverlay.classList.add("is-visible");
   stageClearOverlay.setAttribute("aria-hidden", "false");
   stageClearOverlay.style.display = "grid";
@@ -496,6 +649,8 @@ const renderFrameDuration = 1000 / 60;
 
 let stageCleared = false;
 let stageHasSimulated = false;
+let stageEventCount = 0;
+let stageMinEvents = 0;
 
 // Game objects (balls, stars, etc.) that stages can declare.
 let gameObjects = [];
@@ -1465,6 +1620,8 @@ async function initializeStage(stageNumberOverride) {
   isDrawing = false;
   lastPoint = null;
   lastPhysicsTime = 0;
+  stageEventCount = 0;
+  stageMinEvents = Number.isFinite(currentStage?.minEvents) ? currentStage.minEvents : 0;
   hideStageClearOverlay();
   if (Array.isArray(currentStage?.objects)) {
     for (const obj of currentStage.objects) {
@@ -1898,6 +2055,7 @@ function startDrawing(event) {
   if (stageCleared) {
     return;
   }
+  stageEventCount += 1;
   isDrawing = true;
   lastPoint = getPoint(event);
   currentStroke = [];
