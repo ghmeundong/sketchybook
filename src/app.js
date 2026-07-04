@@ -1,8 +1,14 @@
 import paperTexture from "./img/paper-texture.webp";
 import { initializeOrientationPrompt } from "./orientationPrompt.js";
+import { createActionIconCanvas } from "./game/ui/uiIcons.js";
+import { getChallengeModePreference, setChallengeModePreference } from "./game/challengeMode.js";
 
 const startTitle = document.querySelector("[data-start-button]");
 const titleText = document.querySelector(".brand-title");
+const settingsToggle = document.querySelector("[data-settings-toggle]");
+const challengeModeToggle = document.querySelector("[data-challenge-mode-toggle]");
+const settingsPanel = document.getElementById("start-settings-panel");
+const settingsClose = document.querySelector("[data-settings-close]");
 const body = document.body;
 const pageLoader = document.getElementById("page-loader");
 
@@ -44,6 +50,19 @@ function maybeRevealStartPage() {
   if (backgroundLoaded && pageLoadComplete) {
     revealStartPage();
   }
+}
+
+function setSettingsPanelVisible(visible = true) {
+  if (!settingsPanel || !settingsToggle) return;
+  settingsPanel.hidden = !visible;
+  settingsToggle.setAttribute("aria-expanded", String(visible));
+}
+
+function syncChallengeModeToggleUI() {
+  if (!challengeModeToggle) return;
+  const enabled = getChallengeModePreference();
+  challengeModeToggle.setAttribute("aria-pressed", String(enabled));
+  challengeModeToggle.classList.toggle("is-active", enabled);
 }
 
 function prepareInitialState() {
@@ -97,6 +116,40 @@ if (document.readyState === "complete") {
     maybeRevealStartPage();
   });
 }
+
+if (settingsToggle && settingsPanel) {
+  settingsToggle.appendChild(
+    createActionIconCanvas("settings", { w: 48, h: 40, strokeWidth: 2.4 })
+  );
+  settingsToggle.addEventListener("click", () => {
+    setSettingsPanelVisible(settingsPanel.hidden);
+  });
+}
+
+if (challengeModeToggle) {
+  challengeModeToggle.addEventListener("click", () => {
+    const nextValue = !getChallengeModePreference();
+    setChallengeModePreference(nextValue);
+    syncChallengeModeToggleUI();
+  });
+}
+
+syncChallengeModeToggleUI();
+
+if (settingsClose && settingsPanel) {
+  settingsClose.addEventListener("click", () => {
+    setSettingsPanelVisible(false);
+  });
+}
+
+document.addEventListener("click", (event) => {
+  const target = event.target;
+  const clickedToggle = target === settingsToggle || settingsToggle?.contains(target);
+  const clickedPanel = settingsPanel?.contains(target);
+  if (!settingsPanel?.hidden && !clickedToggle && !clickedPanel) {
+    setSettingsPanelVisible(false);
+  }
+});
 
 if (startTitle) {
   startTitle.addEventListener("click", async (event) => {

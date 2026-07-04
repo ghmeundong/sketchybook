@@ -3,6 +3,7 @@ import {
   getPolygonTextureLayout,
   resolveCircleRadius,
   segmentIntersectsCircle,
+  segmentIntersectsRect,
 } from "../src/game/geometry.js";
 
 describe("getPolygonTextureLayout", () => {
@@ -40,6 +41,20 @@ describe("segmentIntersectsCircle", () => {
   it("returns false when a segment only touches the circle boundary", () => {
     expect(
       segmentIntersectsCircle({ x1: 0, y1: 0, x2: 10, y2: 0 }, { x: 5, y: 0, radius: 5 })
+    ).toBe(false);
+  });
+});
+
+describe("segmentIntersectsRect", () => {
+  it("returns true when a segment passes through the rectangle interior", () => {
+    expect(
+      segmentIntersectsRect({ x1: 0, y1: 0, x2: 10, y2: 10 }, { x: 2, y: 2, width: 4, height: 4 })
+    ).toBe(true);
+  });
+
+  it("returns false when a segment only touches the rectangle edge", () => {
+    expect(
+      segmentIntersectsRect({ x1: 0, y1: 0, x2: 10, y2: 0 }, { x: 5, y: 0, width: 2, height: 2 })
     ).toBe(false);
   });
 });
