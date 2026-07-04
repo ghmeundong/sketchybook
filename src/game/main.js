@@ -554,7 +554,6 @@ class Ball {
     if (this.texture && centerX != null) {
       ctx.save();
       ctx.globalAlpha = 1;
-      // apply rotation about center so the radial mark shows rolling
       const angle = this.angle || 0;
       ctx.translate(px, py);
       if (angle) ctx.rotate(angle);
