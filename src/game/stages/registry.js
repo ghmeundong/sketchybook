@@ -173,7 +173,7 @@ const stageDefinitions = {
     objects: [
       { type: "ball", x: 0.3, y: 0.4 },
       { type: "platform", x: 0.3, y: 0.55 },
-      { type: "stripedRect", x: 0.5, y: 0.5, width: 0.05, height: 1 },
+      { type: "stripedRect", x: 0.6, y: 0.5, width: 0.05, height: 1 },
       { type: "platform", x: 0.7, y: 0.55 },
       { type: "star", x: 0.7, y: 0.5 },
     ],
