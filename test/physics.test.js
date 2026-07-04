@@ -1,6 +1,8 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import planck from "planck";
 import {
+  createCircleBody,
+  createRotorBody,
   createStrokeBody,
   createStrokeSegments,
   initializeStrokeBody,
@@ -8,6 +10,95 @@ import {
   resetPhysicsWorld,
   stepPhysicsWorld,
 } from "../src/game/physics.js";
+
+describe("createCircleBody", () => {
+  beforeEach(() => {
+    resetPhysicsWorld();
+  });
+
+  it("creates a static circle body when requested", () => {
+    const body = createCircleBody(100, 100, 10, 200, { isStatic: true, density: 0 });
+
+    expect(body.getType()).toBe("static");
+  });
+
+  it("keeps a motorized circle body spinning with angular velocity", () => {
+    const body = createCircleBody(100, 100, 10, 200, {
+      motor: true,
+      motorSpeed: 2,
+      maxMotorTorque: 100,
+      jointAnchor: { x: 120, y: 100 },
+    });
+
+    expect(body.getAngularVelocity()).toBeCloseTo(2);
+  });
+
+  it("applies angular velocity for motorized circle bodies", () => {
+    const body = createCircleBody(100, 100, 10, 200, {
+      motor: true,
+      motorSpeed: 2,
+      maxMotorTorque: 100,
+      jointAnchor: { x: 120, y: 100 },
+    });
+
+    expect(body.getAngularVelocity()).toBeCloseTo(2);
+  });
+
+  it("keeps static rotor bodies anchored instead of falling under gravity", () => {
+    const body = createCircleBody(100, 100, 10, 200, {
+      isStatic: true,
+      motor: false,
+      jointAnchor: { x: 100, y: 100 },
+      density: 1,
+    });
+
+    for (let i = 0; i < 120; i += 1) {
+      stepPhysicsWorld({ deltaTime: 1 / 60 });
+    }
+
+    const position = body.getPosition();
+    expect(position.y).toBeCloseTo(100, 1);
+  });
+});
+
+describe("createRotorBody", () => {
+  beforeEach(() => {
+    resetPhysicsWorld();
+  });
+
+  it("creates a dynamic rotor body for motorized polygon rotors", () => {
+    const body = createRotorBody(
+      [
+        { x: -10, y: -10 },
+        { x: 10, y: -10 },
+        { x: 10, y: 10 },
+        { x: -10, y: 10 },
+      ],
+      { x: 0, y: 0 },
+      200,
+      { isStatic: false, enableMotor: true, motorSpeed: 2, maxMotorTorque: 100 }
+    );
+
+    expect(body.getType()).toBe("dynamic");
+  });
+
+  it("keeps motorized static rotors on a kinematic body with an anchor", () => {
+    const body = createRotorBody(
+      [
+        { x: -10, y: -10 },
+        { x: 10, y: -10 },
+        { x: 10, y: 10 },
+        { x: -10, y: 10 },
+      ],
+      { x: 0, y: 0 },
+      200,
+      { isStatic: true, spinMode: "auto", motorSpeed: 2, maxMotorTorque: 100 }
+    );
+
+    expect(body.getType()).toBe("kinematic");
+    expect(body.getAngularVelocity()).toBeCloseTo(2);
+  });
+});
 
 describe("createStrokeSegments", () => {
   it("creates one segment per pair of points", () => {
