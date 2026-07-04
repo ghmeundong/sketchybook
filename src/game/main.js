@@ -10,6 +10,7 @@ import {
   resolveCircleRadius,
   resolveRenderablePosition,
   segmentIntersectsCircle,
+  segmentIntersectsRect,
 } from "./geometry.js";
 import { getStagePageIndexForStage } from "./stagePages.js";
 import { getStageStarRating } from "./stageScoring.js";
@@ -21,6 +22,7 @@ import {
   showStageClearOverlay as showStageClearOverlayUI,
   hideStageClearOverlay as hideStageClearOverlayUI,
 } from "./ui/gameUi.js";
+import { getChallengeModePreference } from "./challengeMode.js";
 import {
   getStoredStageScores,
   getStoredStageProgress,
@@ -50,11 +52,13 @@ const selectionPage = document.querySelector(".page-selection");
 const playPage = document.querySelector(".page-play");
 const stageButtons = Array.from(document.querySelectorAll(".stage-card"));
 const stagePageButtons = Array.from(document.querySelectorAll("[data-stage-page]"));
+const backHomeButton = document.querySelector("[data-back-home-button]");
 const stageScoreStorageKey = "sketchybook-stage-scores";
 const stageProgressStorageKey = "sketchybook-stage-progress";
 let stagePageIndex = 0;
 const stagePageSize = 6;
-const totalStagePages = Math.ceil(18 / stagePageSize);
+const totalStageCount = 30;
+const totalStagePages = Math.ceil(totalStageCount / stagePageSize);
 
 let stageClearOverlay = null;
 let stageClearMessage = null;
@@ -62,6 +66,8 @@ const stageClearOverlayRef = { current: null };
 const stageClearMessageRef = { current: null };
 let gameExitButton = null;
 let gameRetryButton = null;
+let challengeModeEnabled = false;
+let challengeModeStrokeCount = 0;
 
 const body = document.body;
 body.style.backgroundImage = `url(${paperTexture})`;
@@ -139,6 +145,13 @@ stagePageButtons.forEach((button) => {
   button.appendChild(createActionIconCanvas(type, { w: 48, h: 40, strokeWidth: 2.8 }));
 });
 
+if (backHomeButton) {
+  backHomeButton.appendChild(createActionIconCanvas("exit", { w: 60, h: 48, strokeWidth: 2.5 }));
+  backHomeButton.addEventListener("click", () => {
+    window.location.href = "./index.html";
+  });
+}
+
 refreshStageSelectionButtons();
 
 function resetStageState() {
@@ -146,6 +159,7 @@ function resetStageState() {
     cancelAnimationFrame(animationFrameId);
     animationFrameId = null;
   }
+  challengeModeEnabled = getChallengeModePreference();
   resetPhysicsWorld();
   gameObjects = [];
   physicsStrokes = [];
@@ -156,6 +170,7 @@ function resetStageState() {
   currentStage = null;
   stageHasSimulated = false;
   stageEventCount = 0;
+  challengeModeStrokeCount = 0;
   stageMinEvents = 0;
   hideStageClearOverlay();
   hideGameRetryButton();
@@ -244,7 +259,7 @@ function createStageClearOverlay() {
   if (nextBtn) {
     nextBtn.addEventListener("click", async () => {
       hideStageClearOverlay();
-      const next = Math.min((currentStageNumber || 1) + 1, 18);
+      const next = Math.min((currentStageNumber || 1) + 1, totalStageCount);
       await startStage(next);
     });
   }
@@ -357,7 +372,7 @@ function hideGameRetryButton() {
 function getRequestedStageFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const value = Number(params.get("stage"));
-  return Number.isInteger(value) && value >= 1 && value <= 18 ? value : null;
+  return Number.isInteger(value) && value >= 1 && value <= totalStageCount ? value : null;
 }
 
 async function startStage(stageNumber) {
@@ -712,6 +727,78 @@ class Platform {
   }
 
   draw(canvasW, canvasH, roughCanvasInstance) {
+    if (!ctx) return;
+    if (
+      !this.texture ||
+      !this._lastCanvasSize ||
+      this._lastCanvasSize.w !== canvasW ||
+      this._lastCanvasSize.h !== canvasH
+    ) {
+      this.createTexture(canvasW, canvasH);
+    }
+
+    const px = this.screenX != null ? this.screenX : this.nx * canvasW;
+    const py = this.screenY != null ? this.screenY : this.ny * canvasH;
+    const { width, height } = this.textureOffset || {};
+
+    if (this.texture && width != null && height != null) {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.drawImage(this.texture, px - width / 2, py - height / 2, width, height);
+      ctx.restore();
+    }
+  }
+}
+
+class StripedRectObject {
+  constructor(opts = {}) {
+    const { x, y, width, height } = opts || {};
+    this.nx = typeof x === "number" ? x : 0.5;
+    this.ny = typeof y === "number" ? y : 0.5;
+    this.width = typeof width === "number" ? width : 0.12;
+    this.height = typeof height === "number" ? height : 0.08;
+    this.texture = null;
+    this.textureOffset = null;
+    this._lastCanvasSize = null;
+  }
+
+  createTexture(canvasW, canvasH) {
+    const w = this.width > 1 ? this.width : Math.max(8, this.width * canvasW);
+    const h = this.height > 1 ? this.height : Math.max(8, this.height * canvasH);
+    const padding = 12;
+    const sizeW = Math.ceil(w + padding * 2);
+    const sizeH = Math.ceil(h + padding * 2);
+
+    const off = document.createElement("canvas");
+    off.width = sizeW;
+    off.height = sizeH;
+    const offCtx = off.getContext("2d");
+    offCtx.clearRect(0, 0, sizeW, sizeH);
+
+    const offRough = rough.canvas(off);
+    const x = padding;
+    const y = padding;
+    offRough.rectangle(x, y, w, h, {
+      stroke: "transparent",
+      strokeWidth: 0,
+      fill: "#e74c3c",
+      fillStyle: "hachure",
+      roughness: 1.6,
+      hachureGap: 16,
+      hachureAngle: -35,
+    });
+
+    this.texture = off;
+    this.textureOffset = {
+      centerX: sizeW / 2,
+      centerY: sizeH / 2,
+      width: sizeW,
+      height: sizeH,
+    };
+    this._lastCanvasSize = { w: canvasW, h: canvasH };
+  }
+
+  draw(canvasW, canvasH) {
     if (!ctx) return;
     if (
       !this.texture ||
@@ -1766,6 +1853,15 @@ async function initializeStage(stageNumberOverride) {
             height: obj.height,
           })
         );
+      } else if (obj.type === "stripedRect") {
+        gameObjects.push(
+          new StripedRectObject({
+            x: obj.x,
+            y: obj.y,
+            width: obj.width,
+            height: obj.height,
+          })
+        );
       } else if (obj.type === "segment") {
         gameObjects.push(
           new Segment({
@@ -2188,7 +2284,7 @@ function render() {
 }
 
 function startDrawing(event) {
-  if (stageCleared) {
+  if (stageCleared || (challengeModeEnabled && challengeModeStrokeCount >= 1)) {
     return;
   }
   stageEventCount += 1;
@@ -2233,6 +2329,10 @@ function stopDrawing(event) {
   lastPoint = null;
 
   if (!currentStroke || currentStroke.length < 2) {
+    if (challengeModeEnabled) {
+      currentStroke = null;
+      return;
+    }
     // treat as a click if user didn't draw a stroke
     const clickPos = event ? getPoint(event) : null;
     if (clickPos && gameObjects && gameObjects.length) {
@@ -2288,6 +2388,10 @@ function stopDrawing(event) {
     totalDist += Math.hypot(b.x - a.x, b.y - a.y);
   }
   if (totalDist <= CLICK_DISTANCE_THRESHOLD) {
+    if (challengeModeEnabled) {
+      currentStroke = null;
+      return;
+    }
     const clickPos = currentStroke[currentStroke.length - 1];
     if (clickPos && gameObjects && gameObjects.length) {
       for (const obj of gameObjects) {
@@ -2333,38 +2437,70 @@ function stopDrawing(event) {
   const stageCreateStrokeBody = currentStage?.createStrokeBody || createStrokeBody;
   const stageInitializeStrokeBody = currentStage?.initializeStrokeBody || initializeStrokeBody;
 
-  const intersectsCircleObject = gameObjects.some((obj) => {
-    if (!(obj instanceof CircleObject) && !(obj instanceof Ball)) {
-      return false;
-    }
+  if (challengeModeEnabled && challengeModeStrokeCount >= 1) {
+    currentStroke = null;
+    return;
+  }
 
-    const circleX = obj.screenX ?? (obj.nx != null ? obj.nx * canvasWidth : null);
-    const circleY = obj.screenY ?? (obj.ny != null ? obj.ny * canvasHeight : null);
-    const radius =
-      obj.physicalRadius ??
-      (obj.radius > 1 ? obj.radius : obj.radius * Math.min(canvasWidth, canvasHeight));
+  challengeModeStrokeCount += 1;
 
-    if (circleX == null || circleY == null || !Number.isFinite(radius) || radius <= 0) {
-      return false;
-    }
+  const intersectsCancelObject = gameObjects.some((obj) => {
+    if (obj instanceof CircleObject || obj instanceof Ball) {
+      const circleX = obj.screenX ?? (obj.nx != null ? obj.nx * canvasWidth : null);
+      const circleY = obj.screenY ?? (obj.ny != null ? obj.ny * canvasHeight : null);
+      const radius =
+        obj.physicalRadius ??
+        (obj.radius > 1 ? obj.radius : obj.radius * Math.min(canvasWidth, canvasHeight));
 
-    for (let i = 1; i < currentStroke.length; i += 1) {
-      const a = currentStroke[i - 1];
-      const b = currentStroke[i];
-      if (
-        segmentIntersectsCircle(
-          { x1: a.x, y1: a.y, x2: b.x, y2: b.y },
-          { x: circleX, y: circleY, radius }
-        )
-      ) {
-        return true;
+      if (circleX == null || circleY == null || !Number.isFinite(radius) || radius <= 0) {
+        return false;
       }
+
+      for (let i = 1; i < currentStroke.length; i += 1) {
+        const a = currentStroke[i - 1];
+        const b = currentStroke[i];
+        if (
+          segmentIntersectsCircle(
+            { x1: a.x, y1: a.y, x2: b.x, y2: b.y },
+            { x: circleX, y: circleY, radius }
+          )
+        ) {
+          return true;
+        }
+      }
+      return false;
     }
+
+    if (obj instanceof StripedRectObject) {
+      const rectX = obj.screenX ?? (obj.nx != null ? obj.nx * canvasWidth : null);
+      const rectY = obj.screenY ?? (obj.ny != null ? obj.ny * canvasHeight : null);
+      const width = obj.width > 1 ? obj.width : obj.width * canvasWidth;
+      const height = obj.height > 1 ? obj.height : obj.height * canvasHeight;
+
+      if (rectX == null || rectY == null || !Number.isFinite(width) || !Number.isFinite(height)) {
+        return false;
+      }
+
+      for (let i = 1; i < currentStroke.length; i += 1) {
+        const a = currentStroke[i - 1];
+        const b = currentStroke[i];
+        if (
+          segmentIntersectsRect(
+            { x1: a.x, y1: a.y, x2: b.x, y2: b.y },
+            { x: rectX - width / 2, y: rectY - height / 2, width, height }
+          )
+        ) {
+          return true;
+        }
+      }
+      return false;
+    }
+
     return false;
   });
 
   const strokeBody = stageCreateStrokeBody(currentStroke);
-  if (strokeBody && !intersectsCircleObject) {
+  if (strokeBody && !intersectsCancelObject) {
     const floorY = (canvas?.clientHeight || 0) - 24;
     stageInitializeStrokeBody(strokeBody, floorY);
     // Prefer using the preview canvas snapshot so the finalized texture

@@ -45,6 +45,36 @@
       <div id="book" class="book">
         <div class="page page-start is-active">
           <section class="start-screen" aria-label="Game start screen">
+            <div class="start-screen-actions">
+              <button
+                class="settings-toggle game-exit-btn"
+                type="button"
+                data-settings-toggle
+                aria-expanded="false"
+                aria-controls="start-settings-panel"
+                aria-label="Open settings"
+              ></button>
+              <div class="settings-panel" id="start-settings-panel" hidden>
+                <p class="settings-panel-title">Settings</p>
+                <div class="settings-option">
+                  <div class="settings-option-text">
+                    <strong>Challenge mode:</strong>
+                    <span>draw only one line, and no clicks</span>
+                  </div>
+                  <button
+                    class="settings-toggle-switch"
+                    type="button"
+                    data-challenge-mode-toggle
+                    aria-pressed="false"
+                  >
+                    <span class="settings-toggle-switch-thumb"></span>
+                  </button>
+                </div>
+                <button class="settings-panel-close" type="button" data-settings-close>
+                  Close
+                </button>
+              </div>
+            </div>
             <div class="title-stack">
               <h1 class="brand-title">SKETCHYBOOK</h1>
               <button class="game-title" type="button" data-start-button>Loading...</button>

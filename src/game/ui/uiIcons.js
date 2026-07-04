@@ -1,5 +1,28 @@
 import rough from "roughjs";
 
+function createCanvasIcon({ w = 60, h = 48, stroke = "#4f3b24", strokeWidth = 2.4 } = {}) {
+  const canvas = document.createElement("canvas");
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return canvas;
+  }
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.strokeStyle = stroke;
+  ctx.fillStyle = stroke;
+  ctx.lineWidth = strokeWidth;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  return { canvas, ctx };
+}
+
 export function createRoughStarCanvas(stars = 0, { size = 24, gap = 6 } = {}) {
   const safeStars = Math.max(0, Math.min(3, Number.isFinite(stars) ? Math.round(stars) : 0));
   const canvasWidth = safeStars * size + (safeStars - 1) * gap;
@@ -71,13 +94,49 @@ export function createActionIconCanvas(
   ctx.lineWidth = strokeWidth;
 
   if (type === "exit") {
-    ctx.strokeRect(18, 6, 20, 28);
     ctx.beginPath();
+    ctx.moveTo(18, 34);
+    ctx.lineTo(18, 6);
+    ctx.lineTo(38, 6);
+    ctx.lineTo(38, 34);
+    ctx.stroke();
+
     ctx.moveTo(50, 20);
     ctx.lineTo(24, 20);
+
+    ctx.moveTo(23, 21);
     ctx.lineTo(30, 14);
-    ctx.moveTo(24, 20);
+
+    ctx.moveTo(23, 19);
     ctx.lineTo(30, 26);
+    ctx.stroke();
+  } else if (type === "settings") {
+    ctx.beginPath();
+    ctx.moveTo(26, 18);
+    ctx.lineTo(26, 14);
+    ctx.lineTo(34, 14);
+    ctx.lineTo(34, 18);
+    ctx.lineTo(38, 18);
+    ctx.lineTo(38, 21);
+    ctx.lineTo(42, 21);
+    ctx.lineTo(42, 27);
+    ctx.lineTo(38, 27);
+    ctx.lineTo(38, 30);
+    ctx.lineTo(34, 30);
+    ctx.lineTo(34, 34);
+    ctx.lineTo(26, 34);
+    ctx.lineTo(26, 30);
+    ctx.lineTo(22, 30);
+    ctx.lineTo(22, 27);
+    ctx.lineTo(18, 27);
+    ctx.lineTo(18, 21);
+    ctx.lineTo(22, 21);
+    ctx.lineTo(22, 18);
+    ctx.lineTo(26, 18);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(30, 24, 4, 0, 2 * Math.PI);
     ctx.stroke();
   } else if (type === "retry") {
     ctx.beginPath();

@@ -100,7 +100,7 @@ export function segmentIntersectsCircle(segment, circle) {
   const dy = y2 - y1;
   const lengthSquared = dx * dx + dy * dy;
   if (lengthSquared === 0) {
-    return Math.hypot(x - x1, y - y1) <= radius;
+    return Math.hypot(x - x1, y - y1) < radius;
   }
 
   const t = ((x - x1) * dx + (y - y1) * dy) / lengthSquared;
@@ -109,7 +109,82 @@ export function segmentIntersectsCircle(segment, circle) {
   const closestY = y1 + dy * clampedT;
 
   const distanceSquared = (x - closestX) ** 2 + (y - closestY) ** 2;
-  return distanceSquared <= radius * radius;
+  return distanceSquared < radius * radius;
+}
+
+export function segmentIntersectsRect(segment, rect) {
+  if (!segment || !rect) {
+    return false;
+  }
+
+  const { x1, y1, x2, y2 } = segment;
+  const { x, y, width, height } = rect;
+  if (
+    !Number.isFinite(x1) ||
+    !Number.isFinite(y1) ||
+    !Number.isFinite(x2) ||
+    !Number.isFinite(y2)
+  ) {
+    return false;
+  }
+  if (
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !Number.isFinite(width) ||
+    width <= 0 ||
+    !Number.isFinite(height) ||
+    height <= 0
+  ) {
+    return false;
+  }
+
+  const left = x;
+  const right = x + width;
+  const top = y;
+  const bottom = y + height;
+
+  if (x1 >= left && x1 <= right && y1 >= top && y1 <= bottom) {
+    return true;
+  }
+  if (x2 >= left && x2 <= right && y2 >= top && y2 <= bottom) {
+    return true;
+  }
+
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  if (dx === 0 && dy === 0) {
+    return false;
+  }
+
+  const lineParams = [
+    [x1 - left, -(x2 - x1)],
+    [right - x1, x2 - x1],
+    [y1 - top, -(y2 - y1)],
+    [bottom - y1, y2 - y1],
+  ];
+
+  let t0 = 0;
+  let t1 = 1;
+  for (const [p, q] of lineParams) {
+    if (Math.abs(q) < Number.EPSILON) {
+      if (p < 0) {
+        return false;
+      }
+      continue;
+    }
+
+    const r = p / q;
+    if (q < 0) {
+      t0 = Math.max(t0, r);
+    } else {
+      t1 = Math.min(t1, r);
+    }
+    if (t0 > t1) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export function getCanvasVisualAnchor(canvas, fallbackAnchor = null) {
