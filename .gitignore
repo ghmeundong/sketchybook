@@ -30,6 +30,9 @@ jspm_packages/
 # Output directories (Frontend build)
 dist/
 
+# Local helper scripts
+scripts/
+
 # Cloudflare Wrangler (Backend cache & tmp)
 .wrangler/
 

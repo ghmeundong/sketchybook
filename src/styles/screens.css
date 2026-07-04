@@ -8,6 +8,14 @@
   padding: var(--page-padding);
 }
 
+.selection-stage-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.7rem, 2vw, 1.2rem);
+  width: min(100%, clamp(34rem, 82vw, 50rem));
+}
+
 .selection-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -16,6 +24,36 @@
   width: min(100%, clamp(30rem, 70vw, 44rem));
   justify-content: center;
   align-items: center;
+}
+
+.selection-nav-btn {
+  display: grid;
+  place-items: center;
+  width: clamp(2.4rem, 4vw, 3rem);
+  height: clamp(2.4rem, 4vw, 3rem);
+  border: none;
+  background: transparent;
+  color: #4f3b24;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.selection-nav-btn:hover {
+  transform: translateY(-1px);
+}
+
+.selection-nav-btn:disabled,
+.selection-nav-btn.is-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.stage-card.is-hidden {
+  display: none;
 }
 
 .stage-card {

@@ -1,13 +1,17 @@
-// 1. stages 폴더 내의 모든 js 파일들을 Vite가 빌드할 때 포함하도록 미리 등록합니다.
-const stageModules = import.meta.glob("./stages/*.js", { eager: true });
+import { createStageFromDefinition } from "./stages/registry.js";
 
 export async function loadStage(canvas, board, stageNumberOverride) {
   const params = new URLSearchParams(window.location.search);
   const requestedStage =
     typeof stageNumberOverride === "number" ? stageNumberOverride : Number(params.get("stage"));
-  const stageNumber = Math.min(Math.max(requestedStage || 1, 1), 6);
+  const stageNumber = Math.min(Math.max(requestedStage || 1, 1), 18);
 
-  // 2. 일치하는 객체 키 경로를 생성합니다. (상대 경로 일치 필수)
+  const builtStage = createStageFromDefinition(stageNumber, canvas, board);
+  if (builtStage) {
+    return builtStage;
+  }
+
+  const stageModules = import.meta.glob("./stages/stage*.js", { eager: true });
   const stagePath = `./stages/stage${stageNumber}.js`;
   const module = stageModules[stagePath];
 

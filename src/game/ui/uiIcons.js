@@ -100,6 +100,17 @@ export function createActionIconCanvas(
     ctx.lineTo(46, 20);
     ctx.closePath();
     ctx.fill();
+  } else if (type === "prev") {
+    ctx.save();
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+    ctx.beginPath();
+    ctx.moveTo(18, 8);
+    ctx.lineTo(18, 32);
+    ctx.lineTo(46, 20);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 
   return canvas;

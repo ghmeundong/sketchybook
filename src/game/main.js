@@ -1,11 +1,23 @@
 import rough from "roughjs";
 import "../style.css";
 import "../styles/game.css";
-import paperTexture from "../img/paper-texture.jpg";
+import paperTexture from "../img/paper-texture.webp";
 import { createCoordinateSystem } from "./coordinates.js";
 import { loadStage } from "./stageLoader.js";
 import { getStageStarRating } from "./stageScoring.js";
-import { createRoughStarCanvas, createActionIconCanvas } from "./uiIcons.js";
+import { createActionIconCanvas } from "./ui/uiIcons.js";
+import {
+  createStageClearOverlay as createStageClearOverlayUI,
+  showStageClearOverlay as showStageClearOverlayUI,
+  hideStageClearOverlay as hideStageClearOverlayUI,
+} from "./ui/gameUi.js";
+import {
+  getStoredStageScores,
+  getStoredStageProgress,
+  saveStageScore,
+  renderStageSelectionButtons as renderStageSelectionButtonsUI,
+  renderStageScoreBadge,
+} from "./ui/stageProgress.js";
 import {
   createStrokeBody,
   initializeStrokeBody,
@@ -27,11 +39,17 @@ const canvas = document.querySelector("#game-canvas");
 const selectionPage = document.querySelector(".page-selection");
 const playPage = document.querySelector(".page-play");
 const stageButtons = Array.from(document.querySelectorAll(".stage-card"));
+const stagePageButtons = Array.from(document.querySelectorAll("[data-stage-page]"));
 const stageScoreStorageKey = "sketchybook-stage-scores";
 const stageProgressStorageKey = "sketchybook-stage-progress";
+let stagePageIndex = 0;
+const stagePageSize = 6;
+const totalStagePages = Math.ceil(18 / stagePageSize);
 
 let stageClearOverlay = null;
 let stageClearMessage = null;
+const stageClearOverlayRef = { current: null };
+const stageClearMessageRef = { current: null };
 let gameExitButton = null;
 let gameRetryButton = null;
 
@@ -42,116 +60,37 @@ body.style.backgroundPosition = "center";
 body.style.backgroundRepeat = "no-repeat";
 body.style.backgroundAttachment = "fixed";
 
-function getStoredStageScores() {
-  try {
-    const raw = window.localStorage.getItem(stageScoreStorageKey);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch (error) {
-    console.warn("Failed to read stage scores:", error);
-    return {};
-  }
+function refreshStageSelectionButtons() {
+  renderStageSelectionButtonsUI(stageButtons);
+  updateStageSelectionPage();
 }
 
-function getStoredStageProgress() {
-  const storedScores = getStoredStageScores();
-  const clearedStageNumbers = Object.keys(storedScores)
-    .map((key) => Number(key))
-    .filter((value) => Number.isInteger(value) && value >= 1 && value <= 6);
-
-  if (clearedStageNumbers.length > 0) {
-    const highestClearedStage = Math.max(...clearedStageNumbers);
-    return Math.min(6, highestClearedStage + 1);
-  }
-
-  try {
-    const raw = window.localStorage.getItem(stageProgressStorageKey);
-    if (!raw) return 1;
-    const parsed = Number(raw);
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 6) {
-      return 1;
-    }
-    return parsed;
-  } catch (error) {
-    console.warn("Failed to read stage progress:", error);
-    return 1;
-  }
-}
-
-function saveStageProgress(stageNumber) {
-  const safeStageNumber = Number(stageNumber);
-  if (!Number.isInteger(safeStageNumber) || safeStageNumber < 1) {
-    return;
-  }
-
-  const nextUnlockedStage = Math.min(6, Math.max(1, safeStageNumber + 1));
-  const currentUnlockedStage = getStoredStageProgress();
-  if (currentUnlockedStage >= nextUnlockedStage) {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(stageProgressStorageKey, String(nextUnlockedStage));
-  } catch (error) {
-    console.warn("Failed to save stage progress:", error);
-  }
-}
-
-function saveStageScore(stageNumber, stars) {
-  const safeStageNumber = Number(stageNumber);
-  const safeStars = Math.max(0, Math.min(3, Number.isFinite(stars) ? Math.round(stars) : 0));
-  if (!safeStageNumber || !safeStars) return;
-
-  const storedScores = getStoredStageScores();
-  const previousScore = Number(storedScores[safeStageNumber]);
-  const shouldOverwrite = !Number.isFinite(previousScore) || previousScore < safeStars;
-  if (shouldOverwrite) {
-    const nextScores = { ...storedScores, [safeStageNumber]: safeStars };
-    try {
-      window.localStorage.setItem(stageScoreStorageKey, JSON.stringify(nextScores));
-    } catch (error) {
-      console.warn("Failed to save stage score:", error);
-    }
-  }
-
-  saveStageProgress(safeStageNumber);
-}
-
-function renderStageSelectionButtons() {
+function updateStageSelectionPage() {
   const unlockedStage = getStoredStageProgress();
+  const startIndex = stagePageIndex * stagePageSize;
+  const endIndex = startIndex + stagePageSize;
+
   stageButtons.forEach((button) => {
     const stageNumber = Number(button.dataset.stage);
+    const isVisible = stageNumber > startIndex && stageNumber <= endIndex;
     const isUnlocked = stageNumber <= unlockedStage;
-    button.disabled = !isUnlocked;
-    button.classList.toggle("is-disabled", !isUnlocked);
-    button.setAttribute("aria-disabled", String(!isUnlocked));
+    const shouldDisable = !isVisible || !isUnlocked;
+
+    button.classList.toggle("is-hidden", !isVisible);
+    button.disabled = shouldDisable;
+    button.classList.toggle("is-disabled", shouldDisable);
+    button.setAttribute("aria-disabled", String(shouldDisable));
   });
-}
 
-function renderStageScoreBadge(card, stageNumber) {
-  const score = getStoredStageScores()[stageNumber];
-  if (!card || !score) return;
+  const firstPage = stagePageIndex === 0;
+  const lastPage = stagePageIndex >= totalStagePages - 1;
 
-  let badge = card.querySelector(".stage-score-badge");
-  if (!badge) {
-    badge = document.createElement("div");
-    badge.className = "stage-score-badge";
-    card.appendChild(badge);
-  }
-
-  badge.innerHTML = "";
-  badge.style.display = "flex";
-  badge.style.alignItems = "center";
-  badge.style.justifyContent = "center";
-  badge.style.gap = "0.2rem";
-  badge.style.marginTop = "0.45rem";
-  badge.style.fontSize = "0.95rem";
-  badge.style.fontWeight = "700";
-  badge.style.color = "#4f3b24";
-  badge.style.fontFamily = "MyeongjoFont, serif";
-
-  badge.appendChild(createRoughStarCanvas(score, { size: 14, gap: 3 }));
+  stagePageButtons.forEach((button) => {
+    const isPrev = button.dataset.stagePage === "prev";
+    const shouldDisable = isPrev ? firstPage : lastPage;
+    button.disabled = shouldDisable;
+    button.classList.toggle("is-disabled", shouldDisable);
+  });
 }
 
 function drawRoughFrame(card) {
@@ -184,7 +123,13 @@ stageButtons.forEach((card) => {
   const stageNumber = Number(card.dataset.stage);
   renderStageScoreBadge(card, stageNumber);
 });
-renderStageSelectionButtons();
+
+stagePageButtons.forEach((button) => {
+  const type = button.dataset.stagePage === "prev" ? "prev" : "next";
+  button.appendChild(createActionIconCanvas(type, { w: 48, h: 40, strokeWidth: 2.8 }));
+});
+
+refreshStageSelectionButtons();
 
 function resetStageState() {
   if (animationFrameId) {
@@ -207,6 +152,12 @@ function resetStageState() {
   hideGameExitButton();
 }
 
+function clearStageUrl() {
+  const nextUrl = new URL(window.location.href);
+  nextUrl.searchParams.delete("stage");
+  window.history.replaceState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+}
+
 function setActivePage(page) {
   [selectionPage, playPage].forEach((item) => {
     if (!item) return;
@@ -214,6 +165,7 @@ function setActivePage(page) {
   });
   if (page === selectionPage) {
     resetStageState();
+    clearStageUrl();
   }
 }
 
@@ -230,143 +182,27 @@ async function tryEnterFullscreen() {
   }
 }
 
-function renderStageScoreStars(stars = 0) {
-  if (!stageClearMessage) return;
-
-  const scoreContainer = stageClearMessage.querySelector(".stage-clear-score");
-  if (!scoreContainer) return;
-
-  scoreContainer.innerHTML = "";
-  const safeStars = Math.max(0, Math.min(3, Number.isFinite(stars) ? Math.round(stars) : 0));
-  if (!safeStars) {
-    scoreContainer.style.display = "none";
-    return;
-  }
-
-  scoreContainer.style.display = "flex";
-  scoreContainer.style.justifyContent = "center";
-  scoreContainer.style.alignItems = "center";
-  scoreContainer.style.gap = "0.45rem";
-  scoreContainer.style.marginTop = "0.7rem";
-  scoreContainer.style.fontFamily = "MyeongjoFont, serif";
-  scoreContainer.style.fontSize = "1.05rem";
-  scoreContainer.style.color = "#4f3b24";
-  scoreContainer.style.fontWeight = "800";
-  scoreContainer.style.letterSpacing = "0.04em";
-  scoreContainer.style.textShadow = "0 1px 0 rgba(255,255,255,0.4)";
-
-  const label = document.createElement("span");
-  label.textContent = "Score:";
-  scoreContainer.appendChild(label);
-
-  scoreContainer.appendChild(createRoughStarCanvas(safeStars, { size: 24, gap: 6 }));
-}
-
 function createStageClearOverlay() {
-  if (!board) {
-    return;
-  }
-  if (stageClearOverlay) return;
-
-  stageClearOverlay = document.createElement("div");
-  stageClearOverlay.className = "stage-clear-overlay";
-  stageClearOverlay.setAttribute("aria-hidden", "true");
-  stageClearOverlay.style.display = "grid";
-
-  stageClearMessage = document.createElement("div");
-  stageClearMessage.className = "stage-clear-box";
-  stageClearMessage.innerHTML = `
-    <p class="stage-clear-title" style="font-weight: 800; letter-spacing: 0.04em; text-shadow: 0 1px 0 rgba(255,255,255,0.4);">Stage Cleared!</p>
-    <div class="stage-clear-score" aria-label="Stage score"></div>
-    <div class="stage-clear-actions">
-      <button class="stage-clear-btn stage-clear-exit"></button>
-      <button class="stage-clear-btn stage-clear-retry"></button>
-      <button class="stage-clear-btn stage-clear-next"></button>
-    </div>
-  `;
-
-  stageClearMessage.style.backgroundImage = `url(${paperTexture})`;
-  stageClearMessage.style.backgroundSize = "cover";
-  stageClearMessage.style.backgroundPosition = "center";
-  stageClearMessage.style.backgroundRepeat = "no-repeat";
-  stageClearMessage.style.position = "relative";
-  stageClearMessage.style.zIndex = "1";
-
-  const frameCanvas = document.createElement("canvas");
-  frameCanvas.className = "stage-clear-frame";
-  frameCanvas.width = 420;
-  frameCanvas.height = 420;
-  frameCanvas.style.position = "absolute";
-  frameCanvas.style.inset = "0";
-  frameCanvas.style.width = "100%";
-  frameCanvas.style.height = "100%";
-  frameCanvas.style.pointerEvents = "none";
-  frameCanvas.style.zIndex = "0";
-
-  const rc = rough.canvas(frameCanvas);
-  rc.rectangle(12, 12, frameCanvas.width - 24, frameCanvas.height - 24, {
-    stroke: "#4f3b24",
-    strokeWidth: 3.2,
-    roughness: 1.7,
-    bowing: 1.6,
-    fill: "transparent",
+  if (!board || stageClearOverlayRef.current) return;
+  const overlay = createStageClearOverlayUI({
+    board,
+    stageClearOverlayRef,
+    stageClearMessageRef,
   });
+  stageClearOverlay = stageClearOverlayRef.current;
+  stageClearMessage = stageClearMessageRef.current;
 
-  stageClearOverlay.appendChild(frameCanvas);
-  stageClearOverlay.appendChild(stageClearMessage);
-  board.appendChild(stageClearOverlay);
-
-  // Decorate action buttons with rough borders and wire handlers
-  const drawIcon = (btn, type) => {
-    if (!btn) return;
-    const iconWrap = document.createElement("span");
-    iconWrap.className = "stage-clear-icon";
-    iconWrap.appendChild(createActionIconCanvas(type));
-    btn.insertBefore(iconWrap, btn.firstChild);
-  };
-
-  const decorate = (btn) => {
-    if (!btn) return;
-    btn.style.position = "relative";
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("viewBox", "0 0 100 40");
-    svg.setAttribute("preserveAspectRatio", "none");
-    svg.style.position = "absolute";
-    svg.style.inset = "0";
-    svg.style.pointerEvents = "none";
-    svg.style.width = "100%";
-    svg.style.height = "100%";
-    const rcBtn = rough.svg(svg);
-    rcBtn.rectangle(4, 4, 92, 32, {
-      stroke: "#4f3b24",
-      strokeWidth: 1.8,
-      roughness: 1.5,
-      bowing: 1.2,
-      fill: "transparent",
-    });
-    btn.appendChild(svg);
-  };
+  if (!stageClearOverlay || !stageClearMessage) return;
 
   const exitBtn = stageClearMessage.querySelector(".stage-clear-exit");
   const retryBtn = stageClearMessage.querySelector(".stage-clear-retry");
   const nextBtn = stageClearMessage.querySelector(".stage-clear-next");
 
-  [exitBtn, retryBtn, nextBtn].forEach((b) => {
-    decorate(b);
-    if (b) {
-      if (b.classList.contains("stage-clear-exit")) drawIcon(b, "exit");
-      if (b.classList.contains("stage-clear-retry")) drawIcon(b, "retry");
-      if (b.classList.contains("stage-clear-next")) drawIcon(b, "next");
-    }
-  });
-
   if (exitBtn) {
     exitBtn.addEventListener("click", async () => {
       hideStageClearOverlay();
       setActivePage(selectionPage);
-      // stop physics animation when leaving
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
-      // exit fullscreen
       if (document.fullscreenElement) {
         try {
           await document.exitFullscreen();
@@ -386,7 +222,7 @@ function createStageClearOverlay() {
   if (nextBtn) {
     nextBtn.addEventListener("click", async () => {
       hideStageClearOverlay();
-      const next = Math.min((currentStageNumber || 1) + 1, 6);
+      const next = Math.min((currentStageNumber || 1) + 1, 18);
       await startStage(next);
     });
   }
@@ -398,34 +234,22 @@ function showStageClearOverlay(message = "Stage Cleared!") {
   }
   if (!stageClearOverlay || !stageClearMessage) return;
 
-  const stars = getStageStarRating(stageMinEvents, stageEventCount);
   stageClearMessage.querySelector(".stage-clear-title").textContent = message;
-  renderStageScoreStars(stars);
-  if (currentStageNumber) {
-    saveStageScore(currentStageNumber, stars);
-    renderStageSelectionButtons();
-    const stageButton = stageButtons.find(
-      (button) => Number(button.dataset.stage) === currentStageNumber
-    );
-    if (stageButton) {
-      renderStageScoreBadge(stageButton, currentStageNumber);
-    }
-  }
-  stageClearOverlay.classList.add("is-visible");
-  stageClearOverlay.setAttribute("aria-hidden", "false");
-  stageClearOverlay.style.display = "grid";
-  stageClearOverlay.style.opacity = "1";
-  stageClearOverlay.style.visibility = "visible";
-  canvas?.style.setProperty("pointer-events", "none");
+  showStageClearOverlayUI({
+    overlay: stageClearOverlay,
+    message: stageClearMessage,
+    stageClearState: { stageMinEvents, stageEventCount },
+    stageButtons,
+    canvas,
+    stageNumber: currentStageNumber,
+    onAfterSave: () => {
+      refreshStageSelectionButtons();
+    },
+  });
 }
 
 function hideStageClearOverlay() {
-  if (!stageClearOverlay) return;
-  stageClearOverlay.classList.remove("is-visible");
-  stageClearOverlay.setAttribute("aria-hidden", "true");
-  stageClearOverlay.style.opacity = "0";
-  stageClearOverlay.style.visibility = "hidden";
-  canvas?.style.setProperty("pointer-events", "auto");
+  hideStageClearOverlayUI(stageClearOverlay, canvas);
 }
 
 function createGameExitButton() {
@@ -511,7 +335,7 @@ function hideGameRetryButton() {
 function getRequestedStageFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const value = Number(params.get("stage"));
-  return Number.isInteger(value) && value >= 1 && value <= 6 ? value : null;
+  return Number.isInteger(value) && value >= 1 && value <= 18 ? value : null;
 }
 
 async function startStage(stageNumber) {
@@ -521,21 +345,15 @@ async function startStage(stageNumber) {
   currentStageNumber = stageNumber;
   await tryEnterFullscreen();
   setActivePage(playPage);
-  window.history.replaceState(null, "", `?stage=${stageNumber}`);
+  const nextUrl = new URL(window.location.href);
+  nextUrl.searchParams.set("stage", String(stageNumber));
+  window.history.replaceState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
   await initializeStage(stageNumber);
   resizeCanvas();
 }
 
 async function initializePageFlow() {
-  const requestedStage = getRequestedStageFromUrl();
-  if (requestedStage) {
-    currentStageNumber = requestedStage;
-    setActivePage(playPage);
-    await initializeStage(requestedStage);
-    resizeCanvas();
-  } else {
-    setActivePage(selectionPage);
-  }
+  setActivePage(selectionPage);
 }
 
 let isDrawing = false;
@@ -2144,10 +1962,24 @@ window.addEventListener("fullscreenchange", async () => {
 stageButtons.forEach((button) => {
   button.addEventListener("click", async () => {
     const stageNumber = Number(button.dataset.stage);
-    if (!stageNumber) {
+    if (!stageNumber || button.classList.contains("is-hidden")) {
       return;
     }
     await startStage(stageNumber);
+  });
+});
+
+stagePageButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    if (button.classList.contains("is-disabled")) {
+      return;
+    }
+    if (button.dataset.stagePage === "prev") {
+      stagePageIndex = Math.max(0, stagePageIndex - 1);
+    } else {
+      stagePageIndex = Math.min(totalStagePages - 1, stagePageIndex + 1);
+    }
+    updateStageSelectionPage();
   });
 });
 
