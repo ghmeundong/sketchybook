@@ -14,6 +14,7 @@ export function initStage3(canvas, board) {
 
   return {
     coordinateSystem,
+    minEvents: 2,
     initialize: () => {},
     update: (physicsStrokes, floorY) => {
       stepPhysicsWorld({ deltaTime: 1 / 60 });
