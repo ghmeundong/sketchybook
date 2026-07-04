@@ -31,7 +31,7 @@ const stageDefinitions = {
     title: "Stage 3",
     minEvents: 2,
     objects: [
-      { type: "text", x: 0.7, y: 0.2, text: "that's all! click and draw, enjoy it!" },
+      { type: "text", x: 0.7, y: 0.2, text: "that's all! click and draw!" },
       { type: "ball", x: 0.7, y: 0.3 },
       { type: "platform", x: 0.3, y: 0.65 },
       { type: "platform", x: 0.7, y: 0.35 },
@@ -126,24 +126,32 @@ const stageDefinitions = {
   7: {
     id: 7,
     title: "Stage 7",
-    minEvents: 1,
+    minEvents: 2,
     objects: [
-      { type: "text", x: 0.5, y: 0.2, text: "follow the trail" },
-      { type: "ball", x: 0.25, y: 0.42 },
-      { type: "platform", x: 0.5, y: 0.58 },
-      { type: "star", x: 0.75, y: 0.42 },
+      { type: "ball", x: 0.5, y: 0.45 },
+      { type: "platform", x: 0.5, y: 0.5 },
+      { type: "star", x: 0.5, y: 0.6 },
     ],
   },
   8: {
     id: 8,
     title: "Stage 8",
-    minEvents: 1,
+    minEvents: 2,
     objects: [
-      { type: "text", x: 0.5, y: 0.2, text: "balance the bridge" },
       { type: "ball", x: 0.3, y: 0.45 },
-      { type: "platform", x: 0.5, y: 0.55 },
-      { type: "segment", x1: 0.35, y1: 0.48, x2: 0.65, y2: 0.58 },
-      { type: "star", x: 0.74, y: 0.42 },
+      { type: "platform", x: 0.3, y: 0.5 },
+      {
+        type: "complex",
+        points: [
+          { x: 0.38, y: 0.5 },
+          { x: 0.62, y: 0.5 },
+          { x: 0.5, y: 0.6 },
+        ],
+        closed: true,
+        isStatic: false,
+      },
+      { type: "platform", x: 0.5, y: 0.65 },
+      { type: "star", x: 0.7, y: 0.6 },
     ],
   },
   9: {
@@ -151,10 +159,11 @@ const stageDefinitions = {
     title: "Stage 9",
     minEvents: 1,
     objects: [
-      { type: "text", x: 0.5, y: 0.2, text: "guide the orbit" },
-      { type: "ball", x: 0.25, y: 0.4 },
-      { type: "platform", x: 0.6, y: 0.55 },
-      { type: "star", x: 0.75, y: 0.4 },
+      { type: "text", x: 0.3, y: 0.3, text: "you cannot draw on striped area" },
+      { type: "ball", x: 0.3, y: 0.4 },
+      { type: "platform", x: 0.3, y: 0.45 },
+      { type: "circle", x: 0.5, y: 0.6, radius: 0.05, isStatic: true },
+      { type: "star", x: 0.7, y: 0.4 },
     ],
   },
   10: {
@@ -162,10 +171,8 @@ const stageDefinitions = {
     title: "Stage 10",
     minEvents: 1,
     objects: [
-      { type: "text", x: 0.5, y: 0.2, text: "steady hands" },
-      { type: "ball", x: 0.3, y: 0.4 },
-      { type: "segment", x1: 0.38, y1: 0.48, x2: 0.72, y2: 0.52 },
-      { type: "star", x: 0.72, y: 0.38 },
+      { type: "star", x: 0.5, y: 0.5 },
+      { type: "text", x: 0.5, y: 0.4, text: "in update..." },
     ],
   },
   11: {

@@ -19,8 +19,10 @@ function ensurePhysicsGround(floorY) {
   if (physicsRightWall) physicsWorld.destroyBody(physicsRightWall);
 
   // 1. 물리 시뮬레이션은 CSS 픽셀 좌표계를 기준으로 합니다.
-  const canvas = document.querySelector("canvas");
-  const gameWidth = canvas ? canvas.clientWidth : window.innerWidth; // 예외 처리 포함
+  const canvas = typeof document !== "undefined" ? document.querySelector("canvas") : null;
+  const fallbackWidth =
+    typeof window !== "undefined" && Number.isFinite(window.innerWidth) ? window.innerWidth : 800;
+  const gameWidth = canvas ? canvas.clientWidth : fallbackWidth;
 
   // 2. 바닥 생성 (0부터 gameWidth까지)
   physicsGround = physicsWorld.createBody();
@@ -213,12 +215,28 @@ export function initializeStrokeBody(stroke, floorY = 0) {
 export function createCircleBody(x, y, radius, floorY = 0, options = {}) {
   ensurePhysicsGround(floorY);
 
+  const shouldCreateRevoluteJoint = Boolean(
+    options.jointAnchor ||
+    options.anchorX ||
+    options.axisX ||
+    options.pivotX ||
+    options.motor ||
+    options.enableMotor ||
+    options.spinMode === "auto"
+  );
+  const bodyType = shouldCreateRevoluteJoint
+    ? options.isStatic
+      ? "kinematic"
+      : "dynamic"
+    : options.isStatic
+      ? "static"
+      : (options.type ?? "dynamic");
   const body = physicsWorld.createBody({
-    type: "dynamic",
+    type: bodyType,
     position: planck.Vec2(x, y),
   });
-  body.setLinearDamping(options.linearDamping ?? 0.5);
-  body.setAngularDamping(options.angularDamping ?? 0.5);
+  body.setLinearDamping(options.linearDamping ?? 0);
+  body.setAngularDamping(options.angularDamping ?? 0);
   body.setBullet(!!options.bullet || true);
   body.setSleepingAllowed(false);
 
@@ -228,6 +246,34 @@ export function createCircleBody(x, y, radius, floorY = 0, options = {}) {
     friction: options.friction ?? 0.1,
     restitution: options.restitution ?? 0.1,
   });
+
+  if (shouldCreateRevoluteJoint) {
+    const anchorX =
+      options.jointAnchor?.x ?? options.anchorX ?? options.axisX ?? options.pivotX ?? x;
+    const anchorY =
+      options.jointAnchor?.y ?? options.anchorY ?? options.axisY ?? options.pivotY ?? y;
+    const anchorBody = physicsWorld.createBody({
+      type: "static",
+      position: planck.Vec2(anchorX, anchorY),
+    });
+    physicsWorld.createJoint(
+      planck.RevoluteJoint(
+        {
+          enableMotor: !!(options.motor || options.enableMotor || options.spinMode === "auto"),
+          motorSpeed: typeof options.motorSpeed === "number" ? options.motorSpeed : 0,
+          maxMotorTorque:
+            typeof options.maxMotorTorque === "number" ? options.maxMotorTorque : 1000,
+          collideConnected: false,
+        },
+        anchorBody,
+        body,
+        planck.Vec2(anchorX, anchorY)
+      )
+    );
+    if (options.motor || options.enableMotor || options.spinMode === "auto") {
+      body.setAngularVelocity(typeof options.motorSpeed === "number" ? options.motorSpeed : 1.5);
+    }
+  }
 
   return body;
 }
@@ -325,7 +371,20 @@ export function createRotorBody(points, axis = {}, floorY = 0, options = {}) {
   center.x /= pts.length;
   center.y /= pts.length;
 
-  const bodyType = options.isStatic ? "static" : (options.type ?? "dynamic");
+  const shouldCreateJoint = Boolean(
+    axis?.x != null ||
+    axis?.y != null ||
+    options.motor ||
+    options.enableMotor ||
+    options.spinMode === "auto"
+  );
+  const bodyType = shouldCreateJoint
+    ? options.isStatic
+      ? "kinematic"
+      : "dynamic"
+    : options.isStatic
+      ? "static"
+      : (options.type ?? "dynamic");
   const body = physicsWorld.createBody({
     type: bodyType,
     position: planck.Vec2(center.x, center.y),
@@ -358,14 +417,17 @@ export function createRotorBody(points, axis = {}, floorY = 0, options = {}) {
     makeSegmentFixture(pts[pts.length - 1], pts[0]);
   }
 
-  if (!options.isStatic) {
+  if (shouldCreateJoint) {
     const anchorX = typeof axis.x === "number" ? axis.x : center.x;
     const anchorY = typeof axis.y === "number" ? axis.y : center.y;
-    const anchorBody = physicsWorld.createBody();
+    const anchorBody = physicsWorld.createBody({
+      type: "static",
+      position: planck.Vec2(anchorX, anchorY),
+    });
     physicsWorld.createJoint(
       planck.RevoluteJoint(
         {
-          enableMotor: !!options.motor,
+          enableMotor: !!(options.motor || options.enableMotor || options.spinMode === "auto"),
           motorSpeed: typeof options.motorSpeed === "number" ? options.motorSpeed : 0,
           maxMotorTorque:
             typeof options.maxMotorTorque === "number" ? options.maxMotorTorque : 1000,
@@ -376,6 +438,9 @@ export function createRotorBody(points, axis = {}, floorY = 0, options = {}) {
         planck.Vec2(anchorX, anchorY)
       )
     );
+    if (options.motor || options.enableMotor || options.spinMode === "auto") {
+      body.setAngularVelocity(typeof options.motorSpeed === "number" ? options.motorSpeed : 1.5);
+    }
   }
 
   return body;

@@ -4,6 +4,14 @@ import "../styles/game.css";
 import paperTexture from "../img/paper-texture.webp";
 import { createCoordinateSystem } from "./coordinates.js";
 import { loadStage } from "./stageLoader.js";
+import {
+  getCanvasVisualAnchor,
+  getPolygonTextureLayout,
+  resolveCircleRadius,
+  resolveRenderablePosition,
+  segmentIntersectsCircle,
+} from "./geometry.js";
+import { getStagePageIndexForStage } from "./stagePages.js";
 import { getStageStarRating } from "./stageScoring.js";
 import { createActionIconCanvas } from "./ui/uiIcons.js";
 import {
@@ -152,9 +160,13 @@ function resetStageState() {
   hideGameExitButton();
 }
 
-function clearStageUrl() {
+function updateStageUrl(stageNumber = null) {
   const nextUrl = new URL(window.location.href);
-  nextUrl.searchParams.delete("stage");
+  if (stageNumber) {
+    nextUrl.searchParams.set("stage", String(stageNumber));
+  } else {
+    nextUrl.searchParams.delete("stage");
+  }
   window.history.replaceState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
 }
 
@@ -165,7 +177,15 @@ function setActivePage(page) {
   });
   if (page === selectionPage) {
     resetStageState();
-    clearStageUrl();
+    updateStageUrl();
+    if (Number.isInteger(currentStageNumber)) {
+      stagePageIndex = getStagePageIndexForStage(
+        currentStageNumber,
+        stagePageSize,
+        totalStagePages
+      );
+      updateStageSelectionPage();
+    }
   }
 }
 
@@ -345,15 +365,23 @@ async function startStage(stageNumber) {
   currentStageNumber = stageNumber;
   await tryEnterFullscreen();
   setActivePage(playPage);
-  const nextUrl = new URL(window.location.href);
-  nextUrl.searchParams.set("stage", String(stageNumber));
-  window.history.replaceState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+  updateStageUrl(stageNumber);
   await initializeStage(stageNumber);
   resizeCanvas();
 }
 
 async function initializePageFlow() {
-  setActivePage(selectionPage);
+  const requestedStage = getRequestedStageFromUrl();
+  if (requestedStage) {
+    currentStageNumber = requestedStage;
+    setActivePage(playPage);
+    updateStageUrl(requestedStage);
+    await initializeStage(requestedStage);
+    resizeCanvas();
+  } else {
+    stagePageIndex = getStagePageIndexForStage(currentStageNumber, stagePageSize, totalStagePages);
+    setActivePage(selectionPage);
+  }
 }
 
 let isDrawing = false;
@@ -387,6 +415,79 @@ let stageMinEvents = 0;
 let gameObjects = [];
 let currentStageNumber = 1;
 
+class CircleObject {
+  constructor(opts = {}) {
+    const { x, y, radius, isStatic = false } = opts || {};
+    this.nx = typeof x === "number" ? x : 0.5;
+    this.ny = typeof y === "number" ? y : 0.5;
+    this.radius = typeof radius === "number" ? radius : 0.025;
+    this.isStatic = !!isStatic;
+    this.physicsBody = null;
+    this.texture = null;
+    this.textureOffset = null;
+    this._lastCanvasSize = null;
+    this.screenX = null;
+    this.screenY = null;
+  }
+
+  createTexture(canvasW, canvasH) {
+    const minDim = Math.min(canvasW, canvasH);
+    const r = this.radius > 1 ? this.radius : this.radius * minDim;
+    const diameter = Math.max(2, Math.ceil(r * 2));
+    const padding = 8;
+    const size = diameter + padding * 2;
+
+    const off = document.createElement("canvas");
+    off.width = size;
+    off.height = size;
+    const offCtx = off.getContext("2d");
+    offCtx.clearRect(0, 0, size, size);
+
+    const offRough = rough.canvas(off);
+    const cx = size / 2;
+    const cy = size / 2;
+    offRough.circle(cx, cy, diameter, {
+      stroke: "#4f3b24",
+      strokeWidth: 2.2,
+      fill: "#4f3b24",
+      fillStyle: "hachure",
+      roughness: 1.3,
+    });
+
+    this.texture = off;
+    this.textureOffset = {
+      centerX: cx,
+      centerY: cy,
+      width: size,
+      height: size,
+    };
+    this._lastCanvasSize = { w: canvasW, h: canvasH };
+  }
+
+  draw(canvasW, canvasH) {
+    if (!ctx) return;
+    if (
+      !this.texture ||
+      !this._lastCanvasSize ||
+      this._lastCanvasSize.w !== canvasW ||
+      this._lastCanvasSize.h !== canvasH
+    ) {
+      this.createTexture(canvasW, canvasH);
+    }
+
+    const px = this.screenX != null ? this.screenX : this.nx * canvasW;
+    const py = this.screenY != null ? this.screenY : this.ny * canvasH;
+    const { centerX, centerY, width, height } = this.textureOffset || {};
+
+    if (this.texture && centerX != null && centerY != null) {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.drawImage(this.texture, px - centerX, py - centerY, width, height);
+      ctx.restore();
+    }
+  }
+}
+
 class Ball {
   // x, y: normalized (0..1) positions relative to canvas width/height
   // radius: normalized (0..1) relative to min(canvasWidth, canvasHeight) or pixels if >1
@@ -400,7 +501,7 @@ class Ball {
   // Create an offscreen texture (hollow circle) sized for the current canvas.
   createTexture(canvasW, canvasH) {
     const minDim = Math.min(canvasW, canvasH);
-    const r = this.physicalRadius ?? (this.radius > 1 ? this.radius : this.radius * minDim);
+    const r = this.physicalRadius ?? resolveCircleRadius(this.radius, minDim);
     const diameter = Math.max(2, Math.ceil(r * 2));
     const padding = 8;
     const size = diameter + padding * 2;
@@ -415,15 +516,15 @@ class Ball {
     const cx = size / 2;
     const cy = size / 2;
 
-    // Draw outline only (no fill)
     offRough.circle(cx, cy, diameter, {
-      stroke: "black",
+      stroke: "#4f3b24",
       strokeWidth: 2,
-      fill: "none",
-      roughness: 1.4,
+      fill: "#2f3e6f",
+      fillStyle: "hachure",
+      roughness: 1.1,
+      hachureGap: 3,
+      hachureAngle: -35,
     });
-
-    // no rotation mark — texture is outline-only
 
     this.texture = off;
     this.textureOffset = {
@@ -450,6 +551,7 @@ class Ball {
     const px = this.screenX != null ? this.screenX : this.nx * canvasW;
     const py = this.screenY != null ? this.screenY : this.ny * canvasH;
     const { centerX, centerY, width, height } = this.textureOffset || {};
+    const logicalScale = Math.min(canvasW / 1600, canvasH / 900) || 1;
 
     if (this.texture && centerX != null) {
       ctx.save();
@@ -458,6 +560,7 @@ class Ball {
       const angle = this.angle || 0;
       ctx.translate(px, py);
       if (angle) ctx.rotate(angle);
+      ctx.scale(logicalScale, logicalScale);
       ctx.drawImage(this.texture, -centerX, -centerY, width, height);
       ctx.restore();
       return;
@@ -726,6 +829,7 @@ class ComplexObject {
     this.physicsBodies = null;
     this.texture = null;
     this.textureOffset = null;
+    this.textureAnchor = null;
     this._lastCanvasSize = null;
   }
 
@@ -736,20 +840,10 @@ class ComplexObject {
     const pts = this.normalizedPoints.map((p) => ({ x: p.x * canvasW, y: p.y * canvasH }));
     this.pixelPoints = pts;
 
-    let minX = Infinity,
-      minY = Infinity,
-      maxX = -Infinity,
-      maxY = -Infinity;
-    for (const p of pts) {
-      minX = Math.min(minX, p.x);
-      minY = Math.min(minY, p.y);
-      maxX = Math.max(maxX, p.x);
-      maxY = Math.max(maxY, p.y);
-    }
-
+    const layout = getPolygonTextureLayout(pts, canvasW, canvasH, 12);
     const padding = 12;
-    const width = Math.max(2, Math.ceil(maxX - minX + padding * 2));
-    const height = Math.max(2, Math.ceil(maxY - minY + padding * 2));
+    const width = layout?.width ?? 2;
+    const height = layout?.height ?? 2;
 
     const off = document.createElement("canvas");
     off.width = width;
@@ -758,7 +852,10 @@ class ComplexObject {
     offCtx.clearRect(0, 0, width, height);
 
     const offRough = rough.canvas(off);
-    const normalizedPts = pts.map((p) => ({ x: p.x - minX + padding, y: p.y - minY + padding }));
+    const normalizedPts = pts.map((p) => ({
+      x: p.x - (layout?.offset?.left ?? 0) - padding,
+      y: p.y - (layout?.offset?.top ?? 0) - padding,
+    }));
 
     if (this.closed && pts.length > 2) {
       offRough.polygon(normalizedPts, {
@@ -790,8 +887,19 @@ class ComplexObject {
       });
     }
 
+    const visualAnchor = getCanvasVisualAnchor(off, layout?.anchor ?? null);
+
     this.texture = off;
-    this.textureOffset = { left: minX - padding, top: minY - padding, width, height };
+    this.textureOffset = {
+      left: layout?.offset?.left ?? 0,
+      top: layout?.offset?.top ?? 0,
+      width,
+      height,
+    };
+    this.textureAnchor = {
+      x: visualAnchor?.x ?? layout?.anchor?.x ?? width / 2,
+      y: visualAnchor?.y ?? layout?.anchor?.y ?? height / 2,
+    };
     this._lastCanvasSize = { w: canvasW, h: canvasH };
   }
 
@@ -858,13 +966,37 @@ class ComplexObject {
     if (this.texture && this.textureOffset) {
       ctx.save();
       ctx.globalAlpha = 1;
-      ctx.drawImage(
-        this.texture,
-        this.textureOffset.left,
-        this.textureOffset.top,
-        this.textureOffset.width,
-        this.textureOffset.height
-      );
+
+      const physicsBody = this.physicsBodies?.[0] || null;
+      const bodyPosition =
+        physicsBody && typeof physicsBody.getPosition === "function"
+          ? physicsBody.getPosition()
+          : null;
+      const bodyAngle =
+        physicsBody && typeof physicsBody.getAngle === "function" ? physicsBody.getAngle() : 0;
+
+      if (bodyPosition && this.textureAnchor) {
+        ctx.translate(bodyPosition.x, bodyPosition.y);
+        if (bodyAngle) {
+          ctx.rotate(bodyAngle);
+        }
+        ctx.drawImage(
+          this.texture,
+          -this.textureAnchor.x,
+          -this.textureAnchor.y,
+          this.textureOffset.width,
+          this.textureOffset.height
+        );
+      } else {
+        ctx.drawImage(
+          this.texture,
+          this.textureOffset.left,
+          this.textureOffset.top,
+          this.textureOffset.width,
+          this.textureOffset.height
+        );
+      }
+
       ctx.restore();
     }
   }
@@ -886,27 +1018,32 @@ class Rotor {
     isStatic = false,
   } = {}) {
     const normalizedPoints = Array.isArray(points) ? points.slice() : [];
-    if (
-      (!Array.isArray(normalizedPoints) || normalizedPoints.length < 2) &&
-      typeof radius === "number"
-    ) {
-      const count = Math.max(3, Math.min(64, Math.round(pointCount)));
-      for (let i = 0; i < count; i += 1) {
-        const angle = (i / count) * Math.PI * 2;
-        normalizedPoints.push({
-          x: x + Math.cos(angle) * radius,
-          y: y + Math.sin(angle) * radius,
-        });
-      }
+    const hasPointShape = Array.isArray(normalizedPoints) && normalizedPoints.length >= 2;
+    const hasExplicitCenter = typeof x === "number" && typeof y === "number";
+    const resolvedRadius = typeof radius === "number" && radius > 0 ? radius : null;
+
+    if ((!hasPointShape && hasExplicitCenter) || (resolvedRadius && !hasPointShape)) {
       this.closed = true;
     } else {
       this.closed = !!closed;
     }
 
+    if (hasPointShape) {
+      const center = normalizedPoints.reduce(
+        (acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }),
+        { x: 0, y: 0 }
+      );
+      center.x /= normalizedPoints.length;
+      center.y /= normalizedPoints.length;
+      this.cx = hasExplicitCenter ? x : center.x;
+      this.cy = hasExplicitCenter ? y : center.y;
+    } else {
+      this.cx = typeof x === "number" ? x : 0.5;
+      this.cy = typeof y === "number" ? y : 0.5;
+    }
+
     this.normalizedPoints = normalizedPoints;
-    this.cx = typeof x === "number" ? x : 0.5;
-    this.cy = typeof y === "number" ? y : 0.5;
-    this.radius = typeof radius === "number" ? radius : null;
+    this.radius = resolvedRadius ?? (hasExplicitCenter && !hasPointShape ? 0.05 : null);
     this.pointCount = Math.max(3, Math.min(64, Math.round(pointCount)));
     this.axisX = typeof axisX === "number" ? axisX : this.cx;
     this.axisY = typeof axisY === "number" ? axisY : this.cy;
@@ -918,11 +1055,68 @@ class Rotor {
     this.pixelPoints = null;
     this.physicsBody = null;
     this.texture = null;
+    this.angle = 0;
     this.textureOffset = null;
     this._lastCanvasSize = null;
+    this.renderAsCircle = this.radius != null && this.radius > 0;
   }
 
   createTexture(canvasW, canvasH) {
+    if (this.renderAsCircle && typeof this.radius === "number" && this.radius > 0) {
+      const minDim = Math.min(canvasW, canvasH);
+      const r = resolveCircleRadius(this.radius, minDim);
+      const diameter = Math.max(2, Math.ceil(r * 2));
+      const padding = 8;
+      const size = diameter + padding * 2;
+
+      const off = document.createElement("canvas");
+      off.width = size;
+      off.height = size;
+      const offCtx = off.getContext("2d");
+      offCtx.clearRect(0, 0, size, size);
+
+      const offRough = rough.canvas(off);
+      const cx = size / 2;
+      const cy = size / 2;
+      offRough.circle(cx, cy, diameter, {
+        stroke: "#4f3b24",
+        strokeWidth: 3,
+        fill: "none",
+        roughness: 1.4,
+      });
+
+      this.texture = off;
+      this.textureOffset = {
+        centerX: cx,
+        centerY: cy,
+        width: size,
+        height: size,
+      };
+      if (typeof this.axisX === "number" && typeof this.axisY === "number") {
+        const markerSize = 5;
+        const markerCanvas = document.createElement("canvas");
+        markerCanvas.width = markerSize * 2;
+        markerCanvas.height = markerSize * 2;
+        const markerCtx = markerCanvas.getContext("2d");
+        const markerRough = rough.canvas(markerCanvas);
+        markerRough.circle(markerSize, markerSize, markerSize * 1.4, {
+          stroke: "#c92d39",
+          strokeWidth: 1.5,
+          fill: "#e64956",
+          roughness: 1.8,
+          fillStyle: "solid",
+        });
+        this.axisMarker = {
+          texture: markerCanvas,
+          size: markerSize,
+        };
+      } else {
+        this.axisMarker = null;
+      }
+      this._lastCanvasSize = { w: canvasW, h: canvasH };
+      return;
+    }
+
     if (!Array.isArray(this.normalizedPoints) || this.normalizedPoints.length < 2) return;
 
     const pts = this.normalizedPoints.map((p) => ({ x: p.x * canvasW, y: p.y * canvasH }));
@@ -1023,16 +1217,48 @@ class Rotor {
   }
 
   createPhysics(canvasW, canvasH, floorY) {
+    if (this.physicsBody) return;
+
+    if (this.renderAsCircle && typeof this.radius === "number" && this.radius > 0) {
+      const centerX = this.cx * canvasW;
+      const centerY = this.cy * canvasH;
+      const radiusPixels = resolveCircleRadius(this.radius, Math.min(canvasW, canvasH));
+      try {
+        this.physicsBody = createCircleBody(centerX, centerY, radiusPixels, floorY, {
+          isStatic: this.isStatic,
+          density: this.isStatic ? 0 : 1,
+          friction: 0.8,
+          restitution: 0.1,
+          motor: this.spinMode === "auto",
+          enableMotor: this.spinMode === "auto",
+          motorSpeed: this.motorSpeed,
+          maxMotorTorque: this.maxMotorTorque,
+          jointAnchor: {
+            x: this.axisX * canvasW,
+            y: this.axisY * canvasH,
+          },
+        });
+        if (this.physicsBody) {
+          this.screenX = centerX;
+          this.screenY = centerY;
+        }
+        return;
+      } catch (e) {
+        console.warn("Rotor circle physics creation failed:", e);
+      }
+    }
+
     if (!Array.isArray(this.pixelPoints) || this.pixelPoints.length < 2) {
       this.createTexture(canvasW, canvasH);
     }
     if (!Array.isArray(this.pixelPoints) || this.pixelPoints.length < 2) return;
-    if (this.physicsBody) return;
 
     const axisPixel = {
       x: typeof this.axisX === "number" ? this.axisX * canvasW : null,
       y: typeof this.axisY === "number" ? this.axisY * canvasH : null,
     };
+    this.screenX = this.cx * canvasW;
+    this.screenY = this.cy * canvasH;
 
     this.physicsBody = createRotorBody(this.pixelPoints, axisPixel, floorY, {
       closed: this.closed,
@@ -1043,6 +1269,10 @@ class Rotor {
       friction: 0.8,
       density: this.isStatic ? 0 : 1,
     });
+    if (this.physicsBody) {
+      this.screenX = this.cx * canvasW;
+      this.screenY = this.cy * canvasH;
+    }
   }
 
   draw(canvasW, canvasH, roughCanvasInstance) {
@@ -1057,17 +1287,35 @@ class Rotor {
     }
     if (!this.texture || !this.textureOffset) return;
 
-    const px = this.screenX != null ? this.screenX : 0;
-    const py = this.screenY != null ? this.screenY : 0;
+    const fallbackPosition = resolveRenderablePosition(this, canvasW, canvasH);
+    let px = this.screenX != null ? this.screenX : fallbackPosition.x;
+    let py = this.screenY != null ? this.screenY : fallbackPosition.y;
+    if (this.physicsBody && typeof this.physicsBody.getPosition === "function") {
+      const position = this.physicsBody.getPosition();
+      px = position.x;
+      py = position.y;
+      this.screenX = px;
+      this.screenY = py;
+    }
     const angle = this.angle || 0;
     const { centerOffsetX, centerOffsetY, width, height } = this.textureOffset;
+    const { centerX, centerY } = this.textureOffset || {};
 
-    ctx.save();
-    ctx.translate(px, py);
-    if (angle) ctx.rotate(angle);
-    ctx.globalAlpha = 1;
-    ctx.drawImage(this.texture, -centerOffsetX, -centerOffsetY, width, height);
-    ctx.restore();
+    if (this.renderAsCircle && centerX != null && centerY != null) {
+      ctx.save();
+      ctx.translate(px, py);
+      if (angle) ctx.rotate(angle);
+      ctx.globalAlpha = 1;
+      ctx.drawImage(this.texture, -centerX, -centerY, width, height);
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.translate(px, py);
+      if (angle) ctx.rotate(angle);
+      ctx.globalAlpha = 1;
+      ctx.drawImage(this.texture, -centerOffsetX, -centerOffsetY, width, height);
+      ctx.restore();
+    }
 
     if (this.axisMarker && typeof this.axisX === "number" && typeof this.axisY === "number") {
       const axisPx = this.axisX * canvasW;
@@ -1253,17 +1501,19 @@ function resizeCanvas() {
   const floorYForPhysics = canvas?.clientHeight ? canvas.clientHeight - 24 : canvasHeight - 24;
   if (gameObjects && gameObjects.length) {
     for (const obj of gameObjects) {
-      if (obj instanceof Ball && !obj.physicsBody) {
+      if ((obj instanceof CircleObject || obj instanceof Ball) && !obj.physicsBody) {
         const px = obj.nx * canvasWidth;
         const py = obj.ny * canvasHeight;
         const minDim = Math.min(canvasWidth, canvasHeight);
-        const rPixels = obj.radius > 1 ? obj.radius : Math.max(2, obj.radius * minDim);
+        const rPixels = resolveCircleRadius(obj.radius, minDim);
         try {
-          const body = createCircleBody(px, py, rPixels, floorYForPhysics, { density: 1 });
+          const body = createCircleBody(px, py, rPixels, floorYForPhysics, {
+            density: obj.isStatic ? 0 : 1,
+            isStatic: obj.isStatic,
+          });
           obj.physicsBody = body;
           obj.physicalRadius = rPixels;
         } catch (e) {
-          // ignore physics creation errors
           console.warn("createCircleBody failed:", e);
         }
       } else if (obj instanceof Platform && !obj.physicsBody) {
@@ -1356,7 +1606,16 @@ async function initializeStage(stageNumberOverride) {
   hideStageClearOverlay();
   if (Array.isArray(currentStage?.objects)) {
     for (const obj of currentStage.objects) {
-      if (obj.type === "ball") {
+      if (obj.type === "circle") {
+        gameObjects.push(
+          new CircleObject({
+            x: obj.x,
+            y: obj.y,
+            radius: obj.radius,
+            isStatic: obj.isStatic === true,
+          })
+        );
+      } else if (obj.type === "ball") {
         gameObjects.push(new Ball({ x: obj.x, y: obj.y, radius: obj.radius }));
       } else if (obj.type === "star") {
         gameObjects.push(new Star({ x: obj.x, y: obj.y, radius: obj.radius }));
@@ -1687,6 +1946,14 @@ function tick(timestamp = 0) {
         if (typeof obj.physicsBody.getAngle === "function") {
           obj.angle = obj.physicsBody.getAngle();
         }
+        if (
+          obj instanceof Rotor &&
+          obj.spinMode === "auto" &&
+          typeof obj.physicsBody.setAngularVelocity === "function"
+        ) {
+          const targetVelocity = typeof obj.motorSpeed === "number" ? obj.motorSpeed : 1.5;
+          obj.physicsBody.setAngularVelocity(targetVelocity);
+        }
       } else {
         // non-physical objects (stars) use normalized coords
         obj.screenX = obj.nx * canvasWidth;
@@ -1928,8 +2195,38 @@ function stopDrawing(event) {
   const stageCreateStrokeBody = currentStage?.createStrokeBody || createStrokeBody;
   const stageInitializeStrokeBody = currentStage?.initializeStrokeBody || initializeStrokeBody;
 
+  const intersectsCircleObject = gameObjects.some((obj) => {
+    if (!(obj instanceof CircleObject) && !(obj instanceof Ball)) {
+      return false;
+    }
+
+    const circleX = obj.screenX ?? (obj.nx != null ? obj.nx * canvasWidth : null);
+    const circleY = obj.screenY ?? (obj.ny != null ? obj.ny * canvasHeight : null);
+    const radius =
+      obj.physicalRadius ??
+      (obj.radius > 1 ? obj.radius : obj.radius * Math.min(canvasWidth, canvasHeight));
+
+    if (circleX == null || circleY == null || !Number.isFinite(radius) || radius <= 0) {
+      return false;
+    }
+
+    for (let i = 1; i < currentStroke.length; i += 1) {
+      const a = currentStroke[i - 1];
+      const b = currentStroke[i];
+      if (
+        segmentIntersectsCircle(
+          { x1: a.x, y1: a.y, x2: b.x, y2: b.y },
+          { x: circleX, y: circleY, radius }
+        )
+      ) {
+        return true;
+      }
+    }
+    return false;
+  });
+
   const strokeBody = stageCreateStrokeBody(currentStroke);
-  if (strokeBody) {
+  if (strokeBody && !intersectsCircleObject) {
     const floorY = (canvas?.clientHeight || 0) - 24;
     stageInitializeStrokeBody(strokeBody, floorY);
     // Prefer using the preview canvas snapshot so the finalized texture
@@ -1985,6 +2282,14 @@ stagePageButtons.forEach((button) => {
 
 initializePageFlow();
 resizeCanvas();
+
+window.addEventListener("beforeunload", () => {
+  if (playPage?.classList.contains("is-active")) {
+    updateStageUrl(currentStageNumber || getRequestedStageFromUrl());
+  } else {
+    updateStageUrl();
+  }
+});
 
 window.addEventListener("load", () => {
   document.documentElement.classList.add("js-ready");

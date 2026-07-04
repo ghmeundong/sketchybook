@@ -184,7 +184,6 @@ Positions are normalized (0..1) relative to the canvas width/height unless other
 If a stage object omits these size or style properties, the engine applies the defaults below automatically.
 
 Defaults summary
-
 - `ball.radius`: 0.02
 - `star.radius`: 0.02
 - `platform.width`: 0.1
@@ -194,22 +193,20 @@ Defaults summary
 - `text.fontFamily`: `MyeongjoFont, serif`
 
 Notes
-
 - The rendering system will generate a rough, hand-drawn texture for all of these objects when the stage loads (see `src/game/main.js`).
 - Physics bodies are created after canvas sizing; the coordinate conversion uses canvas pixel dimensions so normalized coordinates work across resolutions.
 - If you need a single rigid polygon collision body (instead of per-edge fixtures), add a `polygon` helper in `src/game/physics.js` and reference it from stage code.
 
 Adding objects to a stage
-
 - In your stage initializer (e.g. `src/game/stages/stage3.js`) include objects in the returned object:
 
 return {
-...,
-objects: [
-{ type: "ball", x:0.7, y:0.3, radius:0.02 },
-{ type: "poly", closed:true, points: [...] },
-...
-]
+  ...,
+  objects: [
+    { type: "ball", x:0.7, y:0.3, radius:0.02 },
+    { type: "poly", closed:true, points: [...] },
+    ...
+  ]
 };
 
 That's it — add new object types to `docs/OBJECTS.md` when you extend the engine.
