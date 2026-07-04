@@ -1,4 +1,5 @@
 import paperTexture from "./img/paper-texture.webp";
+import { initializeOrientationPrompt } from "./orientationPrompt.js";
 
 const startTitle = document.querySelector("[data-start-button]");
 const titleText = document.querySelector(".brand-title");
@@ -66,6 +67,7 @@ function preloadGameAssets() {
 }
 
 prepareInitialState();
+initializeOrientationPrompt();
 
 const bgImage = new Image();
 bgImage.decoding = "async";

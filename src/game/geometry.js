@@ -55,6 +55,10 @@ export function resolveCircleRadius(radius, minDim) {
   return Math.max(2, Math.round(radius * minDim * 100) / 100);
 }
 
+export function resolveVisualCircleRadius(radius, canvasW, canvasH) {
+  return resolveCircleRadius(radius, Math.min(canvasW, canvasH));
+}
+
 export function resolveRenderablePosition(object, canvasW, canvasH) {
   if (!object) {
     return { x: 0, y: 0 };

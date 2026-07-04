@@ -9,6 +9,7 @@ import {
   getPolygonTextureLayout,
   resolveCircleRadius,
   resolveRenderablePosition,
+  resolveVisualCircleRadius,
   segmentIntersectsCircle,
 } from "./geometry.js";
 import { getStagePageIndexForStage } from "./stagePages.js";
@@ -458,8 +459,8 @@ class CircleObject {
     this.textureOffset = {
       centerX: cx,
       centerY: cy,
-      width: size,
-      height: size,
+      width: diameter,
+      height: diameter,
     };
     this._lastCanvasSize = { w: canvasW, h: canvasH };
   }
@@ -500,8 +501,7 @@ class Ball {
 
   // Create an offscreen texture (hollow circle) sized for the current canvas.
   createTexture(canvasW, canvasH) {
-    const minDim = Math.min(canvasW, canvasH);
-    const r = this.physicalRadius ?? resolveCircleRadius(this.radius, minDim);
+    const r = this.physicalRadius ?? resolveVisualCircleRadius(this.radius, canvasW, canvasH);
     const diameter = Math.max(2, Math.ceil(r * 2));
     const padding = 8;
     const size = diameter + padding * 2;
@@ -530,8 +530,8 @@ class Ball {
     this.textureOffset = {
       centerX: cx,
       centerY: cy,
-      width: size,
-      height: size,
+      width: diameter,
+      height: diameter,
     };
     this._lastCanvasSize = { w: canvasW, h: canvasH };
   }
@@ -551,8 +551,6 @@ class Ball {
     const px = this.screenX != null ? this.screenX : this.nx * canvasW;
     const py = this.screenY != null ? this.screenY : this.ny * canvasH;
     const { centerX, centerY, width, height } = this.textureOffset || {};
-    const logicalScale = Math.min(canvasW / 1600, canvasH / 900) || 1;
-
     if (this.texture && centerX != null) {
       ctx.save();
       ctx.globalAlpha = 1;
@@ -560,7 +558,6 @@ class Ball {
       const angle = this.angle || 0;
       ctx.translate(px, py);
       if (angle) ctx.rotate(angle);
-      ctx.scale(logicalScale, logicalScale);
       ctx.drawImage(this.texture, -centerX, -centerY, width, height);
       ctx.restore();
       return;
@@ -569,8 +566,7 @@ class Ball {
     // Fallback: draw simple outline
     ctx.save();
     ctx.beginPath();
-    const minDim = Math.min(canvasW, canvasH);
-    const r = this.radius > 1 ? this.radius : this.radius * minDim;
+    const r = this.physicalRadius ?? resolveVisualCircleRadius(this.radius, canvasW, canvasH);
     ctx.arc(px, py, r, 0, Math.PI * 2);
     ctx.strokeStyle = "black";
     ctx.lineWidth = 2;
