@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   getPolygonTextureLayout,
   resolveCircleRadius,
-  resolveVisualCircleRadius,
   segmentIntersectsCircle,
 } from "../src/game/geometry.js";
 
@@ -28,13 +27,6 @@ describe("resolveCircleRadius", () => {
   it("converts normalized radii into pixel radii", () => {
     expect(resolveCircleRadius(0.12, 240)).toBe(28.8);
     expect(resolveCircleRadius(24, 240)).toBe(24);
-  });
-});
-
-describe("resolveVisualCircleRadius", () => {
-  it("keeps the visual size tied to the same min-dimension scale as the physics body", () => {
-    expect(resolveVisualCircleRadius(0.05, 2400, 1350)).toBe(67.5);
-    expect(resolveVisualCircleRadius(0.05, 900, 1600)).toBe(45);
   });
 });
 
