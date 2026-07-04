@@ -199,7 +199,6 @@ export function getCanvasVisualAnchor(canvas, fallbackAnchor = null) {
 
   const { width, height } = canvas;
   const imageData = context.getImageData(0, 0, width, height);
-  let totalAlpha = 0;
   let sumX = 0;
   let sumY = 0;
   let count = 0;
@@ -212,7 +211,6 @@ export function getCanvasVisualAnchor(canvas, fallbackAnchor = null) {
         sumX += x;
         sumY += y;
         count += 1;
-        totalAlpha += alpha;
       }
     }
   }

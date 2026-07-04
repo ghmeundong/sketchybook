@@ -240,7 +240,7 @@ export function createCircleBody(x, y, radius, floorY = 0, options = {}) {
   body.setBullet(!!options.bullet || true);
   body.setSleepingAllowed(false);
 
-  const fixture = body.createFixture({
+  body.createFixture({
     shape: planck.Circle(planck.Vec2(0, 0), radius),
     density: options.density ?? 0.05,
     friction: options.friction ?? 0.1,
@@ -290,7 +290,7 @@ export function createBoxBody(x, y, width, height, floorY = 0, options = {}) {
   body.setBullet(!!options.bullet);
   body.setSleepingAllowed(false);
 
-  const fixture = body.createFixture({
+  body.createFixture({
     shape: planck.Box(width / 2, height / 2),
     density: options.density ?? 0,
     friction: options.friction ?? 0.8,
@@ -450,7 +450,7 @@ export function applyImpulseToBody(body, ix, iy) {
   if (!body) return;
   try {
     body.applyLinearImpulse(planck.Vec2(ix, iy), body.getWorldCenter());
-  } catch (e) {
+  } catch {
     // fallback: try without Vec2 wrapper
     try {
       body.applyLinearImpulse({ x: ix, y: iy }, body.getWorldCenter());
@@ -465,7 +465,7 @@ export function applyImpulseAtLocalPoint(body, ix, iy, localX = 0, localY = 0) {
   try {
     const worldPoint = body.getWorldPoint({ x: localX, y: localY });
     body.applyLinearImpulse(planck.Vec2(ix, iy), worldPoint, true);
-  } catch (e) {
+  } catch {
     try {
       const worldPoint = body.getWorldPoint({ x: localX, y: localY });
       body.applyLinearImpulse({ x: ix, y: iy }, worldPoint, true);
@@ -489,7 +489,7 @@ export function applyAngularImpulseToBody(body, impulse) {
       body.setAngularVelocity(av + impulse);
       return;
     }
-  } catch (e) {
+  } catch {
     try {
       const av = body.getAngularVelocity ? body.getAngularVelocity() : 0;
       if (typeof body.setAngularVelocity === "function") body.setAngularVelocity(av + impulse);

@@ -93,7 +93,7 @@ async function handleRequest(request) {
 }
 
 export default {
-  async fetch(request, env, context) {
+  async fetch(request) {
     // CORS Preflight 요청 처리
     if (request.method === "OPTIONS") {
       return new Response(null, {

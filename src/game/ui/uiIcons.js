@@ -1,28 +1,5 @@
 import rough from "roughjs";
 
-function createCanvasIcon({ w = 60, h = 48, stroke = "#4f3b24", strokeWidth = 2.4 } = {}) {
-  const canvas = document.createElement("canvas");
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = w * dpr;
-  canvas.height = h * dpr;
-  canvas.style.width = `${w}px`;
-  canvas.style.height = `${h}px`;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    return canvas;
-  }
-
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.strokeStyle = stroke;
-  ctx.fillStyle = stroke;
-  ctx.lineWidth = strokeWidth;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-
-  return { canvas, ctx };
-}
-
 export function createRoughStarCanvas(stars = 0, { size = 24, gap = 6 } = {}) {
   const safeStars = Math.max(0, Math.min(3, Number.isFinite(stars) ? Math.round(stars) : 0));
   const canvasWidth = safeStars * size + (safeStars - 1) * gap;
