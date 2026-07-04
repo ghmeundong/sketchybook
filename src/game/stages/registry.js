@@ -183,8 +183,10 @@ const stageDefinitions = {
     title: "Stage 11",
     minEvents: 1,
     objects: [
-      { type: "star", x: 0.5, y: 0.5 },
-      { type: "text", x: 0.5, y: 0.4, text: "in update..." },
+      { type: "ball", x: 0.4, y: 0.4 },
+      { type: "platform", x: 0.4, y: 0.55 },
+      { type: "platform", x: 0.5, y: 0.55, width: 0.02, height: 0.2 },
+      { type: "star", x: 0.6, y: 0.5 },
     ],
   },
   12: {
@@ -192,10 +194,8 @@ const stageDefinitions = {
     title: "Stage 12",
     minEvents: 1,
     objects: [
-      { type: "text", x: 0.5, y: 0.2, text: "find the finish" },
-      { type: "ball", x: 0.3, y: 0.42 },
-      { type: "platform", x: 0.55, y: 0.48 },
-      { type: "star", x: 0.75, y: 0.42 },
+      { type: "star", x: 0.5, y: 0.5 },
+      { type: "text", x: 0.5, y: 0.4, text: "in update..." },
     ],
   },
   13: {
