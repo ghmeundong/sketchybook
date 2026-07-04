@@ -1,11 +1,5 @@
 let promptInstance = null;
 
-function isMobileViewport() {
-  const hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-  const isSmallScreen = window.matchMedia("(max-width: 900px)").matches;
-  return hasTouch && isSmallScreen;
-}
-
 export function shouldShowOrientationPrompt({
   hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0,
   isSmallScreen = window.matchMedia("(max-width: 900px)").matches,

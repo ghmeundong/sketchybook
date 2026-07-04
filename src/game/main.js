@@ -13,7 +13,6 @@ import {
   segmentIntersectsRect,
 } from "./geometry.js";
 import { getStagePageIndexForStage } from "./stagePages.js";
-import { getStageStarRating } from "./stageScoring.js";
 import { rescalePoint, rescalePoints } from "./resizeState.js";
 import { shouldDeferResize } from "./layoutSync.js";
 import { createActionIconCanvas } from "./ui/uiIcons.js";
@@ -24,9 +23,7 @@ import {
 } from "./ui/gameUi.js";
 import { getChallengeModePreference } from "./challengeMode.js";
 import {
-  getStoredStageScores,
   getStoredStageProgress,
-  saveStageScore,
   renderStageSelectionButtons as renderStageSelectionButtonsUI,
   renderStageScoreBadge,
 } from "./ui/stageProgress.js";
@@ -40,7 +37,6 @@ import {
   createEdgeBody,
   createPolygonBody,
   createRotorBody,
-  applyImpulseToBody,
   applyAngularImpulseToBody,
   applyImpulseAtLocalPoint,
   resetPhysicsWorld,
@@ -53,8 +49,6 @@ const playPage = document.querySelector(".page-play");
 const stageButtons = Array.from(document.querySelectorAll(".stage-card"));
 const stagePageButtons = Array.from(document.querySelectorAll("[data-stage-page]"));
 const backHomeButton = document.querySelector("[data-back-home-button]");
-const stageScoreStorageKey = "sketchybook-stage-scores";
-const stageProgressStorageKey = "sketchybook-stage-progress";
 let stagePageIndex = 0;
 const stagePageSize = 6;
 const totalStageCount = 30;
@@ -221,7 +215,7 @@ async function tryEnterFullscreen() {
 
 function createStageClearOverlay() {
   if (!board || stageClearOverlayRef.current) return;
-  const overlay = createStageClearOverlayUI({
+  createStageClearOverlayUI({
     board,
     stageClearOverlayRef,
     stageClearMessageRef,
@@ -421,7 +415,6 @@ let currentStrokePreviewLastIndex = 0;
 let previewCanvas = null;
 let previewCtx = null;
 const physicsFrameDuration = 1000 / 60;
-const renderFrameDuration = 1000 / 60;
 
 let stageCleared = false;
 let stageHasSimulated = false;
@@ -553,7 +546,7 @@ class Ball {
     this._lastCanvasSize = { w: canvasW, h: canvasH };
   }
 
-  draw(canvasW, canvasH, roughCanvasInstance) {
+  draw(canvasW, canvasH, _roughCanvasInstance) {
     if (!ctx) return;
     // Re-create texture when canvas size changes
     if (
@@ -651,7 +644,7 @@ class Star {
     this._lastCanvasSize = { w: canvasW, h: canvasH };
   }
 
-  draw(canvasW, canvasH, roughCanvasInstance) {
+  draw(canvasW, canvasH, _roughCanvasInstance) {
     if (!ctx || this.collected) return;
     if (
       !this.texture ||
@@ -882,7 +875,7 @@ class Segment {
     this._lastCanvasSize = { w: canvasW, h: canvasH };
   }
 
-  draw(canvasW, canvasH, roughCanvasInstance) {
+  draw(canvasW, canvasH, _roughCanvasInstance) {
     if (!ctx) return;
     if (
       !this.texture ||
@@ -1186,7 +1179,7 @@ class Rotor {
         const markerCanvas = document.createElement("canvas");
         markerCanvas.width = markerSize * 2;
         markerCanvas.height = markerSize * 2;
-        const markerCtx = markerCanvas.getContext("2d");
+        markerCanvas.getContext("2d");
         const markerRough = rough.canvas(markerCanvas);
         markerRough.circle(markerSize, markerSize, markerSize * 1.4, {
           stroke: "#c92d39",
@@ -1285,7 +1278,7 @@ class Rotor {
       const markerCanvas = document.createElement("canvas");
       markerCanvas.width = markerSize * 2;
       markerCanvas.height = markerSize * 2;
-      const markerCtx = markerCanvas.getContext("2d");
+      markerCanvas.getContext("2d");
       const markerRough = rough.canvas(markerCanvas);
       markerRough.circle(markerSize, markerSize, markerSize * 1.4, {
         stroke: "#c92d39",
@@ -1364,7 +1357,7 @@ class Rotor {
     }
   }
 
-  draw(canvasW, canvasH, roughCanvasInstance) {
+  draw(canvasW, canvasH, _roughCanvasInstance) {
     if (!ctx) return;
     if (
       !this.texture ||
@@ -1495,7 +1488,7 @@ class TextLabel {
     this._lastCanvasSize = { w: canvasW, h: canvasH };
   }
 
-  draw(canvasW, canvasH, roughCanvasInstance) {
+  draw(canvasW, canvasH, _roughCanvasInstance) {
     if (!ctx) return;
     if (
       !this.texture ||
@@ -1927,7 +1920,6 @@ function getPoint(event) {
 }
 
 function drawStroke(start, end, width = 8, options = {}) {
-  const targetCanvas = options.targetCanvas || canvas;
   const targetRough = options.roughCanvasOverride || roughCanvas;
   if (!targetRough || !coordinateSystem) {
     return;
@@ -2130,7 +2122,6 @@ function drawPhysicsStroke(stroke) {
 
 function tick(timestamp = 0) {
   // Stop physics when not in fullscreen mode
-  const isFullscreen = document.fullscreenElement || window.innerHeight === screen.height;
   const isGameActive = playPage?.classList.contains("is-active");
 
   if (!isGameActive) {
@@ -2139,7 +2130,6 @@ function tick(timestamp = 0) {
     return;
   }
 
-  const width = canvas?.clientWidth || 0;
   const height = canvas?.clientHeight || 0;
 
   const floorY = height - 24;

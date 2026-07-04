@@ -339,14 +339,12 @@ export function createGameLoop({
   }
 
   function tick(timestamp = 0) {
-    const isFullscreen = document.fullscreenElement || window.innerHeight === screen.height;
     const isGameActive = playPage?.classList.contains("is-active");
     if (!isGameActive) {
       animationFrameId = window.requestAnimationFrame(tick);
       return;
     }
 
-    const width = canvas?.clientWidth || 0;
     const height = canvas?.clientHeight || 0;
     const floorY = height - 24;
 

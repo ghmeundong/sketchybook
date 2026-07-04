@@ -12,7 +12,6 @@ export function createStageClearOverlay({
   board,
   stageClearOverlayRef,
   stageClearMessageRef,
-  gameState,
   onExit,
   onRetry,
   onNext,
@@ -147,8 +146,6 @@ export function showStageClearOverlay({
   stageButtons,
   canvas,
   stageNumber,
-  stageScores,
-  stageProgress,
   onAfterSave,
 }) {
   if (!overlay || !message) return;
