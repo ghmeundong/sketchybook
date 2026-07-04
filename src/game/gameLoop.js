@@ -13,7 +13,6 @@ import {
   resetPhysicsWorld,
 } from "./physics.js";
 import { createStrokeTexture } from "./strokes.js";
-import { resolveCircleRadius } from "./geometry.js";
 
 export function createGameLoop({
   board,
@@ -237,7 +236,7 @@ export function createGameLoop({
           const px = obj.nx * gameState.canvasWidth;
           const py = obj.ny * gameState.canvasHeight;
           const minDim = Math.min(gameState.canvasWidth, gameState.canvasHeight);
-          const rPixels = resolveCircleRadius(obj.radius, minDim);
+          const rPixels = obj.radius > 1 ? obj.radius : Math.max(2, obj.radius * minDim);
           try {
             const body = createCircleBody(px, py, rPixels, floorYForPhysics, { density: 1 });
             obj.physicsBody = body;

@@ -26,14 +26,14 @@ function createPrompt() {
   overlay.setAttribute("aria-live", "polite");
   overlay.setAttribute("aria-label", "Rotate device to landscape");
   overlay.innerHTML = `
-    <div class="orientation-prompt__card">
-      <p class="orientation-prompt__eyebrow">Mobile play</p>
-      <h2 class="orientation-prompt__title">Please rotate your device</h2>
-      <p class="orientation-prompt__body">
+    <div class="orientation-prompt-card">
+      <p class="orientation-prompt-eyebrow">Mobile play</p>
+      <h2 class="orientation-prompt-title">Please rotate your device</h2>
+      <p class="orientation-prompt-body">
         Sketchybook plays best in landscape mode. Turn your phone sideways to continue.
       </p>
-      <div class="orientation-prompt__icon" aria-hidden="true">
-        <span class="orientation-prompt__device"></span>
+      <div class="orientation-prompt-icon" aria-hidden="true">
+        <span class="orientation-prompt-device"></span>
       </div>
     </div>
   `;

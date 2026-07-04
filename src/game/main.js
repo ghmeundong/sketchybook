@@ -9,11 +9,12 @@ import {
   getPolygonTextureLayout,
   resolveCircleRadius,
   resolveRenderablePosition,
-  resolveVisualCircleRadius,
   segmentIntersectsCircle,
 } from "./geometry.js";
 import { getStagePageIndexForStage } from "./stagePages.js";
 import { getStageStarRating } from "./stageScoring.js";
+import { rescalePoint, rescalePoints } from "./resizeState.js";
+import { shouldDeferResize } from "./layoutSync.js";
 import { createActionIconCanvas } from "./ui/uiIcons.js";
 import {
   createStageClearOverlay as createStageClearOverlayUI,
@@ -459,8 +460,8 @@ class CircleObject {
     this.textureOffset = {
       centerX: cx,
       centerY: cy,
-      width: diameter,
-      height: diameter,
+      width: size,
+      height: size,
     };
     this._lastCanvasSize = { w: canvasW, h: canvasH };
   }
@@ -501,7 +502,8 @@ class Ball {
 
   // Create an offscreen texture (hollow circle) sized for the current canvas.
   createTexture(canvasW, canvasH) {
-    const r = this.physicalRadius ?? resolveVisualCircleRadius(this.radius, canvasW, canvasH);
+    const minDim = Math.min(canvasW, canvasH);
+    const r = this.physicalRadius ?? resolveCircleRadius(this.radius, minDim);
     const diameter = Math.max(2, Math.ceil(r * 2));
     const padding = 8;
     const size = diameter + padding * 2;
@@ -530,8 +532,8 @@ class Ball {
     this.textureOffset = {
       centerX: cx,
       centerY: cy,
-      width: diameter,
-      height: diameter,
+      width: size,
+      height: size,
     };
     this._lastCanvasSize = { w: canvasW, h: canvasH };
   }
@@ -551,12 +553,16 @@ class Ball {
     const px = this.screenX != null ? this.screenX : this.nx * canvasW;
     const py = this.screenY != null ? this.screenY : this.ny * canvasH;
     const { centerX, centerY, width, height } = this.textureOffset || {};
+    const logicalScale = Math.min(canvasW / 1600, canvasH / 900) || 1;
+
     if (this.texture && centerX != null) {
       ctx.save();
       ctx.globalAlpha = 1;
+      // apply rotation about center so the radial mark shows rolling
       const angle = this.angle || 0;
       ctx.translate(px, py);
       if (angle) ctx.rotate(angle);
+      ctx.scale(logicalScale, logicalScale);
       ctx.drawImage(this.texture, -centerX, -centerY, width, height);
       ctx.restore();
       return;
@@ -565,7 +571,8 @@ class Ball {
     // Fallback: draw simple outline
     ctx.save();
     ctx.beginPath();
-    const r = this.physicalRadius ?? resolveVisualCircleRadius(this.radius, canvasW, canvasH);
+    const minDim = Math.min(canvasW, canvasH);
+    const r = this.radius > 1 ? this.radius : this.radius * minDim;
     ctx.arc(px, py, r, 0, Math.PI * 2);
     ctx.strokeStyle = "black";
     ctx.lineWidth = 2;
@@ -1430,8 +1437,17 @@ function resizeCanvas() {
     return;
   }
 
-  canvasWidth = board.clientWidth;
-  canvasHeight = board.clientHeight;
+  const measuredWidth = board.clientWidth;
+  const measuredHeight = board.clientHeight;
+
+  if (shouldDeferResize(measuredWidth, measuredHeight)) {
+    return;
+  }
+
+  const previousCanvasWidth = canvasWidth;
+  const previousCanvasHeight = canvasHeight;
+  canvasWidth = measuredWidth;
+  canvasHeight = measuredHeight;
   const dpr = window.devicePixelRatio || 1;
 
   canvas.width = canvasWidth * dpr;
@@ -1473,13 +1489,132 @@ function resizeCanvas() {
   previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-  // If the stage was loaded but not yet simulated, recreate physics bodies
-  // when the canvas size changes (e.g. entering fullscreen after refresh).
+  const needsLayoutRemap =
+    previousCanvasWidth > 0 &&
+    previousCanvasHeight > 0 &&
+    (previousCanvasWidth !== canvasWidth || previousCanvasHeight !== canvasHeight);
+
+  if (needsLayoutRemap && gameObjects.length) {
+    for (const obj of gameObjects) {
+      if (obj instanceof Ball || obj instanceof CircleObject || obj instanceof Star) {
+        const previousX = obj.screenX ?? (obj.nx != null ? obj.nx * previousCanvasWidth : null);
+        const previousY = obj.screenY ?? (obj.ny != null ? obj.ny * previousCanvasHeight : null);
+        if (previousX != null && previousY != null) {
+          const remapped = rescalePoint(
+            { x: previousX, y: previousY },
+            previousCanvasWidth,
+            previousCanvasHeight,
+            canvasWidth,
+            canvasHeight
+          );
+          obj.screenX = remapped.x;
+          obj.screenY = remapped.y;
+          obj.nx = remapped.x / canvasWidth;
+          obj.ny = remapped.y / canvasHeight;
+        }
+      }
+
+      if (obj instanceof Platform) {
+        const previousX = obj.screenX ?? (obj.nx != null ? obj.nx * previousCanvasWidth : null);
+        const previousY = obj.screenY ?? (obj.ny != null ? obj.ny * previousCanvasHeight : null);
+        if (previousX != null && previousY != null) {
+          const remapped = rescalePoint(
+            { x: previousX, y: previousY },
+            previousCanvasWidth,
+            previousCanvasHeight,
+            canvasWidth,
+            canvasHeight
+          );
+          obj.screenX = remapped.x;
+          obj.screenY = remapped.y;
+          obj.nx = remapped.x / canvasWidth;
+          obj.ny = remapped.y / canvasHeight;
+        }
+      }
+
+      if (obj instanceof Segment) {
+        const remappedPoints = rescalePoints(
+          [
+            { x: obj.x1 * previousCanvasWidth, y: obj.y1 * previousCanvasHeight },
+            { x: obj.x2 * previousCanvasWidth, y: obj.y2 * previousCanvasHeight },
+          ],
+          previousCanvasWidth,
+          previousCanvasHeight,
+          canvasWidth,
+          canvasHeight
+        );
+        obj.x1 = remappedPoints[0].x / canvasWidth;
+        obj.y1 = remappedPoints[0].y / canvasHeight;
+        obj.x2 = remappedPoints[1].x / canvasWidth;
+        obj.y2 = remappedPoints[1].y / canvasHeight;
+        obj.texture = null;
+        obj.textureOffset = null;
+        obj._lastCanvasSize = null;
+      }
+
+      if (obj instanceof ComplexObject) {
+        if (Array.isArray(obj.normalizedPoints) && obj.normalizedPoints.length) {
+          const remappedPoints = rescalePoints(
+            obj.normalizedPoints.map((point) => ({
+              x: point.x * previousCanvasWidth,
+              y: point.y * previousCanvasHeight,
+            })),
+            previousCanvasWidth,
+            previousCanvasHeight,
+            canvasWidth,
+            canvasHeight
+          );
+          obj.normalizedPoints = remappedPoints.map((point) => ({
+            x: point.x / canvasWidth,
+            y: point.y / canvasHeight,
+          }));
+        }
+        obj.texture = null;
+        obj.textureOffset = null;
+        obj.textureAnchor = null;
+        obj._lastCanvasSize = null;
+      }
+
+      if (obj instanceof Rotor) {
+        if (obj.screenX != null && obj.screenY != null) {
+          const remapped = rescalePoint(
+            { x: obj.screenX, y: obj.screenY },
+            previousCanvasWidth,
+            previousCanvasHeight,
+            canvasWidth,
+            canvasHeight
+          );
+          obj.screenX = remapped.x;
+          obj.screenY = remapped.y;
+        }
+        obj.cx = obj.screenX != null ? obj.screenX / canvasWidth : obj.cx;
+        obj.cy = obj.screenY != null ? obj.screenY / canvasHeight : obj.cy;
+        obj.axisX = obj.axisX != null ? obj.axisX : obj.cx;
+        obj.axisY = obj.axisY != null ? obj.axisY : obj.cy;
+        obj.texture = null;
+        obj.textureOffset = null;
+        obj._lastCanvasSize = null;
+      }
+    }
+  }
+
+  if (needsLayoutRemap && currentStroke?.length) {
+    currentStroke = currentStroke.map((point) =>
+      rescalePoint(point, previousCanvasWidth, previousCanvasHeight, canvasWidth, canvasHeight)
+    );
+    currentStrokePreviewLastIndex = 0;
+    currentStrokePreviewDirty = false;
+    if (previewCtx) previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+  }
+
   const shouldRebuildPhysics =
-    currentStage &&
-    !stageHasSimulated &&
-    physicsStrokes.length === 0 &&
-    gameObjects.some((obj) => obj.physicsBody || (obj.physicsBodies && obj.physicsBodies.length));
+    needsLayoutRemap ||
+    (currentStage &&
+      !stageHasSimulated &&
+      physicsStrokes.length === 0 &&
+      gameObjects.some(
+        (obj) => obj.physicsBody || (obj.physicsBodies && obj.physicsBodies.length)
+      ));
   if (shouldRebuildPhysics) {
     resetPhysicsWorld();
     for (const obj of gameObjects) {
@@ -1490,9 +1625,17 @@ function resizeCanvas() {
         obj.physicsBodies = null;
       }
     }
+    for (const stroke of physicsStrokes) {
+      stroke.physicsBody = null;
+      stroke.physicsSegments = [];
+      stroke.grounded = false;
+      stroke.angle = 0;
+      stroke.angularVelocity = 0;
+      stroke.texture = null;
+      stroke.textureOffset = null;
+    }
   }
 
-  // Ensure circular game object physics bodies exist now that canvas size is known
   const floorYForPhysics = canvas?.clientHeight ? canvas.clientHeight - 24 : canvasHeight - 24;
   if (gameObjects && gameObjects.length) {
     for (const obj of gameObjects) {
@@ -2276,7 +2419,12 @@ stagePageButtons.forEach((button) => {
 });
 
 initializePageFlow();
-resizeCanvas();
+window.requestAnimationFrame(() => {
+  resizeCanvas();
+  window.requestAnimationFrame(() => {
+    resizeCanvas();
+  });
+});
 
 window.addEventListener("beforeunload", () => {
   if (playPage?.classList.contains("is-active")) {
