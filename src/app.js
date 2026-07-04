@@ -1,4 +1,4 @@
-import paperTexture from "./img/paper-texture.jpg";
+import paperTexture from "./img/paper-texture.webp";
 
 const startTitle = document.querySelector("[data-start-button]");
 const titleText = document.querySelector(".brand-title");
