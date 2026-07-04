@@ -43,6 +43,20 @@
   transform: translateY(-2px) rotate(-1deg);
 }
 
+.stage-card.is-disabled,
+.stage-card:disabled {
+  opacity: 0.45;
+  filter: grayscale(0.55);
+  cursor: not-allowed;
+  transform: none;
+  pointer-events: none;
+}
+
+.stage-card.is-disabled:hover,
+.stage-card:disabled:hover {
+  transform: none;
+}
+
 .stage-card svg {
   position: absolute;
   inset: 0;

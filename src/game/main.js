@@ -28,6 +28,7 @@ const selectionPage = document.querySelector(".page-selection");
 const playPage = document.querySelector(".page-play");
 const stageButtons = Array.from(document.querySelectorAll(".stage-card"));
 const stageScoreStorageKey = "sketchybook-stage-scores";
+const stageProgressStorageKey = "sketchybook-stage-progress";
 
 let stageClearOverlay = null;
 let stageClearMessage = null;
@@ -53,6 +54,50 @@ function getStoredStageScores() {
   }
 }
 
+function getStoredStageProgress() {
+  const storedScores = getStoredStageScores();
+  const clearedStageNumbers = Object.keys(storedScores)
+    .map((key) => Number(key))
+    .filter((value) => Number.isInteger(value) && value >= 1 && value <= 6);
+
+  if (clearedStageNumbers.length > 0) {
+    const highestClearedStage = Math.max(...clearedStageNumbers);
+    return Math.min(6, highestClearedStage + 1);
+  }
+
+  try {
+    const raw = window.localStorage.getItem(stageProgressStorageKey);
+    if (!raw) return 1;
+    const parsed = Number(raw);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 6) {
+      return 1;
+    }
+    return parsed;
+  } catch (error) {
+    console.warn("Failed to read stage progress:", error);
+    return 1;
+  }
+}
+
+function saveStageProgress(stageNumber) {
+  const safeStageNumber = Number(stageNumber);
+  if (!Number.isInteger(safeStageNumber) || safeStageNumber < 1) {
+    return;
+  }
+
+  const nextUnlockedStage = Math.min(6, Math.max(1, safeStageNumber + 1));
+  const currentUnlockedStage = getStoredStageProgress();
+  if (currentUnlockedStage >= nextUnlockedStage) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(stageProgressStorageKey, String(nextUnlockedStage));
+  } catch (error) {
+    console.warn("Failed to save stage progress:", error);
+  }
+}
+
 function saveStageScore(stageNumber, stars) {
   const safeStageNumber = Number(stageNumber);
   const safeStars = Math.max(0, Math.min(3, Number.isFinite(stars) ? Math.round(stars) : 0));
@@ -60,16 +105,28 @@ function saveStageScore(stageNumber, stars) {
 
   const storedScores = getStoredStageScores();
   const previousScore = Number(storedScores[safeStageNumber]);
-  if (Number.isFinite(previousScore) && previousScore >= safeStars) {
-    return;
+  const shouldOverwrite = !Number.isFinite(previousScore) || previousScore < safeStars;
+  if (shouldOverwrite) {
+    const nextScores = { ...storedScores, [safeStageNumber]: safeStars };
+    try {
+      window.localStorage.setItem(stageScoreStorageKey, JSON.stringify(nextScores));
+    } catch (error) {
+      console.warn("Failed to save stage score:", error);
+    }
   }
 
-  const nextScores = { ...storedScores, [safeStageNumber]: safeStars };
-  try {
-    window.localStorage.setItem(stageScoreStorageKey, JSON.stringify(nextScores));
-  } catch (error) {
-    console.warn("Failed to save stage score:", error);
-  }
+  saveStageProgress(safeStageNumber);
+}
+
+function renderStageSelectionButtons() {
+  const unlockedStage = getStoredStageProgress();
+  stageButtons.forEach((button) => {
+    const stageNumber = Number(button.dataset.stage);
+    const isUnlocked = stageNumber <= unlockedStage;
+    button.disabled = !isUnlocked;
+    button.classList.toggle("is-disabled", !isUnlocked);
+    button.setAttribute("aria-disabled", String(!isUnlocked));
+  });
 }
 
 function renderStageScoreBadge(card, stageNumber) {
@@ -127,6 +184,7 @@ stageButtons.forEach((card) => {
   const stageNumber = Number(card.dataset.stage);
   renderStageScoreBadge(card, stageNumber);
 });
+renderStageSelectionButtons();
 
 function resetStageState() {
   if (animationFrameId) {
@@ -345,6 +403,7 @@ function showStageClearOverlay(message = "Stage Cleared!") {
   renderStageScoreStars(stars);
   if (currentStageNumber) {
     saveStageScore(currentStageNumber, stars);
+    renderStageSelectionButtons();
     const stageButton = stageButtons.find(
       (button) => Number(button.dataset.stage) === currentStageNumber
     );
@@ -388,7 +447,7 @@ function createGameExitButton() {
   gameExitButton.style.alignItems = "center";
   gameExitButton.style.justifyContent = "center";
 
-  gameExitButton.appendChild(createActionIconCanvas("exit", { w: 48, h: 32, strokeWidth: 2.5 }));
+  gameExitButton.appendChild(createActionIconCanvas("exit", { w: 60, h: 48, strokeWidth: 2.5 }));
   gameExitButton.addEventListener("click", async () => {
     hideStageClearOverlay();
     setActivePage(selectionPage);
@@ -425,7 +484,7 @@ function createGameRetryButton() {
   gameRetryButton.style.alignItems = "center";
   gameRetryButton.style.justifyContent = "center";
 
-  gameRetryButton.appendChild(createActionIconCanvas("retry", { w: 48, h: 32, strokeWidth: 2.5 }));
+  gameRetryButton.appendChild(createActionIconCanvas("retry", { w: 60, h: 48, strokeWidth: 2.5 }));
   gameRetryButton.addEventListener("click", async () => {
     hideStageClearOverlay();
     await initializeStage(currentStageNumber);
