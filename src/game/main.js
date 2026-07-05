@@ -2,6 +2,7 @@ import rough from "roughjs";
 import "../style.css";
 import "../styles/game.css";
 import paperTexture from "../img/paper-texture.webp";
+import { initializeOrientationPrompt } from "./orientationPrompt.js";
 import { createCoordinateSystem } from "./coordinates.js";
 import { loadStage } from "./stageLoader.js";
 import {
@@ -147,6 +148,7 @@ if (backHomeButton) {
 }
 
 refreshStageSelectionButtons();
+initializeOrientationPrompt();
 
 function resetStageState() {
   if (animationFrameId) {
