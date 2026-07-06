@@ -86,7 +86,7 @@ function createPlanckBody(stroke, floorY, options = {}) {
 
     const fixture = body.createFixture({
       shape: planck.Box(length / 2, thickness / 2, planck.Vec2(midpointX, midpointY), angle),
-      density: 5,
+      density: 10,
       friction: 0.8,
       restitution: 0,
     });
@@ -255,7 +255,7 @@ export function createCircleBody(x, y, radius, floorY = 0, options = {}) {
 
   body.createFixture({
     shape: planck.Circle(planck.Vec2(0, 0), radius),
-    density: options.density ?? 0.05,
+    density: options.density ?? 1,
     friction: options.friction ?? 0.1,
     restitution: options.restitution ?? 0.1,
   });
