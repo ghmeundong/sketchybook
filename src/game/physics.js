@@ -9,7 +9,11 @@ let physicsFloorY = null;
 let physicsLeftWall = null;
 let physicsRightWall = null;
 
-function ensurePhysicsGround(floorY) {
+function ensurePhysicsGround(floorY, options = {}) {
+  if (options.skipGround) {
+    return;
+  }
+
   if (physicsGround && physicsFloorY === floorY) {
     return;
   }
@@ -56,8 +60,8 @@ function ensurePhysicsGround(floorY) {
   physicsFloorY = floorY;
 }
 
-function createPlanckBody(stroke, floorY) {
-  ensurePhysicsGround(floorY);
+function createPlanckBody(stroke, floorY, options = {}) {
+  ensurePhysicsGround(floorY, options);
 
   const body = physicsWorld.createBody({
     type: "dynamic",
@@ -120,7 +124,11 @@ function syncStrokeFromPhysics(stroke) {
 
   stroke.centerOfMass.x = stroke.body.x;
   stroke.centerOfMass.y = stroke.body.y;
-  stroke.grounded = lowestPoint.y >= physicsGround.getPosition().y - 1;
+  if (physicsGround && typeof physicsGround.getPosition === "function") {
+    stroke.grounded = lowestPoint.y >= physicsGround.getPosition().y - 1;
+  } else {
+    stroke.grounded = false;
+  }
 
   if (stroke.grounded && stroke.angularVelocity >= 0) {
     stroke.angularVelocity = -Math.abs(stroke.angularVelocity || 0.01) - 0.001;
@@ -197,7 +205,7 @@ export function createStrokeBody(points) {
   };
 }
 
-export function initializeStrokeBody(stroke, floorY = 0) {
+export function initializeStrokeBody(stroke, floorY = 0, options = {}) {
   if (!stroke || !stroke.points?.length || !stroke.body) {
     return stroke;
   }
@@ -211,14 +219,14 @@ export function initializeStrokeBody(stroke, floorY = 0) {
   stroke.centerOfMass.y = stroke.body.y;
 
   if (!stroke.physicsBody && floorY) {
-    createPlanckBody(stroke, floorY);
+    createPlanckBody(stroke, floorY, options);
   }
 
   return stroke;
 }
 
 export function createCircleBody(x, y, radius, floorY = 0, options = {}) {
-  ensurePhysicsGround(floorY);
+  ensurePhysicsGround(floorY, options);
 
   const shouldCreateRevoluteJoint = Boolean(
     options.jointAnchor ||
@@ -284,7 +292,7 @@ export function createCircleBody(x, y, radius, floorY = 0, options = {}) {
 }
 
 export function createBoxBody(x, y, width, height, floorY = 0, options = {}) {
-  ensurePhysicsGround(floorY);
+  ensurePhysicsGround(floorY, options);
 
   const body = physicsWorld.createBody({
     type: options.type ?? "static",
@@ -306,7 +314,7 @@ export function createBoxBody(x, y, width, height, floorY = 0, options = {}) {
 }
 
 export function createEdgeBody(x1, y1, x2, y2, floorY = 0, options = {}) {
-  ensurePhysicsGround(floorY);
+  ensurePhysicsGround(floorY, options);
 
   const body = physicsWorld.createBody({
     type: options.type ?? "static",
@@ -331,7 +339,7 @@ export function createPolygonBody(points, floorY = 0, options = {}) {
     return null;
   }
 
-  ensurePhysicsGround(floorY);
+  ensurePhysicsGround(floorY, options);
 
   const pts = points.map((p) => ({ x: p.x, y: p.y }));
   const center = pts.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
@@ -369,7 +377,7 @@ export function createRotorBody(points, axis = {}, floorY = 0, options = {}) {
     return null;
   }
 
-  ensurePhysicsGround(floorY);
+  ensurePhysicsGround(floorY, options);
 
   const pts = points.map((p) => ({ x: p.x, y: p.y }));
   const center = pts.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
