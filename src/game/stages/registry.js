@@ -92,7 +92,6 @@ const stageDefinitions = {
       },
       { type: "ball", x: 0.3, y: 0.6 },
       { type: "platform", x: 0.3, y: 0.65 },
-      { type: "platform", x: 0.7, y: 0.75 },
       { type: "star", x: 0.7, y: 0.7 },
     ],
   },
@@ -119,7 +118,6 @@ const stageDefinitions = {
       },
       { type: "ball", x: 0.3, y: 0.6 },
       { type: "platform", x: 0.3, y: 0.65 },
-      { type: "platform", x: 0.7, y: 0.75 },
       { type: "star", x: 0.7, y: 0.7 },
     ],
   },
@@ -205,8 +203,22 @@ const stageDefinitions = {
     title: "Stage 13",
     minEvents: 1,
     objects: [
-      { type: "star", x: 0.5, y: 0.5 },
-      { type: "text", x: 0.5, y: 0.4, text: "in update..." },
+      { type: "text", x: 0.4, y: 0.4, text: "wait, portals!" },
+      { type: "ball", x: 0.3, y: 0.5 },
+      { type: "platform", x: 0.3, y: 0.55 },
+      {
+        type: "portal",
+        x: 0.375,
+        y: 0.5,
+        portalId: "orange",
+      },
+      {
+        type: "portal",
+        x: 0.675,
+        y: 0.4,
+        portalId: "blue",
+      },
+      { type: "star", x: 0.7, y: 0.4 },
     ],
   },
   14: {
@@ -214,10 +226,8 @@ const stageDefinitions = {
     title: "Stage 14",
     minEvents: 1,
     objects: [
-      { type: "text", x: 0.5, y: 0.2, text: "edge the turn" },
-      { type: "ball", x: 0.2, y: 0.45 },
-      { type: "platform", x: 0.5, y: 0.6 },
-      { type: "star", x: 0.75, y: 0.42 },
+      { type: "star", x: 0.5, y: 0.5 },
+      { type: "text", x: 0.5, y: 0.4, text: "in update..." },
     ],
   },
   15: {

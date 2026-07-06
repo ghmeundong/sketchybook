@@ -1,3 +1,4 @@
+import planck from "planck";
 import rough from "roughjs";
 import "../style.css";
 import "../styles/game.css";
@@ -747,6 +748,100 @@ class Platform {
       ctx.save();
       ctx.globalAlpha = 1;
       ctx.drawImage(this.texture, px - width / 2, py - height / 2, width, height);
+      ctx.restore();
+    }
+  }
+}
+
+class Portal {
+  static portalColors = {
+    orange: "orange",
+    blue: "dodgerblue",
+    green: "limegreen",
+    purple: "mediumpurple",
+    portal: "purple",
+  };
+
+  static getColorForPortalId(portalId) {
+    if (typeof portalId !== "string") {
+      return Portal.portalColors.portal;
+    }
+    return Portal.portalColors[portalId] ?? Portal.portalColors.portal;
+  }
+
+  constructor(opts = {}) {
+    const { x, y, width, height, color, portalId } = opts || {};
+    this.nx = typeof x === "number" ? x : 0.5;
+    this.ny = typeof y === "number" ? y : 0.5;
+    this.width = typeof width === "number" ? width : 0.02;
+    this.height = typeof height === "number" ? height : 0.1;
+    this.portalId = typeof portalId === "string" ? portalId : "portal";
+    this.color =
+      typeof color === "string" && !this.portalId
+        ? color
+        : Portal.getColorForPortalId(this.portalId);
+    this.texture = null;
+    this.textureOffset = null;
+    this._lastCanvasSize = null;
+  }
+
+  createTexture(canvasW, canvasH) {
+    const w = this.width > 1 ? this.width : Math.max(4, this.width * canvasW);
+    const h = this.height > 1 ? this.height : Math.max(4, this.height * canvasH);
+    const padding = 8;
+    const sizeW = Math.ceil(w + padding * 2);
+    const sizeH = Math.ceil(h + padding * 2);
+
+    const dpr = window.devicePixelRatio || 1;
+    const off = document.createElement("canvas");
+    off.width = sizeW * dpr;
+    off.height = sizeH * dpr;
+    off.style.width = `${sizeW}px`;
+    off.style.height = `${sizeH}px`;
+    const offCtx = off.getContext("2d");
+    offCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    offCtx.clearRect(0, 0, sizeW, sizeH);
+
+    const offRough = rough.canvas(off);
+    const cx = sizeW / 2;
+    const cy = sizeH / 2;
+    offRough.ellipse(cx, cy, w, h, {
+      stroke: this.color,
+      strokeWidth: 4,
+      fill: "transparent",
+      roughness: 1.5,
+      bowing: 1,
+    });
+
+    this.texture = off;
+    this.textureOffset = {
+      centerX: cx,
+      centerY: cy,
+      width: sizeW,
+      height: sizeH,
+    };
+    this._lastCanvasSize = { w: canvasW, h: canvasH };
+  }
+
+  draw(canvasW, canvasH) {
+    if (!ctx) return;
+    if (
+      !this.texture ||
+      !this._lastCanvasSize ||
+      this._lastCanvasSize.w !== canvasW ||
+      this._lastCanvasSize.h !== canvasH
+    ) {
+      this.createTexture(canvasW, canvasH);
+    }
+
+    const px = this.screenX != null ? this.screenX : this.nx * canvasW;
+    const py = this.screenY != null ? this.screenY : this.ny * canvasH;
+    const { centerX, centerY, width, height } = this.textureOffset || {};
+
+    if (this.texture && centerX != null && width != null && height != null) {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.drawImage(this.texture, px - centerX, py - centerY, width, height);
       ctx.restore();
     }
   }
@@ -1866,6 +1961,17 @@ async function initializeStage(stageNumberOverride) {
             height: obj.height,
           })
         );
+      } else if (obj.type === "portal") {
+        gameObjects.push(
+          new Portal({
+            x: obj.x,
+            y: obj.y,
+            width: obj.width,
+            height: obj.height,
+            color: obj.color,
+            portalId: obj.portalId,
+          })
+        );
       } else if (obj.type === "segment") {
         gameObjects.push(
           new Segment({
@@ -2200,6 +2306,59 @@ function tick(timestamp = 0) {
   // Check collisions between balls and stars (simple circle overlap)
   if (gameObjects && gameObjects.length) {
     const balls = gameObjects.filter((g) => g instanceof Ball);
+    const portals = gameObjects.filter((g) => g instanceof Portal);
+
+    for (const ball of balls) {
+      if (ball.physicsBody) {
+        const bx = ball.screenX != null ? ball.screenX : ball.nx * canvasWidth;
+        const by = ball.screenY != null ? ball.screenY : ball.ny * canvasHeight;
+        const br =
+          ball.physicalRadius ??
+          (ball.radius > 1 ? ball.radius : ball.radius * Math.min(canvasWidth, canvasHeight));
+
+        for (const portal of portals) {
+          if (ball._portalCooldownPortalId === portal.portalId) {
+            continue;
+          }
+
+          const px = portal.screenX != null ? portal.screenX : portal.nx * canvasWidth;
+          const py = portal.screenY != null ? portal.screenY : portal.ny * canvasHeight;
+          const pw = portal.width > 1 ? portal.width : portal.width * canvasWidth;
+          const ph = portal.height > 1 ? portal.height : portal.height * canvasHeight;
+          const rx = pw / 2 + br;
+          const ry = ph / 2 + br;
+          const dx = bx - px;
+          const dy = by - py;
+          if (rx > 0 && ry > 0 && (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) <= 1) {
+            const target = portals.find((other) => other.portalId !== portal.portalId);
+            if (target && ball.physicsBody) {
+              const velocity = ball.physicsBody.getLinearVelocity();
+              const angularVelocity =
+                typeof ball.physicsBody.getAngularVelocity === "function"
+                  ? ball.physicsBody.getAngularVelocity()
+                  : 0;
+              const targetX = target.screenX != null ? target.screenX : target.nx * canvasWidth;
+              const targetY = target.screenY != null ? target.screenY : target.ny * canvasHeight;
+              try {
+                ball.physicsBody.setTransform(
+                  planck.Vec2(targetX, targetY),
+                  ball.physicsBody.getAngle()
+                );
+                ball.physicsBody.setLinearVelocity(velocity);
+                if (typeof ball.physicsBody.setAngularVelocity === "function") {
+                  ball.physicsBody.setAngularVelocity(angularVelocity);
+                }
+                ball._portalCooldownPortalId = target.portalId;
+              } catch (e) {
+                console.warn("portal teleport failed:", e);
+              }
+            }
+            break;
+          }
+        }
+      }
+    }
+
     const stars = gameObjects.filter((g) => g instanceof Star && !g.collected);
     for (const star of stars) {
       for (const ball of balls) {
