@@ -19,7 +19,12 @@ function ensurePhysicsGround(floorY) {
   if (physicsRightWall) physicsWorld.destroyBody(physicsRightWall);
 
   // 1. 물리 시뮬레이션은 CSS 픽셀 좌표계를 기준으로 합니다.
-  const canvas = typeof document !== "undefined" ? document.querySelector("canvas") : null;
+  // Prefer the main game canvas explicitly to avoid accidentally selecting
+  // preview or other canvases that may be present in the DOM.
+  const canvas =
+    typeof document !== "undefined"
+      ? document.querySelector("#game-canvas") || document.querySelector("canvas")
+      : null;
   const fallbackWidth =
     typeof window !== "undefined" && Number.isFinite(window.innerWidth) ? window.innerWidth : 800;
   const gameWidth = canvas ? canvas.clientWidth : fallbackWidth;

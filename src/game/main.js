@@ -449,10 +449,14 @@ class CircleObject {
     const padding = 8;
     const size = diameter + padding * 2;
 
+    const dpr = window.devicePixelRatio || 1;
     const off = document.createElement("canvas");
-    off.width = size;
-    off.height = size;
+    off.width = size * dpr;
+    off.height = size * dpr;
+    off.style.width = `${size}px`;
+    off.style.height = `${size}px`;
     const offCtx = off.getContext("2d");
+    offCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     offCtx.clearRect(0, 0, size, size);
 
     const offRough = rough.canvas(off);
@@ -513,15 +517,21 @@ class Ball {
   // Create an offscreen texture (hollow circle) sized for the current canvas.
   createTexture(canvasW, canvasH) {
     const minDim = Math.min(canvasW, canvasH);
-    const r = this.physicalRadius ?? resolveCircleRadius(this.radius, minDim);
+    // Use the stored physicalRadius (pixels) or resolve base radius in pixels.
+    const baseR = this.physicalRadius ?? resolveCircleRadius(this.radius, minDim);
+    const r = Math.max(1, Math.round(baseR));
     const diameter = Math.max(2, Math.ceil(r * 2));
     const padding = 8;
     const size = diameter + padding * 2;
+    const dpr = window.devicePixelRatio || 1;
 
     const off = document.createElement("canvas");
-    off.width = size;
-    off.height = size;
+    off.width = size * dpr;
+    off.height = size * dpr;
+    off.style.width = `${size}px`;
+    off.style.height = `${size}px`;
     const offCtx = off.getContext("2d");
+    offCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     offCtx.clearRect(0, 0, size, size);
 
     const offRough = rough.canvas(off);
@@ -563,16 +573,13 @@ class Ball {
     const px = this.screenX != null ? this.screenX : this.nx * canvasW;
     const py = this.screenY != null ? this.screenY : this.ny * canvasH;
     const { centerX, centerY, width, height } = this.textureOffset || {};
-    const logicalScale = Math.min(canvasW / 1600, canvasH / 900) || 1;
 
     if (this.texture && centerX != null) {
       ctx.save();
       ctx.globalAlpha = 1;
-      // apply rotation about center so the radial mark shows rolling
       const angle = this.angle || 0;
       ctx.translate(px, py);
       if (angle) ctx.rotate(angle);
-      ctx.scale(logicalScale, logicalScale);
       ctx.drawImage(this.texture, -centerX, -centerY, width, height);
       ctx.restore();
       return;
@@ -1726,8 +1733,10 @@ function resizeCanvas() {
         const py = obj.ny * canvasHeight;
         const minDim = Math.min(canvasWidth, canvasHeight);
         const rPixels = resolveCircleRadius(obj.radius, minDim);
+        const strokeWidth = 2;
+        const rPhysics = Math.max(2, Math.round(rPixels + strokeWidth / 2));
         try {
-          const body = createCircleBody(px, py, rPixels, floorYForPhysics, {
+          const body = createCircleBody(px, py, rPhysics, floorYForPhysics, {
             density: obj.isStatic ? 0 : 1,
             isStatic: obj.isStatic,
           });
