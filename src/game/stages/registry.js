@@ -126,16 +126,6 @@ const stageDefinitions = {
     title: "Stage 7",
     minEvents: 2,
     objects: [
-      { type: "ball", x: 0.5, y: 0.45 },
-      { type: "platform", x: 0.5, y: 0.5 },
-      { type: "star", x: 0.5, y: 0.6 },
-    ],
-  },
-  8: {
-    id: 8,
-    title: "Stage 8",
-    minEvents: 2,
-    objects: [
       { type: "ball", x: 0.3, y: 0.45 },
       { type: "platform", x: 0.3, y: 0.5 },
       {
@@ -150,6 +140,16 @@ const stageDefinitions = {
       },
       { type: "platform", x: 0.5, y: 0.65 },
       { type: "star", x: 0.7, y: 0.6 },
+    ],
+  },
+  8: {
+    id: 8,
+    title: "Stage 8",
+    minEvents: 2,
+    objects: [
+      { type: "ball", x: 0.5, y: 0.45 },
+      { type: "platform", x: 0.5, y: 0.5 },
+      { type: "star", x: 0.5, y: 0.6 },
     ],
   },
   9: {
@@ -169,10 +169,11 @@ const stageDefinitions = {
     title: "Stage 10",
     minEvents: 1,
     objects: [
-      { type: "ball", x: 0.4, y: 0.4 },
-      { type: "platform", x: 0.4, y: 0.55 },
-      { type: "platform", x: 0.5, y: 0.55, width: 0.02, height: 0.2 },
-      { type: "star", x: 0.6, y: 0.5 },
+      { type: "ball", x: 0.3, y: 0.5 },
+      { type: "platform", x: 0.3, y: 0.55 },
+      { type: "stripedRect", x: 0.6, y: 0.5, width: 0.05, height: 1 },
+      { type: "platform", x: 0.7, y: 0.55 },
+      { type: "star", x: 0.7, y: 0.5 },
     ],
   },
   11: {
@@ -180,11 +181,11 @@ const stageDefinitions = {
     title: "Stage 11",
     minEvents: 1,
     objects: [
-      { type: "ball", x: 0.3, y: 0.5 },
-      { type: "platform", x: 0.3, y: 0.55 },
-      { type: "stripedRect", x: 0.6, y: 0.5, width: 0.05, height: 1 },
-      { type: "platform", x: 0.7, y: 0.55 },
-      { type: "star", x: 0.7, y: 0.5 },
+      { type: "ball", x: 0.4, y: 0.4 },
+      { type: "platform", x: 0.4, y: 0.55 },
+      { type: "stripedRect", x: 0.4, y: 0.55, width: 0.1, height: 0.05 },
+      { type: "platform", x: 0.5, y: 0.55, width: 0.02, height: 0.2 },
+      { type: "star", x: 0.6, y: 0.5 },
     ],
   },
   12: {

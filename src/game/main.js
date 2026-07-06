@@ -2520,7 +2520,7 @@ function stopDrawing(event) {
             // apply impulse to the right
             // Apply an off-center impulse to produce immediate torque (less sliding)
             const IMPULSE_LINEAR = 99999; // reduced linear impulse
-            const ANGULAR_IMPULSE = 999999; // stronger angular impulse for visible rolling
+            const ANGULAR_IMPULSE = 99999; // stronger angular impulse for visible rolling
             if (obj.physicsBody) {
               try {
                 const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
