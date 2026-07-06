@@ -1089,7 +1089,7 @@ class ComplexObject {
     this._lastCanvasSize = { w: canvasW, h: canvasH };
   }
 
-  createPhysics(floorY) {
+  createPhysics(floorY, options = {}) {
     if (!Array.isArray(this.pixelPoints) || this.pixelPoints.length < 2) return;
     if (this.physicsBodies && this.physicsBodies.length) return; // already created
 
@@ -1101,6 +1101,7 @@ class ComplexObject {
           isStatic: this.isStatic,
           friction: 0.8,
           density: this.isStatic ? 0 : 1,
+          skipGround: options.skipGround,
         });
         if (body) {
           this.physicsBodies.push(body);
@@ -1118,6 +1119,7 @@ class ComplexObject {
         const body = createEdgeBody(a.x, a.y, b.x, b.y, floorY, {
           type: this.isStatic ? "static" : "dynamic",
           friction: 0.8,
+          skipGround: options.skipGround,
         });
         this.physicsBodies.push(body);
       } catch (e) {
@@ -1131,6 +1133,7 @@ class ComplexObject {
         const body = createEdgeBody(a.x, a.y, b.x, b.y, floorY, {
           type: this.isStatic ? "static" : "dynamic",
           friction: 0.8,
+          skipGround: options.skipGround,
         });
         this.physicsBodies.push(body);
       } catch (e) {
@@ -1402,7 +1405,7 @@ class Rotor {
     this._lastCanvasSize = { w: canvasW, h: canvasH };
   }
 
-  createPhysics(canvasW, canvasH, floorY) {
+  createPhysics(canvasW, canvasH, floorY, options = {}) {
     if (this.physicsBody) return;
 
     if (this.renderAsCircle && typeof this.radius === "number" && this.radius > 0) {
@@ -1423,6 +1426,7 @@ class Rotor {
             x: this.axisX * canvasW,
             y: this.axisY * canvasH,
           },
+          skipGround: options.skipGround,
         });
         if (this.physicsBody) {
           this.screenX = centerX;
@@ -1454,6 +1458,7 @@ class Rotor {
       maxMotorTorque: this.maxMotorTorque,
       friction: 0.8,
       density: this.isStatic ? 0 : 1,
+      skipGround: options.skipGround,
     });
     if (this.physicsBody) {
       this.screenX = this.cx * canvasW;
@@ -1834,6 +1839,7 @@ function resizeCanvas() {
           const body = createCircleBody(px, py, rPhysics, floorYForPhysics, {
             density: obj.isStatic ? 0 : 1,
             isStatic: obj.isStatic,
+            skipGround: challengeModeEnabled,
           });
           obj.physicsBody = body;
           obj.physicalRadius = rPixels;
@@ -1849,6 +1855,7 @@ function resizeCanvas() {
           const body = createBoxBody(px, py, widthPx, heightPx, floorYForPhysics, {
             type: "static",
             friction: 0.8,
+            skipGround: challengeModeEnabled,
           });
           obj.physicsBody = body;
         } catch (e) {
@@ -1863,6 +1870,7 @@ function resizeCanvas() {
           const body = createEdgeBody(x1, y1, x2, y2, floorYForPhysics, {
             type: "static",
             friction: 0.8,
+            skipGround: challengeModeEnabled,
           });
           obj.physicsBody = body;
         } catch (e) {
@@ -1875,14 +1883,16 @@ function resizeCanvas() {
         // ensure texture/pixel points available
         try {
           obj.createTexture(canvasWidth, canvasHeight);
-          obj.createPhysics(floorYForPhysics);
+          obj.createPhysics(floorYForPhysics, { skipGround: challengeModeEnabled });
         } catch (e) {
           console.warn("ComplexObject physics creation failed:", e);
         }
       } else if (obj instanceof Rotor && !obj.physicsBody) {
         try {
           obj.createTexture(canvasWidth, canvasHeight);
-          obj.createPhysics(canvasWidth, canvasHeight, floorYForPhysics);
+          obj.createPhysics(canvasWidth, canvasHeight, floorYForPhysics, {
+            skipGround: challengeModeEnabled,
+          });
         } catch (e) {
           console.warn("Rotor physics creation failed:", e);
         }
@@ -2662,7 +2672,9 @@ function stopDrawing(event) {
   const strokeBody = stageCreateStrokeBody(currentStroke);
   if (strokeBody && !intersectsCancelObject) {
     const floorY = (canvas?.clientHeight || 0) - 24;
-    stageInitializeStrokeBody(strokeBody, floorY);
+    stageInitializeStrokeBody(strokeBody, floorY, {
+      skipGround: challengeModeEnabled,
+    });
     // Prefer using the preview canvas snapshot so the finalized texture
     // matches exactly what the player saw during drawing.
     createStrokeTexture(strokeBody, previewCanvas);
