@@ -237,9 +237,13 @@ export function createGameLoop({
           const py = obj.ny * gameState.canvasHeight;
           const minDim = Math.min(gameState.canvasWidth, gameState.canvasHeight);
           const rPixels = obj.radius > 1 ? obj.radius : Math.max(2, obj.radius * minDim);
+          // Match the visible circle radius and account only for half the stroke width.
+          const strokeWidth = 2;
+          const rPhysics = Math.max(2, Math.round(rPixels + strokeWidth / 2));
           try {
-            const body = createCircleBody(px, py, rPixels, floorYForPhysics, { density: 1 });
+            const body = createCircleBody(px, py, rPhysics, floorYForPhysics, { density: 1 });
             obj.physicsBody = body;
+            // keep physicalRadius as the unscaled pixel size used to generate the texture
             obj.physicalRadius = rPixels;
           } catch (e) {
             console.warn("createCircleBody failed:", e);
