@@ -249,6 +249,28 @@ const stageDefinitions = {
     title: "Stage 15",
     minEvents: 2,
     objects: [
+      { type: "ball", x: 0.5, y: 0.45 },
+      { type: "platform", x: 0.5, y: 0.5 },
+      {
+        type: "portal",
+        x: 0.575,
+        y: 0.45,
+        portalId: "orange",
+      },
+      {
+        type: "portal",
+        x: 0.575,
+        y: 0.7,
+        portalId: "blue",
+      },
+      { type: "star", x: 0.675, y: 0.5 },
+    ],
+  },
+  16: {
+    id: 16,
+    title: "Stage 16",
+    minEvents: 3,
+    objects: [
       { type: "ball", x: 0.4, y: 0.45 },
       { type: "platform", x: 0.4, y: 0.5 },
       {
@@ -266,10 +288,10 @@ const stageDefinitions = {
       { type: "star", x: 0.6, y: 0.5 },
     ],
   },
-  16: {
-    id: 16,
-    title: "Stage 16",
-    minEvents: 3,
+  17: {
+    id: 17,
+    title: "Stage 17",
+    minEvents: 2,
     objects: [
       { type: "ball", x: 0.5, y: 0.45 },
       { type: "platform", x: 0.5, y: 0.5 },
@@ -288,10 +310,10 @@ const stageDefinitions = {
       { type: "star", x: 0.5, y: 0.7 },
     ],
   },
-  17: {
-    id: 17,
-    title: "Stage 17",
-    minEvents: 2,
+  18: {
+    id: 18,
+    title: "Stage 18",
+    minEvents: 1,
     objects: [
       { type: "ball", x: 0.5, y: 0.7 },
       { type: "platform", x: 0.5, y: 0.75 },
@@ -323,24 +345,13 @@ const stageDefinitions = {
       { type: "star", x: 0.5, y: 0.325 },
     ],
   },
-  18: {
-    id: 18,
-    title: "Stage 18",
-    minEvents: 1,
-    objects: [
-      { type: "text", x: 0.5, y: 0.4, text: "update" },
-      { type: "star", x: -1, y: -1 },
-    ],
-  },
   19: {
     id: 19,
     title: "Stage 19",
     minEvents: 1,
     objects: [
-      { type: "text", x: 0.5, y: 0.2, text: "swing wide" },
-      { type: "ball", x: 0.25, y: 0.42 },
-      { type: "platform", x: 0.5, y: 0.58 },
-      { type: "star", x: 0.78, y: 0.4 },
+      { type: "text", x: 0.5, y: 0.4, text: "update" },
+      { type: "star", x: -1, y: -1 },
     ],
   },
   20: {
