@@ -317,6 +317,7 @@ const stageDefinitions = {
     objects: [
       { type: "ball", x: 0.5, y: 0.7 },
       { type: "platform", x: 0.5, y: 0.75 },
+      { type: "stripedRect", x: 0.5, y: 0.75, width: 0.1, height: 0.05 },
       {
         type: "rotor",
         points: [
@@ -333,13 +334,13 @@ const stageDefinitions = {
       {
         type: "portal",
         x: 0.325,
-        y: 0.35,
+        y: 0.375,
         portalId: "orange",
       },
       {
         type: "portal",
         x: 0.675,
-        y: 0.35,
+        y: 0.375,
         portalId: "blue",
       },
       { type: "star", x: 0.5, y: 0.325 },
@@ -350,7 +351,7 @@ const stageDefinitions = {
     title: "Stage 19",
     minEvents: 1,
     objects: [
-      { type: "text", x: 0.5, y: 0.4, text: "update" },
+      { type: "text", x: 0.5, y: 0.4, text: "update..." },
       { type: "star", x: -1, y: -1 },
     ],
   },
