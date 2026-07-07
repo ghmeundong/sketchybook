@@ -3,7 +3,7 @@ import planck from "planck";
 planck.Settings.maxTranslation = 200.0;
 planck.Settings.maxRotation = 100.0;
 
-const physicsWorld = planck.World({ gravity: { x: 0, y: 238 } });
+const physicsWorld = planck.World({ gravity: { x: 0, y: 399 } });
 let physicsGround = null;
 let physicsFloorY = null;
 let physicsLeftWall = null;
@@ -86,7 +86,7 @@ function createPlanckBody(stroke, floorY, options = {}) {
 
     const fixture = body.createFixture({
       shape: planck.Box(length / 2, thickness / 2, planck.Vec2(midpointX, midpointY), angle),
-      density: 10,
+      density: 39,
       friction: 0.8,
       restitution: 0,
     });
