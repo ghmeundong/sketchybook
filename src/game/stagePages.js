@@ -1,4 +1,4 @@
-export function getStagePageIndexForStage(stageNumber, stagePageSize = 6, totalStagePages = 3) {
+export function getStagePageIndexForStage(stageNumber, stagePageSize = 6, totalStagePages = 5) {
   if (!Number.isInteger(stageNumber) || stageNumber < 1) {
     return 0;
   }

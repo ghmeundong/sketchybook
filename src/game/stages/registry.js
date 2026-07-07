@@ -225,7 +225,7 @@ const stageDefinitions = {
   14: {
     id: 14,
     title: "Stage 14",
-    minEvents: 1,
+    minEvents: 3,
     objects: [
       { type: "ball", x: 0.5, y: 0.45 },
       { type: "platform", x: 0.5, y: 0.5 },
@@ -291,10 +291,36 @@ const stageDefinitions = {
   17: {
     id: 17,
     title: "Stage 17",
-    minEvents: 1,
+    minEvents: 2,
     objects: [
-      { type: "text", x: 0.5, y: 0.4, text: "update" },
-      { type: "star", x: 0.5, y: 0.55 },
+      { type: "ball", x: 0.5, y: 0.7 },
+      { type: "platform", x: 0.5, y: 0.75 },
+      {
+        type: "rotor",
+        points: [
+          { x: 0.475, y: 0.35 },
+          { x: 0.525, y: 0.35 },
+          { x: 0.525, y: 0.45 },
+          { x: 0.475, y: 0.45 },
+        ],
+        closed: true,
+        axisX: 0.5,
+        axisY: 0.4,
+        spinMode: "free",
+      },
+      {
+        type: "portal",
+        x: 0.325,
+        y: 0.35,
+        portalId: "orange",
+      },
+      {
+        type: "portal",
+        x: 0.675,
+        y: 0.35,
+        portalId: "blue",
+      },
+      { type: "star", x: 0.5, y: 0.325 },
     ],
   },
   18: {
@@ -302,10 +328,8 @@ const stageDefinitions = {
     title: "Stage 18",
     minEvents: 1,
     objects: [
-      { type: "text", x: 0.5, y: 0.2, text: "final draft" },
-      { type: "ball", x: 0.26, y: 0.4 },
-      { type: "platform", x: 0.5, y: 0.56 },
-      { type: "star", x: 0.75, y: 0.42 },
+      { type: "text", x: 0.5, y: 0.4, text: "update" },
+      { type: "star", x: -1, y: -1 },
     ],
   },
   19: {
@@ -437,7 +461,6 @@ const stageDefinitions = {
       { type: "text", x: 0.5, y: 0.2, text: "final flourish" },
       { type: "ball", x: 0.24, y: 0.42 },
       { type: "platform", x: 0.54, y: 0.56 },
-      { type: "star", x: 0.8, y: 0.4 },
     ],
   },
 };
