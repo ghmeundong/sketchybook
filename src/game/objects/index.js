@@ -1,0 +1,10 @@
+export { CircleObject } from "./CircleObject.js";
+export { Ball } from "./Ball.js";
+export { Star } from "./Star.js";
+export { Platform } from "./Platform.js";
+export { Portal } from "./Portal.js";
+export { StripedRectObject } from "./StripedRectObject.js";
+export { Segment } from "./Segment.js";
+export { ComplexObject } from "./ComplexObject.js";
+export { Rotor } from "./Rotor.js";
+export { TextLabel } from "./TextLabel.js";
