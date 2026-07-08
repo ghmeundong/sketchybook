@@ -19,9 +19,15 @@ if (typeof window !== "undefined") {
   }
 }
 
+export function buildApiUrl(path) {
+  const base = API_BASE_URL.replace(/\/$/, "");
+  if (!path) return base;
+  return `${base}/${path.replace(/^\//, "")}`;
+}
+
 export const api = {
   health: async () => {
-    const url = `${API_BASE_URL.replace(/\/$/, "")}/api/health`;
+    const url = buildApiUrl("/api/health");
     const res = await fetch(url);
     if (!res.ok) throw new Error(`API health check failed: ${res.status}`);
     return res.json();
