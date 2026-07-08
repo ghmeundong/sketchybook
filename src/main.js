@@ -1,6 +1,7 @@
 import "./style.css";
 import "./app.js";
 import rough from "roughjs";
+import { syncProgressToServerOnLogin, getIdToken } from "./auth.js";
 
 /* global google */
 window.addEventListener("load", () => {
@@ -135,9 +136,11 @@ async function handleCodeResponse(response) {
         id: data.user.id || data.user.sub,
         email: data.user.email,
         name: data.user.name,
+        id_token: response.id_token || null,
       };
       localStorage.setItem("sketchy_user", JSON.stringify(user));
       showSignedIn(user);
+      await syncProgressToServerOnLogin();
     } else {
       console.warn("Auth failed", data);
       renderSignInButton();
