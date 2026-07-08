@@ -1512,6 +1512,41 @@ window.addEventListener("fullscreenchange", async () => {
   resizeCanvas();
 });
 
+window.addEventListener("keydown", async (event) => {
+  const isGameActive = playPage?.classList.contains("is-active");
+
+  if (isGameActive && (event.key === "r" || event.key === "R")) {
+    event.preventDefault();
+    hideStageClearOverlay();
+    await initializeStage(currentStageNumber);
+    resizeCanvas();
+  }
+  if (event.key === " " || event.code === "Space") {
+    event.preventDefault();
+    stageEventCount += 1;
+
+    if (gameObjects && gameObjects.length) {
+      for (const obj of gameObjects) {
+        if (obj instanceof Ball && obj.physicsBody) {
+          try {
+            const IMPULSE_LINEAR = 99999;
+            const ANGULAR_IMPULSE = 99999;
+            const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
+
+            applyImpulseAtLocalPoint(obj.physicsBody, IMPULSE_LINEAR, 0, 0, offsetY);
+            applyAngularImpulseToBody(obj.physicsBody, ANGULAR_IMPULSE);
+
+            console.debug("move ball");
+          } catch (e) {
+            console.warn("moving ball failed:", e);
+          }
+          break; // 첫 번째 공에 적용 후 루프 종료
+        }
+      }
+    }
+  }
+});
+
 stageButtons.forEach((button) => {
   button.addEventListener("click", async () => {
     const stageNumber = Number(button.dataset.stage);
