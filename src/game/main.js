@@ -18,6 +18,12 @@ import {
 } from "./ui/gameUi.js";
 import { getChallengeModePreference } from "./challengeMode.js";
 import {
+  shouldAdvancePhysics,
+  shouldHandleSpacebarAction,
+  shouldRenderGuidanceMessage,
+} from "./inputRules.js";
+import { shouldRebuildPhysicsWorld } from "./physicsState.js";
+import {
   getStoredStageProgress,
   renderStageSelectionButtons as renderStageSelectionButtonsUI,
   renderStageScoreBadge,
@@ -426,6 +432,7 @@ let stageCleared = false;
 let stageHasSimulated = false;
 let stageEventCount = 0;
 let stageMinEvents = 0;
+let isWindowFocused = true;
 
 // Game objects (balls, stars, etc.) that stages can declare.
 let gameObjects = [];
@@ -606,14 +613,14 @@ function resizeCanvas() {
     if (previewCtx) previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
   }
 
-  const shouldRebuildPhysics =
-    needsLayoutRemap ||
-    (currentStage &&
-      !stageHasSimulated &&
-      physicsStrokes.length === 0 &&
-      gameObjects.some(
-        (obj) => obj.physicsBody || (obj.physicsBodies && obj.physicsBodies.length)
-      ));
+  const shouldRebuildPhysics = shouldRebuildPhysicsWorld({
+    needsLayoutRemap,
+    stageHasSimulated,
+    physicsStrokeCount: physicsStrokes.length,
+    hasExistingPhysicsBodies: gameObjects.some(
+      (obj) => obj.physicsBody || (obj.physicsBodies && obj.physicsBodies.length)
+    ),
+  });
   if (shouldRebuildPhysics) {
     resetPhysicsWorld();
     for (const obj of gameObjects) {
@@ -856,6 +863,28 @@ function getPoint(event) {
   };
 }
 
+function syncGamePlayState() {
+  const isGameActive = playPage?.classList.contains("is-active");
+  const isFullscreen = Boolean(document.fullscreenElement || window.innerHeight === screen.height);
+  const isPageVisible = !document.hidden;
+  const shouldPauseForFocusLoss = !isWindowFocused || !document.hasFocus();
+
+  if (
+    !shouldAdvancePhysics({ isGameActive, isFullscreen, isPageVisible }) ||
+    shouldPauseForFocusLoss
+  ) {
+    lastPhysicsTime = 0;
+    if (isDrawing) {
+      isDrawing = false;
+      lastPoint = null;
+      if (previewCtx) previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+      currentStrokePreviewDirty = false;
+      currentStrokePreviewLastIndex = 0;
+      currentStroke = null;
+    }
+  }
+}
+
 function drawStroke(start, end, width = 8, options = {}) {
   const targetRough = options.roughCanvasOverride || roughCanvas;
   if (!targetRough || !coordinateSystem) {
@@ -1058,11 +1087,21 @@ function drawPhysicsStroke(stroke) {
 }
 
 function tick(timestamp = 0) {
-  // Stop physics when not in fullscreen mode
   const isGameActive = playPage?.classList.contains("is-active");
+  const isFullscreen = Boolean(document.fullscreenElement || window.innerHeight === screen.height);
+  const isPageVisible = !document.hidden;
+  const shouldPauseForFocusLoss = !isWindowFocused || !document.hasFocus();
+  const shouldRunSimulation =
+    shouldAdvancePhysics({
+      isGameActive,
+      isFullscreen,
+      isPageVisible,
+    }) && !shouldPauseForFocusLoss;
 
-  if (!isGameActive) {
-    // Still schedule next frame to check game state
+  if (!shouldRunSimulation) {
+    if (shouldRenderGuidanceMessage({ isGameActive, isFullscreen, isPageVisible })) {
+      render();
+    }
     animationFrameId = window.requestAnimationFrame(tick);
     return;
   }
@@ -1072,7 +1111,7 @@ function tick(timestamp = 0) {
   const floorY = height - 24;
 
   // Update physics whenever the game page is active.
-  if (isGameActive) {
+  if (shouldRunSimulation) {
     // Initialize physics timing on the first tick after stage load so we
     // don't simulate a huge time gap from page load or navigation.
     if (lastPhysicsTime === 0) {
@@ -1505,11 +1544,28 @@ window.addEventListener("pointerleave", stopDrawing);
 
 window.addEventListener("resize", resizeCanvas);
 window.addEventListener("orientationchange", resizeCanvas);
+window.addEventListener("visibilitychange", () => {
+  isWindowFocused = !document.hidden;
+  syncGamePlayState();
+});
 window.addEventListener("fullscreenchange", async () => {
+  isWindowFocused = document.hasFocus();
+  syncGamePlayState();
   if (!document.fullscreenElement) return;
   if (!currentStage || stageHasSimulated || physicsStrokes.length > 0) return;
   await initializeStage(currentStageNumber);
   resizeCanvas();
+});
+window.addEventListener("focus", () => {
+  isWindowFocused = true;
+  syncGamePlayState();
+});
+window.addEventListener("blur", () => {
+  isWindowFocused = false;
+  syncGamePlayState();
+});
+window.addEventListener("pointercancel", () => {
+  stopDrawing();
 });
 
 window.addEventListener("keydown", async (event) => {
@@ -1521,8 +1577,23 @@ window.addEventListener("keydown", async (event) => {
     await initializeStage(currentStageNumber);
     resizeCanvas();
   }
+
   if (event.key === " " || event.code === "Space") {
     event.preventDefault();
+
+    const canLaunchBall = shouldHandleSpacebarAction({
+      isGameActive,
+      challengeModeEnabled,
+      challengeModeStrokeCount,
+      stageCleared,
+      stageClearOverlayVisible: Boolean(stageClearOverlay?.classList.contains("is-visible")),
+      eventRepeat: event.repeat,
+    });
+
+    if (!canLaunchBall) {
+      return;
+    }
+
     stageEventCount += 1;
 
     if (gameObjects && gameObjects.length) {
