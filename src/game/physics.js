@@ -3,11 +3,50 @@ import planck from "planck";
 planck.Settings.maxTranslation = 200.0;
 planck.Settings.maxRotation = 100.0;
 
-const physicsWorld = planck.World({ gravity: { x: 0, y: 399 } });
+const DEFAULT_GRAVITY_Y = 238;
+const physicsWorld = planck.World({ gravity: { x: 0, y: DEFAULT_GRAVITY_Y } });
 let physicsGround = null;
 let physicsFloorY = null;
 let physicsLeftWall = null;
 let physicsRightWall = null;
+let physicsScaleProfile = null;
+
+export function createDeviceSafePhysicsProfile({
+  width,
+  height,
+  dpr = 1,
+  referenceWidth = 900,
+  referenceHeight = 600,
+  minScale = 0.75,
+  maxScale = 1.35,
+}) {
+  const widthScale = width / referenceWidth;
+  const heightScale = height / referenceHeight;
+  const scale = Math.min(Math.max(Math.min(widthScale, heightScale), minScale), maxScale);
+  const safeDpr = Math.max(1, Number.isFinite(dpr) ? dpr : 1);
+
+  return {
+    scale,
+    screenToWorld: 1 / scale,
+    worldToScreen: scale,
+    gravity: { x: 0, y: DEFAULT_GRAVITY_Y * scale },
+    floorY: height - 32 * scale,
+    impulseMultiplier: 1.4 * scale,
+    radiusMultiplier: scale,
+    maxSubsteps: Math.min(4, Math.max(1, Math.round(60 / safeDpr))),
+  };
+}
+
+export function setPhysicsScaleProfile(profile) {
+  physicsScaleProfile = profile;
+  if (profile?.gravity) {
+    physicsWorld.setGravity({ x: profile.gravity.x, y: profile.gravity.y });
+  }
+}
+
+export function getPhysicsScaleProfile() {
+  return physicsScaleProfile;
+}
 
 function ensurePhysicsGround(floorY, options = {}) {
   if (options.skipGround) {
@@ -552,5 +591,7 @@ export function resetPhysicsWorld() {
 
 export function stepPhysicsWorld(options = {}) {
   const step = options.deltaTime ?? 1 / 60;
-  physicsWorld.step(step, 8, 3);
+  const substeps = options.substeps ?? 3;
+  const velocityIterations = options.velocityIterations ?? 8;
+  physicsWorld.step(step, velocityIterations, substeps);
 }
