@@ -3,7 +3,11 @@
 
 .orientation-prompt {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: -webkit-fill-available;
   display: none;
   align-items: center;
   justify-content: center;
@@ -12,8 +16,19 @@
   z-index: 10000;
 }
 
-.orientation-prompt.is-active {
+/* .orientation-prompt.is-active {
   display: flex;
+} */
+
+@media screen and (width <= 900px) and (orientation: portrait) {
+  html.has-orientation-prompt .orientation-prompt {
+    display: flex;
+  }
+
+  /* 세로 모드일 때만 스크롤 방지 */
+  html.has-orientation-prompt body {
+    overflow: hidden;
+  }
 }
 
 .orientation-prompt-card {
@@ -70,8 +85,4 @@
   inset: 0.55rem;
   border: 0.14rem solid currentcolor;
   border-radius: 0.45rem;
-}
-
-html.has-orientation-prompt body {
-  overflow: hidden;
 }
