@@ -46,6 +46,10 @@
         <div class="page page-start is-active">
           <section class="start-screen" aria-label="Game start screen">
             <div class="start-screen-actions">
+              <div
+                id="google-signin"
+                style="margin-right: 0.5rem; display: inline-block; vertical-align: middle"
+              ></div>
               <button
                 class="settings-toggle game-exit-btn"
                 type="button"
@@ -78,11 +82,13 @@
             <div class="title-stack">
               <h1 class="brand-title">SKETCHYBOOK</h1>
               <button class="game-title" type="button" data-start-button>Loading...</button>
+              <div id="google-signin" style="margin-top: 1rem; display: inline-block"></div>
             </div>
           </section>
         </div>
       </div>
     </main>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>
