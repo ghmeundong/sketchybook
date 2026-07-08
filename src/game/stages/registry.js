@@ -31,7 +31,7 @@ const stageDefinitions = {
     title: "Stage 3",
     minEvents: 2,
     objects: [
-      { type: "text", x: 0.6, y: 0.2, text: "space bar also works, and R resets the stage" },
+      { type: "text", x: 0.6, y: 0.2, text: "space bar also works, and R is for reset" },
       { type: "ball", x: 0.7, y: 0.3 },
       { type: "platform", x: 0.3, y: 0.65 },
       { type: "platform", x: 0.7, y: 0.35 },
@@ -43,7 +43,7 @@ const stageDefinitions = {
     title: "Stage 4",
     minEvents: 1,
     objects: [
-      { type: "text", x: 0.5, y: 0.3, text: "It looks like a see-saw, right?" },
+      { type: "text", x: 0.5, y: 0.3, text: "drawing on the ball is not allowed" },
       { type: "ball", x: 0.35, y: 0.5 },
       { type: "star", x: 0.65, y: 0.4 },
       {
