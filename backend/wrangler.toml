@@ -1,19 +1,18 @@
-name = "sketchy-backend"
+name = "sketchybook-backend"
 main = "src/index.js"
 compatibility_date = "2026-01-01"
 compatibility_flags = ["nodejs_compat"]
 
 account_id = "6657ba2c0937d03cbb1faff70a262649"
 
+[vars]
+GOOGLE_CLIENT_ID = "529097378346-95i01gu1nmv8qcfrf459j0taep3t7vm6.apps.googleusercontent.com"
+
 [build]
 command = "npm install"
 
 [triggers]
 # Add schedule triggers here if you need scheduled cleanup tasks.
-
-[[r2_buckets]]
-binding = "SKETCHES_BUCKET"
-bucket_name = "sketchy"
 
 [[d1_databases]]
 binding = "DB"

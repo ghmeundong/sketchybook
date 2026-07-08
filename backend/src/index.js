@@ -4,6 +4,57 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
+let localEnvVarsPromise = null;
+
+function parseDotenv(content) {
+  const vars = {};
+  for (const line of content.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const equalsIndex = trimmed.indexOf("=");
+    if (equalsIndex === -1) continue;
+    const key = trimmed.slice(0, equalsIndex).trim();
+    let value = trimmed.slice(equalsIndex + 1).trim();
+    if (value.startsWith('"') && value.endsWith('"')) {
+      value = value.slice(1, -1);
+    } else if (value.startsWith("'") && value.endsWith("'")) {
+      value = value.slice(1, -1);
+    }
+    vars[key] = value;
+  }
+  return vars;
+}
+
+async function loadLocalEnvVars() {
+  if (typeof process === "undefined" || !process.versions?.node) return {};
+  try {
+    const fs = await import("fs");
+    const path = await import("path");
+    const candidates = [".env", "../.env", "../../.env"];
+    for (const candidate of candidates) {
+      const filePath = path.resolve(process.cwd(), candidate);
+      try {
+        await fs.promises.access(filePath);
+        const content = await fs.promises.readFile(filePath, "utf8");
+        console.log(`[backend] loaded local env file: ${filePath}`);
+        return parseDotenv(content);
+      } catch {
+        continue;
+      }
+    }
+  } catch (error) {
+    console.warn("[backend] failed to load local .env fallback:", error);
+  }
+  return {};
+}
+
+function getLocalEnvVarsPromise() {
+  if (!localEnvVarsPromise) {
+    localEnvVarsPromise = loadLocalEnvVars();
+  }
+  return localEnvVarsPromise;
+}
+
 // 스케치북 컨셉에 맞춘 인메모리 저장소
 let sketchbookMemory = {
   imageData: null, // Rough.js 캔버스 캡처 이미지 데이터
@@ -62,6 +113,102 @@ async function handleSketchRequest(request) {
   });
 }
 
+function getBearerToken(request) {
+  const authHeader = request.headers.get("Authorization") || request.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+  return authHeader.slice(7).trim();
+}
+
+async function handleProgressRequest(request, env) {
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: CORS_HEADERS,
+    });
+  }
+
+  const idToken = getBearerToken(request);
+  if (!idToken) {
+    return jsonResponse({ error: "Unauthorized" }, 401);
+  }
+
+  let payload;
+  try {
+    payload = await verifyIdToken(idToken, env);
+  } catch (error) {
+    return jsonResponse({ error: "Invalid auth token." }, 401);
+  }
+
+  const userSub = payload.sub;
+  if (!userSub) {
+    return jsonResponse({ error: "Invalid token payload." }, 401);
+  }
+
+  const url = new URL(request.url);
+  const mode = url.searchParams.get("mode") === "challenge" ? "challenge" : "normal";
+
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS progress (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_sub TEXT,
+      mode TEXT,
+      progress INTEGER,
+      scores TEXT,
+      updated_at TEXT,
+      UNIQUE(user_sub, mode)
+    )`
+  ).run();
+
+  if (request.method === "GET") {
+    const row = await env.DB.prepare(
+      "SELECT progress, scores FROM progress WHERE user_sub = ? AND mode = ?"
+    )
+      .bind(userSub, mode)
+      .first();
+
+    return jsonResponse({
+      ok: true,
+      mode,
+      progress: row?.progress ?? null,
+      scores: row?.scores ? JSON.parse(row.scores) : {},
+    });
+  }
+
+  if (request.method !== "POST") {
+    return new Response(null, {
+      status: 405,
+      headers: CORS_HEADERS,
+    });
+  }
+
+  const body = await request.json().catch(() => null);
+  if (
+    !body ||
+    typeof body.progress !== "number" ||
+    typeof body.scores !== "object" ||
+    body.scores === null
+  ) {
+    return errorResponse("Request body must include progress number and scores object.", 400);
+  }
+
+  const safeProgress = Math.min(30, Math.max(1, Math.floor(body.progress) || 1));
+  const scoresJson = JSON.stringify(body.scores);
+  const now = new Date().toISOString();
+
+  await env.DB.prepare(
+    `INSERT INTO progress (user_sub, mode, progress, scores, updated_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(user_sub, mode) DO UPDATE SET
+       progress = excluded.progress,
+       scores = excluded.scores,
+       updated_at = excluded.updated_at`
+  )
+    .bind(userSub, mode, safeProgress, scoresJson, now)
+    .run();
+
+  return jsonResponse({ ok: true, mode });
+}
+
 async function handleRequest(request, env) {
   const url = new URL(request.url);
 
@@ -83,7 +230,16 @@ async function handleRequest(request, env) {
     }
   }
 
-  // 3. Google auth endpoint (POST { code } or { id_token })
+  // 3. Progress save/load endpoint for authenticated users
+  if (url.pathname === "/api/progress") {
+    try {
+      return await handleProgressRequest(request, env);
+    } catch (error) {
+      return errorResponse(error.message || "Failed to handle progress request.");
+    }
+  }
+
+  // 4. Google auth endpoint (POST { code } or { id_token })
   if (url.pathname === "/api/auth/google") {
     try {
       return await handleAuthRequest(request, env);
@@ -115,6 +271,20 @@ export default {
 };
 
 // --- Auth handler: verify id_token and upsert user into D1 ---
+async function getGoogleClientId(env) {
+  if (env.GOOGLE_CLIENT_ID) return env.GOOGLE_CLIENT_ID;
+  if (process.env.GOOGLE_CLIENT_ID) return process.env.GOOGLE_CLIENT_ID;
+  const localVars = await getLocalEnvVarsPromise();
+  return localVars.GOOGLE_CLIENT_ID || null;
+}
+
+async function getGoogleClientSecret(env) {
+  if (env.GOOGLE_CLIENT_SECRET) return env.GOOGLE_CLIENT_SECRET;
+  if (process.env.GOOGLE_CLIENT_SECRET) return process.env.GOOGLE_CLIENT_SECRET;
+  const localVars = await getLocalEnvVarsPromise();
+  return localVars.GOOGLE_CLIENT_SECRET || null;
+}
+
 async function handleAuthRequest(request, env) {
   if (request.method !== "POST") {
     return new Response(null, { status: 405, headers: CORS_HEADERS });
@@ -162,18 +332,27 @@ async function handleAuthRequest(request, env) {
     user = { id, sub, email, name };
   }
 
-  return jsonResponse({ ok: true, user });
+  return jsonResponse({ ok: true, user, id_token: idToken });
 }
 
 async function exchangeCodeForIdToken(code, env) {
+  const clientId = await getGoogleClientId(env);
+  const clientSecret = await getGoogleClientSecret(env);
+  console.log(
+    `[backend] exchangeCodeForIdToken using clientId=${clientId ? clientId.slice(0, 20) + "..." : "undefined"}`
+  );
+  if (!clientId) {
+    throw new Error("Missing GOOGLE_CLIENT_ID in backend environment.");
+  }
+
   const tokenParams = new URLSearchParams({
     grant_type: "authorization_code",
     code,
-    client_id: env.GOOGLE_CLIENT_ID,
+    client_id: clientId,
     redirect_uri: "postmessage",
   });
-  if (env.GOOGLE_CLIENT_SECRET) {
-    tokenParams.set("client_secret", env.GOOGLE_CLIENT_SECRET);
+  if (clientSecret) {
+    tokenParams.set("client_secret", clientSecret);
   }
 
   const tokenResp = await fetch("https://oauth2.googleapis.com/token", {
@@ -186,6 +365,7 @@ async function exchangeCodeForIdToken(code, env) {
 
   if (!tokenResp.ok) {
     const errorPayload = await tokenResp.text().catch(() => "");
+    console.error("[backend] Google token exchange failed:", tokenResp.status, errorPayload);
     throw new Error(`Authorization code exchange failed: ${errorPayload}`);
   }
 
@@ -206,9 +386,9 @@ async function verifyIdToken(idToken, env) {
   }
 
   const payload = await tokenResp.json();
-  const expectedAud = env.GOOGLE_CLIENT_ID;
+  const expectedAud = await getGoogleClientId(env);
   if (expectedAud && payload.aud !== expectedAud) {
-    throw new Error("Token audience mismatch.");
+    throw new Error(`Token audience mismatch. Expected ${expectedAud}, got ${payload.aud}`);
   }
 
   return payload;
