@@ -4,6 +4,7 @@ import {
   setStoredStageProgress,
   setStoredStageScores,
 } from "./game/ui/stageProgress.js";
+import { buildApiUrl } from "./services/api.js";
 
 const AUTH_STORAGE_KEY = "sketchy_user";
 const PROGRESS_API_PATH = "/api/progress";
@@ -39,7 +40,7 @@ function getAuthHeaders() {
 }
 
 function buildProgressUrl(mode) {
-  return `${PROGRESS_API_PATH}?mode=${encodeURIComponent(mode)}`;
+  return buildApiUrl(`${PROGRESS_API_PATH}?mode=${encodeURIComponent(mode)}`);
 }
 
 export async function fetchServerProgress(mode) {

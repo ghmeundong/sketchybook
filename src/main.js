@@ -2,6 +2,7 @@ import "./style.css";
 import "./app.js";
 import rough from "roughjs";
 import { syncProgressToServerOnLogin, getIdToken } from "./auth.js";
+import { buildApiUrl } from "./services/api.js";
 
 /* global google */
 window.addEventListener("load", () => {
@@ -125,7 +126,7 @@ function drawRoughBorderAround(buttonEl, svgEl) {
 async function handleCodeResponse(response) {
   if (!response || !response.code) return;
   try {
-    const resp = await fetch("/api/auth/google", {
+    const resp = await fetch(buildApiUrl("/api/auth/google"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code: response.code }),
