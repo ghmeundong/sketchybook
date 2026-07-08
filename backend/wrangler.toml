@@ -3,7 +3,7 @@ main = "src/index.js"
 compatibility_date = "2026-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-account_id = "your-cloudflare-account-id"
+account_id = "6657ba2c0937d03cbb1faff70a262649"
 
 [build]
 command = "npm install"
@@ -14,3 +14,8 @@ command = "npm install"
 [[r2_buckets]]
 binding = "SKETCHES_BUCKET"
 bucket_name = "sketchy"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sketchybook"
+database_id = "eb3ca5e0-1ee4-48b9-861a-334532158296"
