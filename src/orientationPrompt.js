@@ -1,16 +1,10 @@
 let promptInstance = null;
 
-export function shouldShowOrientationPrompt({
-  hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0,
-  isSmallScreen = window.matchMedia("(max-width: 900px)").matches,
-  width = window.innerWidth,
-  height = window.innerHeight,
-} = {}) {
-  if (!hasTouch || !isSmallScreen) {
-    return false;
-  }
-
-  return height >= width;
+// 1. 단순 모바일 터치 기기인지 검사 (크기 변화를 실시간으로 감지하지 않음)
+export function isMobileDevice() {
+  const hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+  const isSmallScreen = window.matchMedia("(max-width: 900px)").matches;
+  return hasTouch && isSmallScreen;
 }
 
 function createPrompt() {
@@ -36,53 +30,17 @@ function createPrompt() {
   return overlay;
 }
 
-function updatePrompt() {
-  if (!promptInstance) {
-    return;
-  }
-
-  const shouldShow = shouldShowOrientationPrompt();
-  promptInstance.classList.toggle("is-active", shouldShow);
-  document.documentElement.classList.toggle("has-orientation-prompt", shouldShow);
-}
-
-async function requestOrientationLock() {
-  if (!window.screen?.orientation?.lock) {
-    return false;
-  }
-
-  try {
-    await window.screen.orientation.lock("landscape");
-    return true;
-  } catch {
-    return false;
-  }
-}
-
+// 2. 초기화 함수 심플하게 변경
 export function initializeOrientationPrompt() {
-  if (promptInstance) {
-    updatePrompt();
-    return promptInstance;
-  }
-
-  if (!document.body) {
-    return null;
-  }
+  if (promptInstance) return promptInstance;
+  if (!document.body) return null;
 
   promptInstance = createPrompt();
-  updatePrompt();
 
-  if (shouldShowOrientationPrompt()) {
-    requestOrientationLock();
+  // 모바일 기기라면 최상단 html 태그에 클래스 주입
+  if (isMobileDevice()) {
+    document.documentElement.classList.add("has-orientation-prompt");
   }
-
-  window.addEventListener("resize", updatePrompt);
-  window.addEventListener("orientationchange", () => {
-    updatePrompt();
-    if (shouldShowOrientationPrompt()) {
-      requestOrientationLock();
-    }
-  });
 
   return promptInstance;
 }
