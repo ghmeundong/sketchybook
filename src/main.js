@@ -32,9 +32,6 @@ function showSignedIn(user) {
   signOutBtn.type = "button";
   signOutBtn.textContent = "Sign out";
   signOutBtn.addEventListener("click", () => {
-    if (window.google && google.accounts && google.accounts.id) {
-      google.accounts.id.disableAutoSelect();
-    }
     localStorage.removeItem("sketchy_user");
     renderSignInButton();
   });
@@ -47,45 +44,35 @@ function renderSignInButton() {
   const container = document.getElementById("google-signin");
   if (!container) return;
   container.innerHTML = "";
-  // Create a positioned wrapper so we can draw a rough border around the
-  // rendered Google button using an SVG overlay.
   const wrapper = document.createElement("div");
-  wrapper.style.position = "relative";
-  wrapper.style.display = "inline-block";
-  wrapper.style.verticalAlign = "middle";
-  wrapper.id = "google-signin-wrapper";
+  wrapper.className = "google-signin-wrapper";
 
-  const btn = document.createElement("div");
-  btn.id = "google-signin-button";
-  btn.style.position = "relative";
-  btn.style.zIndex = "2";
+  const btn = document.createElement("button");
+  btn.className = "google-signin-button";
+  btn.type = "button";
+  btn.textContent = "Log in";
+  btn.setAttribute("aria-label", "Log in");
 
-  // SVG overlay sits behind the button (zIndex 1) but above background
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.style.position = "absolute";
-  svg.style.left = "0";
-  svg.style.top = "0";
-  svg.style.width = "100%";
-  svg.style.height = "100%";
-  svg.style.zIndex = "1";
+  svg.setAttribute("class", "google-signin-svg");
   svg.setAttribute("preserveAspectRatio", "none");
 
   wrapper.appendChild(svg);
   wrapper.appendChild(btn);
   container.appendChild(wrapper);
 
-  // Wait until the GIS script has loaded
   const tryInit = () => {
-    if (window.google && google.accounts && google.accounts.id) {
-      google.accounts.id.initialize({
+    if (window.google && google.accounts && google.accounts.oauth2) {
+      const codeClient = google.accounts.oauth2.initCodeClient({
         client_id: GOOGLE_CLIENT_ID,
-        callback: handleCredentialResponse,
+        scope: "openid email profile",
         ux_mode: "popup",
+        callback: handleCodeResponse,
       });
-      google.accounts.id.renderButton(btn, { theme: "outline", size: "large" });
-      // Draw rough border after the button renders
-      setTimeout(() => drawRoughBorderAround(btn, svg), 150);
-      // Redraw on resize
+      btn.addEventListener("click", () => {
+        codeClient.requestCode();
+      });
+      drawRoughBorderAround(btn, svg);
       if (window.ResizeObserver) {
         const ro = new ResizeObserver(() => drawRoughBorderAround(btn, svg));
         ro.observe(btn);
@@ -93,7 +80,6 @@ function renderSignInButton() {
         window.addEventListener("resize", () => drawRoughBorderAround(btn, svg));
       }
     } else {
-      // retry briefly
       setTimeout(tryInit, 200);
     }
   };
@@ -135,22 +121,20 @@ function drawRoughBorderAround(buttonEl, svgEl) {
   }
 }
 
-async function handleCredentialResponse(response) {
-  if (!response || !response.credential) return;
+async function handleCodeResponse(response) {
+  if (!response || !response.code) return;
   try {
     const resp = await fetch("/api/auth/google", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id_token: response.credential }),
+      body: JSON.stringify({ code: response.code }),
     });
     const data = await resp.json();
     if (resp.ok && data && data.user) {
-      // Persist minimal user info for UI
       const user = {
         id: data.user.id || data.user.sub,
         email: data.user.email,
         name: data.user.name,
-        picture: data.user.picture,
       };
       localStorage.setItem("sketchy_user", JSON.stringify(user));
       showSignedIn(user);

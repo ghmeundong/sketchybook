@@ -83,7 +83,7 @@ async function handleRequest(request, env) {
     }
   }
 
-  // 3. Google auth endpoint (POST { id_token })
+  // 3. Google auth endpoint (POST { code } or { id_token })
   if (url.pathname === "/api/auth/google") {
     try {
       return await handleAuthRequest(request, env);
@@ -121,25 +121,18 @@ async function handleAuthRequest(request, env) {
   }
 
   const body = await request.json().catch(() => null);
-  if (!body || typeof body.id_token !== "string") {
-    return errorResponse("Request body must include id_token string.", 400);
+  if (!body || (typeof body.code !== "string" && typeof body.id_token !== "string")) {
+    return errorResponse("Request body must include code or id_token string.", 400);
   }
 
-  // Verify token with Google's tokeninfo endpoint
-  const tokenResp = await fetch(
-    `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(body.id_token)}`
-  );
-  if (!tokenResp.ok) {
-    return errorResponse("Invalid id_token.", 401);
+  let idToken;
+  if (typeof body.code === "string") {
+    idToken = await exchangeCodeForIdToken(body.code, env);
+  } else {
+    idToken = body.id_token;
   }
 
-  const payload = await tokenResp.json();
-  // Optional audience check if provided in Worker env as GOOGLE_CLIENT_ID
-  const expectedAud = env.GOOGLE_CLIENT_ID;
-  if (expectedAud && payload.aud !== expectedAud) {
-    return errorResponse("Token audience mismatch.", 401);
-  }
-
+  const payload = await verifyIdToken(idToken, env);
   const sub = payload.sub;
   const email = payload.email || null;
   const name = payload.name || null;
@@ -170,4 +163,53 @@ async function handleAuthRequest(request, env) {
   }
 
   return jsonResponse({ ok: true, user });
+}
+
+async function exchangeCodeForIdToken(code, env) {
+  const tokenParams = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    client_id: env.GOOGLE_CLIENT_ID,
+    redirect_uri: "postmessage",
+  });
+  if (env.GOOGLE_CLIENT_SECRET) {
+    tokenParams.set("client_secret", env.GOOGLE_CLIENT_SECRET);
+  }
+
+  const tokenResp = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: tokenParams.toString(),
+  });
+
+  if (!tokenResp.ok) {
+    const errorPayload = await tokenResp.text().catch(() => "");
+    throw new Error(`Authorization code exchange failed: ${errorPayload}`);
+  }
+
+  const tokenData = await tokenResp.json();
+  if (!tokenData.id_token) {
+    throw new Error("Token exchange did not return an id_token.");
+  }
+
+  return tokenData.id_token;
+}
+
+async function verifyIdToken(idToken, env) {
+  const tokenResp = await fetch(
+    `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`
+  );
+  if (!tokenResp.ok) {
+    throw new Error("Invalid id_token.");
+  }
+
+  const payload = await tokenResp.json();
+  const expectedAud = env.GOOGLE_CLIENT_ID;
+  if (expectedAud && payload.aud !== expectedAud) {
+    throw new Error("Token audience mismatch.");
+  }
+
+  return payload;
 }
