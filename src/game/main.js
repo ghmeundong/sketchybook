@@ -1540,11 +1540,15 @@ window.addEventListener("keydown", async (event) => {
           } catch (e) {
             console.warn("moving ball failed:", e);
           }
-          break; // 첫 번째 공에 적용 후 루프 종료
+          break;
         }
       }
     }
   }
+});
+
+board?.addEventListener("contextmenu", (event) => {
+  event.preventDefault();
 });
 
 stageButtons.forEach((button) => {
