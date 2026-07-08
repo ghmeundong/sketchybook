@@ -39,6 +39,9 @@ import {
   applyAngularImpulseToBody,
   applyImpulseAtLocalPoint,
   resetPhysicsWorld,
+  createDeviceSafePhysicsProfile,
+  getPhysicsScaleProfile,
+  setPhysicsScaleProfile,
 } from "./physics.js";
 import {
   CircleObject,
@@ -426,8 +429,6 @@ let currentStrokePreviewDirty = false;
 let currentStrokePreviewLastIndex = 0;
 let previewCanvas = null;
 let previewCtx = null;
-const physicsFrameDuration = 1000 / 60;
-
 let stageCleared = false;
 let stageHasSimulated = false;
 let stageEventCount = 0;
@@ -467,6 +468,12 @@ function resizeCanvas() {
   }
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const nextPhysicsProfile = createDeviceSafePhysicsProfile({
+    width: canvasWidth,
+    height: canvasHeight,
+    dpr,
+  });
+  setPhysicsScaleProfile(nextPhysicsProfile);
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
   coordinateSystem = createCoordinateSystem({
@@ -1107,22 +1114,40 @@ function tick(timestamp = 0) {
   }
 
   const height = canvas?.clientHeight || 0;
+  const profile =
+    getPhysicsScaleProfile() ||
+    createDeviceSafePhysicsProfile({
+      width: canvasWidth || window.innerWidth || 900,
+      height: canvasHeight || window.innerHeight || 600,
+      dpr: window.devicePixelRatio || 1,
+    });
+  const floorY = profile?.floorY ?? height - 24;
 
-  const floorY = height - 24;
-
-  // Update physics whenever the game page is active.
   if (shouldRunSimulation) {
-    // Initialize physics timing on the first tick after stage load so we
-    // don't simulate a huge time gap from page load or navigation.
     if (lastPhysicsTime === 0) {
       lastPhysicsTime = timestamp;
     }
-    // Catch up physics: run as many 1/60s sub-steps as needed to reach current timestamp
-    while (timestamp - lastPhysicsTime >= physicsFrameDuration) {
+
+    const elapsed = Math.max(0, timestamp - lastPhysicsTime);
+    if (elapsed > 0) {
+      const deltaSeconds = Math.min(elapsed / 1000, 0.032);
+      const nextProfile =
+        profile ||
+        createDeviceSafePhysicsProfile({
+          width: canvasWidth || window.innerWidth || 900,
+          height: canvasHeight || window.innerHeight || 600,
+          dpr: window.devicePixelRatio || 1,
+        });
+      setPhysicsScaleProfile(nextProfile);
+
       if (currentStage && typeof currentStage.update === "function") {
         currentStage.update(physicsStrokes, floorY);
       } else {
-        stepPhysicsWorld({ deltaTime: 1 / 60 });
+        stepPhysicsWorld({
+          deltaTime: deltaSeconds,
+          substeps: nextProfile.maxSubsteps,
+          velocityIterations: 8,
+        });
         physicsStrokes.forEach((stroke) => {
           if (!stroke?.points?.length || !stroke.body) {
             return;
@@ -1131,7 +1156,8 @@ function tick(timestamp = 0) {
           updateStrokeBody(stroke, floorY);
         });
       }
-      lastPhysicsTime += physicsFrameDuration;
+
+      lastPhysicsTime = timestamp;
       stageHasSimulated = true;
     }
   }
