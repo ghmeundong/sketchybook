@@ -20,6 +20,23 @@ window.addEventListener("load", () => {
 // Public client ID (issued from Google Cloud Console)
 const GOOGLE_CLIENT_ID = "529097378346-95i01gu1nmv8qcfrf459j0taep3t7vm6.apps.googleusercontent.com";
 
+function renderAuthStatus(message, isError = false) {
+  const container = document.getElementById("google-signin");
+  if (!container) return;
+  let status = container.querySelector(".auth-status-message");
+  if (!status) {
+    status = document.createElement("div");
+    status.className = "auth-status-message";
+    status.style.marginTop = "0.6rem";
+    status.style.fontSize = "0.9rem";
+    status.style.lineHeight = "1.3";
+    status.style.color = isError ? "#c0392b" : "#4f3b24";
+    container.appendChild(status);
+  }
+  status.textContent = message;
+  status.style.color = isError ? "#c0392b" : "#4f3b24";
+}
+
 function showSignedIn(user) {
   const container = document.getElementById("google-signin");
   if (!container) return;
@@ -123,37 +140,69 @@ function drawRoughBorderAround(buttonEl, svgEl) {
   }
 }
 
-async function handleCodeResponse(response) {
-  if (!response || !response.code) return;
+async function handleAuthCode(code) {
+  if (!code) return;
+
+  renderAuthStatus("로그인 인증 코드 처리 중…");
+
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    console.log("[Auth] sending auth code to backend");
     const resp = await fetch(buildApiUrl("/api/auth/google"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: response.code }),
+      body: JSON.stringify({ code }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
+
     const data = await resp.json();
+    console.log("[Auth] auth response", resp.status, data);
+
     if (resp.ok && data && data.user) {
       const user = {
         id: data.user.id || data.user.sub,
         email: data.user.email,
         name: data.user.name,
-        id_token: response.id_token || null,
+        id_token: data.id_token || null,
       };
       localStorage.setItem("sketchy_user", JSON.stringify(user));
       showSignedIn(user);
       await syncProgressToServerOnLogin();
-    } else {
-      console.warn("Auth failed", data);
-      renderSignInButton();
+      return;
     }
+
+    const errorMessage = data?.error || "Authentication failed.";
+    console.warn("Auth failed", resp.status, errorMessage, data);
+    renderAuthStatus("Login failed: " + errorMessage, true);
+    renderSignInButton();
   } catch (err) {
     console.error("Auth error", err);
+    const message =
+      err.name === "AbortError"
+        ? "Login timeout: backend did not respond."
+        : "Login error: check console.";
+    renderAuthStatus(message, true);
     renderSignInButton();
   }
 }
 
+async function handleCodeResponse(response) {
+  console.log("[Auth] handleCodeResponse", response);
+  if (!response) return;
+  if (response.error) {
+    console.warn("Google auth callback error", response.error);
+    return;
+  }
+  if (response.code) {
+    await handleAuthCode(response.code);
+  }
+}
+
 // On load, show existing user or render sign-in
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
   const raw = localStorage.getItem("sketchy_user");
   if (raw) {
     try {
@@ -164,5 +213,14 @@ window.addEventListener("DOMContentLoaded", () => {
       localStorage.removeItem("sketchy_user");
     }
   }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get("code");
+  if (code) {
+    console.log("[Auth] found auth code in URL", code);
+    await handleAuthCode(code);
+    return;
+  }
+
   renderSignInButton();
 });
