@@ -4,57 +4,6 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
-let localEnvVarsPromise = null;
-
-function parseDotenv(content) {
-  const vars = {};
-  for (const line of content.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const equalsIndex = trimmed.indexOf("=");
-    if (equalsIndex === -1) continue;
-    const key = trimmed.slice(0, equalsIndex).trim();
-    let value = trimmed.slice(equalsIndex + 1).trim();
-    if (value.startsWith('"') && value.endsWith('"')) {
-      value = value.slice(1, -1);
-    } else if (value.startsWith("'") && value.endsWith("'")) {
-      value = value.slice(1, -1);
-    }
-    vars[key] = value;
-  }
-  return vars;
-}
-
-async function loadLocalEnvVars() {
-  if (typeof process === "undefined" || !process.versions?.node) return {};
-  try {
-    const fs = await import("fs");
-    const path = await import("path");
-    const candidates = [".env", "../.env", "../../.env"];
-    for (const candidate of candidates) {
-      const filePath = path.resolve(process.cwd(), candidate);
-      try {
-        await fs.promises.access(filePath);
-        const content = await fs.promises.readFile(filePath, "utf8");
-        console.log(`[backend] loaded local env file: ${filePath}`);
-        return parseDotenv(content);
-      } catch {
-        continue;
-      }
-    }
-  } catch (error) {
-    console.warn("[backend] failed to load local .env fallback:", error);
-  }
-  return {};
-}
-
-function getLocalEnvVarsPromise() {
-  if (!localEnvVarsPromise) {
-    localEnvVarsPromise = loadLocalEnvVars();
-  }
-  return localEnvVarsPromise;
-}
-
 // 스케치북 컨셉에 맞춘 인메모리 저장소
 let sketchbookMemory = {
   imageData: null,
@@ -89,8 +38,8 @@ async function saveSketchbook(payload) {
   return { ok: true };
 }
 
-// 💡 스케치 전용 핸들러 (원상 복구 완료)
-async function handleSketchRequest(request) {
+// 1. 스케치 전용 핸들러 (env 매개변수 추가로 싱크 매칭)
+async function handleSketchRequest(request, env) {
   if (request.method === "GET") {
     const book = await fetchSketchbook();
     return jsonResponse({ imageData: book.imageData, vector: book.vector });
@@ -118,7 +67,7 @@ function getBearerToken(request) {
   return authHeader.slice(7).trim();
 }
 
-// 💡 진행도 및 베스트 스코어 핸들러 (최적화 로직 적용)
+// 2. 진행도 및 베스트 스코어 핸들러 (병합 최적화 로직 포함)
 async function handleProgressRequest(request, env) {
   if (request.method === "OPTIONS") {
     return new Response(null, {
@@ -191,7 +140,7 @@ async function handleProgressRequest(request, env) {
     return errorResponse("Request body must include progress number and scores object.", 400);
   }
 
-  // 1. 기존 DB 데이터 조회 및 스코어 비교 병합
+  // 기존 DB 데이터 조회 및 베스트 스코어 비교 병합
   const existingRow = await env.DB.prepare(
     "SELECT progress, scores FROM progress WHERE user_sub = ? AND mode = ?"
   )
@@ -202,17 +151,15 @@ async function handleProgressRequest(request, env) {
   let finalScores = body.scores || {};
 
   if (existingRow) {
-    // 둘 중 더 높은 스테이지 진행도 유지
     finalProgress = Math.max(finalProgress, existingRow.progress || 1);
 
     let existingScores = {};
     try {
       existingScores = JSON.parse(existingRow.scores || "{}");
     } catch (error) {
-      console.error("[backend] 파싱 에러:", error);
+      console.error("[backend] JSON parse error:", error);
     }
 
-    // 두 스코어 객체를 비교하여 최소 획수만 남김
     const allStageKeys = new Set([...Object.keys(existingScores), ...Object.keys(finalScores)]);
     const mergedScores = {};
 
@@ -221,7 +168,7 @@ async function handleProgressRequest(request, env) {
       const newScore = finalScores[stage];
 
       if (oldScore !== undefined && newScore !== undefined) {
-        mergedScores[stage] = Math.min(oldScore, newScore); // 더 적은 선을 그은 스코어 선택
+        mergedScores[stage] = Math.min(oldScore, newScore);
       } else {
         mergedScores[stage] = oldScore !== undefined ? oldScore : newScore;
       }
@@ -232,7 +179,6 @@ async function handleProgressRequest(request, env) {
   const scoresJson = JSON.stringify(finalScores);
   const now = new Date().toISOString();
 
-  // 2. 최종 최적 데이터 저장
   await env.DB.prepare(
     `INSERT INTO progress (user_sub, mode, progress, scores, updated_at)
      VALUES (?, ?, ?, ?, ?)
@@ -303,18 +249,12 @@ export default {
   },
 };
 
-async function getGoogleClientId(env) {
-  if (env.GOOGLE_CLIENT_ID) return env.GOOGLE_CLIENT_ID;
-  if (process.env.GOOGLE_CLIENT_ID) return process.env.GOOGLE_CLIENT_ID;
-  const localVars = await getLocalEnvVarsPromise();
-  return localVars.GOOGLE_CLIENT_ID || null;
+function getGoogleClientId(env) {
+  return env.GOOGLE_CLIENT_ID || null;
 }
 
-async function getGoogleClientSecret(env) {
-  if (env.GOOGLE_CLIENT_SECRET) return env.GOOGLE_CLIENT_SECRET;
-  if (process.env.GOOGLE_CLIENT_SECRET) return process.env.GOOGLE_CLIENT_SECRET;
-  const localVars = await getLocalEnvVarsPromise();
-  return localVars.GOOGLE_CLIENT_SECRET || null;
+function getGoogleClientSecret(env) {
+  return env.GOOGLE_CLIENT_SECRET || null;
 }
 
 async function handleAuthRequest(request, env) {
@@ -366,8 +306,8 @@ async function handleAuthRequest(request, env) {
 }
 
 async function exchangeCodeForIdToken(code, env) {
-  const clientId = await getGoogleClientId(env);
-  const clientSecret = await getGoogleClientSecret(env);
+  const clientId = getGoogleClientId(env);
+  const clientSecret = getGoogleClientSecret(env);
   if (!clientId) {
     throw new Error("Missing GOOGLE_CLIENT_ID in backend environment.");
   }
@@ -412,7 +352,7 @@ async function verifyIdToken(idToken, env) {
   }
 
   const payload = await tokenResp.json();
-  const expectedAud = await getGoogleClientId(env);
+  const expectedAud = getGoogleClientId(env);
   if (expectedAud && payload.aud !== expectedAud) {
     throw new Error(`Token audience mismatch. Expected ${expectedAud}, got ${payload.aud}`);
   }
