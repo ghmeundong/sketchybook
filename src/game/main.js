@@ -1482,12 +1482,13 @@ function stopDrawing(event) {
   const stageCreateStrokeBody = currentStage?.createStrokeBody || createStrokeBody;
   const stageInitializeStrokeBody = currentStage?.initializeStrokeBody || initializeStrokeBody;
 
-  if (challengeModeEnabled && challengeModeStrokeCount >= 1) {
-    currentStroke = null;
-    return;
+  if (challengeModeEnabled) {
+    if (challengeModeStrokeCount >= 1) {
+      currentStroke = null;
+      return;
+    }
+    challengeModeStrokeCount += 1; // 오직 챌린지 모드일 때만 카운트를 올림
   }
-
-  challengeModeStrokeCount += 1;
 
   const intersectsCancelObject = gameObjects.some((obj) => {
     if (obj instanceof CircleObject || obj instanceof Ball) {

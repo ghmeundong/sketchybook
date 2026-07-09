@@ -344,6 +344,8 @@ const stageDefinitions = {
         portalId: "blue",
       },
       { type: "star", x: 0.5, y: 0.325 },
+      { type: "star", x: 0.325, y: 0.45 },
+      { type: "star", x: 0.675, y: 0.45 },
     ],
   },
   19: {
