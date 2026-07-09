@@ -208,6 +208,7 @@ async function handleRequest(request, env) {
     try {
       return await handleSketchRequest(request, env);
     } catch (error) {
+      console.error("[backend] handleSketchRequest error:", error);
       return errorResponse(error.message || "Failed to handle sketchybook request.");
     }
   }
@@ -216,6 +217,7 @@ async function handleRequest(request, env) {
     try {
       return await handleProgressRequest(request, env);
     } catch (error) {
+      console.error("[backend] handleProgressRequest error:", error);
       return errorResponse(error.message || "Failed to handle progress request.");
     }
   }
@@ -224,6 +226,7 @@ async function handleRequest(request, env) {
     try {
       return await handleAuthRequest(request, env);
     } catch (error) {
+      console.error("[backend] handleAuthRequest error:", error);
       return errorResponse(error.message || "Failed to handle auth request.");
     }
   }
@@ -250,11 +253,11 @@ export default {
 };
 
 function getGoogleClientId(env) {
-  return env.GOOGLE_CLIENT_ID || null;
+  return env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || null;
 }
 
 function getGoogleClientSecret(env) {
-  return env.GOOGLE_CLIENT_SECRET || null;
+  return env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || null;
 }
 
 async function handleAuthRequest(request, env) {
@@ -263,6 +266,7 @@ async function handleAuthRequest(request, env) {
   }
 
   const body = await request.json().catch(() => null);
+  console.log("[backend] handleAuthRequest body:", body);
   if (!body || (typeof body.code !== "string" && typeof body.id_token !== "string")) {
     return errorResponse("Request body must include code or id_token string.", 400);
   }
