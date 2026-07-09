@@ -225,7 +225,7 @@ const stageDefinitions = {
   14: {
     id: 14,
     title: "Stage 14",
-    minEvents: 3,
+    minEvents: 2,
     objects: [
       { type: "ball", x: 0.5, y: 0.45 },
       { type: "platform", x: 0.5, y: 0.5 },

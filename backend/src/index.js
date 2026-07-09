@@ -57,8 +57,8 @@ function getLocalEnvVarsPromise() {
 
 // 스케치북 컨셉에 맞춘 인메모리 저장소
 let sketchbookMemory = {
-  imageData: null, // Rough.js 캔버스 캡처 이미지 데이터
-  vector: null, // 유저가 그린 선들의 좌표 및 물리 엔진용 데이터 배열
+  imageData: null,
+  vector: null,
 };
 
 function jsonResponse(body, status = 200) {
@@ -75,12 +75,10 @@ function errorResponse(message, status = 500) {
   return jsonResponse({ error: message }, status);
 }
 
-// 1. GET: 프론트엔드가 스케치북 데이터를 불러올 때
 async function fetchSketchbook() {
   return sketchbookMemory;
 }
 
-// 2. POST: 프론트엔드에서 그린 새로운 스케치를 기록할 때
 async function saveSketchbook(payload) {
   if (payload.imageData && typeof payload.imageData === "string") {
     sketchbookMemory.imageData = payload.imageData;
@@ -91,6 +89,7 @@ async function saveSketchbook(payload) {
   return { ok: true };
 }
 
+// 💡 스케치 전용 핸들러 (원상 복구 완료)
 async function handleSketchRequest(request) {
   if (request.method === "GET") {
     const book = await fetchSketchbook();
@@ -119,6 +118,7 @@ function getBearerToken(request) {
   return authHeader.slice(7).trim();
 }
 
+// 💡 진행도 및 베스트 스코어 핸들러 (최적화 로직 적용)
 async function handleProgressRequest(request, env) {
   if (request.method === "OPTIONS") {
     return new Response(null, {
@@ -191,10 +191,48 @@ async function handleProgressRequest(request, env) {
     return errorResponse("Request body must include progress number and scores object.", 400);
   }
 
-  const safeProgress = Math.min(30, Math.max(1, Math.floor(body.progress) || 1));
-  const scoresJson = JSON.stringify(body.scores);
+  // 1. 기존 DB 데이터 조회 및 스코어 비교 병합
+  const existingRow = await env.DB.prepare(
+    "SELECT progress, scores FROM progress WHERE user_sub = ? AND mode = ?"
+  )
+    .bind(userSub, mode)
+    .first();
+
+  let finalProgress = Math.min(30, Math.max(1, Math.floor(body.progress) || 1));
+  let finalScores = body.scores || {};
+
+  if (existingRow) {
+    // 둘 중 더 높은 스테이지 진행도 유지
+    finalProgress = Math.max(finalProgress, existingRow.progress || 1);
+
+    let existingScores = {};
+    try {
+      existingScores = JSON.parse(existingRow.scores || "{}");
+    } catch (error) {
+      console.error("[backend] 파싱 에러:", error);
+    }
+
+    // 두 스코어 객체를 비교하여 최소 획수만 남김
+    const allStageKeys = new Set([...Object.keys(existingScores), ...Object.keys(finalScores)]);
+    const mergedScores = {};
+
+    for (const stage of allStageKeys) {
+      const oldScore = existingScores[stage];
+      const newScore = finalScores[stage];
+
+      if (oldScore !== undefined && newScore !== undefined) {
+        mergedScores[stage] = Math.min(oldScore, newScore); // 더 적은 선을 그은 스코어 선택
+      } else {
+        mergedScores[stage] = oldScore !== undefined ? oldScore : newScore;
+      }
+    }
+    finalScores = mergedScores;
+  }
+
+  const scoresJson = JSON.stringify(finalScores);
   const now = new Date().toISOString();
 
+  // 2. 최종 최적 데이터 저장
   await env.DB.prepare(
     `INSERT INTO progress (user_sub, mode, progress, scores, updated_at)
      VALUES (?, ?, ?, ?, ?)
@@ -203,7 +241,7 @@ async function handleProgressRequest(request, env) {
        scores = excluded.scores,
        updated_at = excluded.updated_at`
   )
-    .bind(userSub, mode, safeProgress, scoresJson, now)
+    .bind(userSub, mode, finalProgress, scoresJson, now)
     .run();
 
   return jsonResponse({ ok: true, mode });
@@ -212,7 +250,6 @@ async function handleProgressRequest(request, env) {
 async function handleRequest(request, env) {
   const url = new URL(request.url);
 
-  // 1. 서버 연결 및 상태 확인용 헬스체크
   if (url.pathname === "/api/health") {
     return jsonResponse({
       ok: true,
@@ -221,7 +258,6 @@ async function handleRequest(request, env) {
     });
   }
 
-  // 2. 스케치북 그리기 데이터 교환 엔드포인트
   if (url.pathname === "/api/sketch") {
     try {
       return await handleSketchRequest(request, env);
@@ -230,7 +266,6 @@ async function handleRequest(request, env) {
     }
   }
 
-  // 3. Progress save/load endpoint for authenticated users
   if (url.pathname === "/api/progress") {
     try {
       return await handleProgressRequest(request, env);
@@ -239,7 +274,6 @@ async function handleRequest(request, env) {
     }
   }
 
-  // 4. Google auth endpoint (POST { code } or { id_token })
   if (url.pathname === "/api/auth/google") {
     try {
       return await handleAuthRequest(request, env);
@@ -259,7 +293,6 @@ async function handleRequest(request, env) {
 
 export default {
   async fetch(request, env) {
-    // CORS Preflight 요청 처리
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
@@ -270,7 +303,6 @@ export default {
   },
 };
 
-// --- Auth handler: verify id_token and upsert user into D1 ---
 async function getGoogleClientId(env) {
   if (env.GOOGLE_CLIENT_ID) return env.GOOGLE_CLIENT_ID;
   if (process.env.GOOGLE_CLIENT_ID) return process.env.GOOGLE_CLIENT_ID;
@@ -307,7 +339,6 @@ async function handleAuthRequest(request, env) {
   const email = payload.email || null;
   const name = payload.name || null;
 
-  // Ensure users table exists
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, sub TEXT UNIQUE, email TEXT, name TEXT)`
   ).run();
@@ -318,7 +349,6 @@ async function handleAuthRequest(request, env) {
   let user;
   if (existing && existing.results && existing.results.length) {
     user = existing.results[0];
-    // Update if details changed
     if ((email && user.email !== email) || (name && user.name !== name)) {
       await env.DB.prepare("UPDATE users SET email = ?, name = ? WHERE sub = ?")
         .bind(email, name, sub)
@@ -338,9 +368,6 @@ async function handleAuthRequest(request, env) {
 async function exchangeCodeForIdToken(code, env) {
   const clientId = await getGoogleClientId(env);
   const clientSecret = await getGoogleClientSecret(env);
-  console.log(
-    `[backend] exchangeCodeForIdToken using clientId=${clientId ? clientId.slice(0, 20) + "..." : "undefined"}`
-  );
   if (!clientId) {
     throw new Error("Missing GOOGLE_CLIENT_ID in backend environment.");
   }
@@ -365,7 +392,6 @@ async function exchangeCodeForIdToken(code, env) {
 
   if (!tokenResp.ok) {
     const errorPayload = await tokenResp.text().catch(() => "");
-    console.error("[backend] Google token exchange failed:", tokenResp.status, errorPayload);
     throw new Error(`Authorization code exchange failed: ${errorPayload}`);
   }
 
