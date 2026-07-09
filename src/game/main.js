@@ -55,6 +55,7 @@ import {
   Rotor,
   TextLabel,
 } from "./objects/index.js";
+import { syncProgressForMode } from "./auth.js";
 
 const board = document.querySelector("#game-board");
 const canvas = document.querySelector("#game-canvas");
@@ -1270,6 +1271,10 @@ function tick(timestamp = 0) {
     const remaining = gameObjects.filter((g) => g instanceof Star && !g.collected);
     if (remaining.length === 0 && !stageCleared) {
       stageCleared = true;
+      const currentMode = challengeModeEnabled ? "challenge" : "normal";
+      syncProgressForMode(currentMode).catch((err) => {
+        console.error("[Sync] 데이터 동기화 실패:", err);
+      });
       showStageClearOverlay("Stage Cleared!");
       if (currentStage && typeof currentStage.onClear === "function") {
         try {
