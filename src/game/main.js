@@ -55,7 +55,7 @@ import {
   Rotor,
   TextLabel,
 } from "./objects/index.js";
-import { syncProgressForMode } from "./auth.js";
+import { syncProgressForMode } from "../auth.js";
 
 const board = document.querySelector("#game-board");
 const canvas = document.querySelector("#game-canvas");
