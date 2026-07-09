@@ -14,7 +14,7 @@ if (typeof window !== "undefined") {
       const baseHost = host.replace(/-\d+$/, "").replace(".github.dev", "").replace(".app", "");
       API_BASE_URL = `https://${baseHost}-8787.app.github.dev`;
     } else if (host.endsWith(".github.io")) {
-      API_BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_LOCAL;
+      API_BASE_URL = "https://sketchybook-backend.ghmeundong.workers.dev";
     }
   }
 }
