@@ -181,7 +181,7 @@ const stageDefinitions = {
     title: "Stage 11",
     minEvents: 1,
     objects: [
-      { type: "ball", x: 0.4, y: 0.4 },
+      { type: "ball", x: 0.4, y: 0.5 },
       { type: "platform", x: 0.4, y: 0.55 },
       { type: "stripedRect", x: 0.4, y: 0.55, width: 0.1, height: 0.05 },
       { type: "platform", x: 0.5, y: 0.55, width: 0.02, height: 0.2 },
