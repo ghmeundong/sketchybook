@@ -1,7 +1,7 @@
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type",
 };
 
 // 스케치북 컨셉에 맞춘 인메모리 저장소
