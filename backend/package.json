@@ -6,6 +6,16 @@
     "dev": "wrangler dev --local --env-file ../.env --port 8787",
     "deploy": "wrangler deploy"
   },
+  "allowScripts": {
+    "esbuild": true,
+    "sharp": true,
+    "workerd": true
+  },
+  "dependencies": {
+    "esbuild": "^0.28.1",
+    "sharp": "^0.34.5",
+    "workerd": "^1.20260623.1"
+  },
   "devDependencies": {
     "dotenv": "^16.1.4",
     "wrangler": "^4.0.0"
