@@ -56,10 +56,15 @@ import {
   TextLabel,
 } from "./objects/index.js";
 import { syncProgressForMode } from "../auth.js";
+import { DIFFICULTY_LEVELS, DIFFICULTY_CONFIG, getDifficultyRules } from "./difficultyLevels.js";
 
 const board = document.querySelector("#game-board");
 const canvas = document.querySelector("#game-canvas");
+const drawLimitProgress = document.getElementById("draw-limit-progress");
+const drawLimitProgressTrackCanvas = document.getElementById("draw-limit-progress-track-canvas");
+const drawLimitProgressFillCanvas = document.getElementById("draw-limit-progress-fill-canvas");
 const selectionPage = document.querySelector(".page-selection");
+let drawLimitProgressTrackDrawn = false;
 const playPage = document.querySelector(".page-play");
 const stageButtons = Array.from(document.querySelectorAll(".stage-card"));
 const stagePageButtons = Array.from(document.querySelectorAll("[data-stage-page]"));
@@ -68,6 +73,10 @@ let stagePageIndex = 0;
 const stagePageSize = 6;
 const totalStageCount = 30;
 const totalStagePages = Math.ceil(totalStageCount / stagePageSize);
+
+// 난이도 관련 변수
+let currentDifficulty = DIFFICULTY_LEVELS.NORMAL;
+let difficultyRules = getDifficultyRules(currentDifficulty);
 
 let stageClearOverlay = null;
 let stageClearMessage = null;
@@ -85,6 +94,16 @@ body.style.backgroundPosition = "center";
 body.style.backgroundRepeat = "no-repeat";
 body.style.backgroundAttachment = "fixed";
 
+function isChallengeClearedStage(stageNumber) {
+  const key = `sketchybook.challenge-cleared-${currentDifficulty}-${stageNumber}`;
+  return localStorage.getItem(key) === "true";
+}
+
+function setChallengeCleared(stageNumber) {
+  const key = `sketchybook.challenge-cleared-${currentDifficulty}-${stageNumber}`;
+  localStorage.setItem(key, "true");
+}
+
 function refreshStageSelectionButtons() {
   renderStageSelectionButtonsUI(stageButtons);
   updateStageSelectionPage();
@@ -100,10 +119,12 @@ function updateStageSelectionPage() {
     const isVisible = stageNumber > startIndex && stageNumber <= endIndex;
     const isUnlocked = stageNumber <= unlockedStage;
     const shouldDisable = !isVisible || !isUnlocked;
+    const isChallengeClearedStageNum = isChallengeClearedStage(stageNumber);
 
     button.classList.toggle("is-hidden", !isVisible);
     button.disabled = shouldDisable;
     button.classList.toggle("is-disabled", shouldDisable);
+    button.classList.toggle("is-challenge-cleared", isChallengeClearedStageNum);
     button.setAttribute("aria-disabled", String(shouldDisable));
   });
 
@@ -136,7 +157,8 @@ function drawRoughFrame(card) {
     strokeWidth: 1.3,
     roughness: 1.6,
     bowing: 1.2,
-    fill: "transparent",
+    fill: undefined,
+    fillStyle: "solid",
   });
 
   svg.appendChild(shape);
@@ -169,7 +191,11 @@ function resetStageState() {
     cancelAnimationFrame(animationFrameId);
     animationFrameId = null;
   }
-  challengeModeEnabled = getChallengeModePreference();
+  // 난이도 규칙 적용: Challenge 모드는 hard/insane에서만 활성화 가능
+  const userPrefersChallenge = getChallengeModePreference();
+  const canEnableChallenge = difficultyRules.enableChallengeMode;
+  challengeModeEnabled = userPrefersChallenge && canEnableChallenge;
+
   resetPhysicsWorld();
   gameObjects = [];
   physicsStrokes = [];
@@ -182,6 +208,9 @@ function resetStageState() {
   stageEventCount = 0;
   challengeModeStrokeCount = 0;
   stageMinEvents = 0;
+  totalDrawnLength = 0;
+  drawLimitProgressTrackDrawn = false;
+  updateDrawLimitProgressUI();
   hideStageClearOverlay();
   hideGameRetryButton();
   hideGameExitButton();
@@ -282,6 +311,12 @@ function showStageClearOverlay(message = "Stage Cleared!") {
   if (!stageClearOverlay || !stageClearMessage) return;
 
   stageClearMessage.querySelector(".stage-clear-title").textContent = message;
+
+  // Challenge 모드로 클리어한 경우 저장
+  if (challengeModeEnabled) {
+    setChallengeCleared(currentStageNumber);
+  }
+
   showStageClearOverlayUI({
     overlay: stageClearOverlay,
     message: stageClearMessage,
@@ -435,10 +470,122 @@ let stageHasSimulated = false;
 let stageEventCount = 0;
 let stageMinEvents = 0;
 let isWindowFocused = true;
+let totalDrawnLength = 0;
 
 // Game objects (balls, stars, etc.) that stages can declare.
 let gameObjects = [];
 let currentStageNumber = 1;
+
+function getStrokeDistance(points) {
+  if (!Array.isArray(points) || points.length < 2) {
+    return 0;
+  }
+
+  let distance = 0;
+  for (let i = 1; i < points.length; i += 1) {
+    const prev = points[i - 1];
+    const next = points[i];
+    distance += Math.hypot(next.x - prev.x, next.y - prev.y);
+  }
+  return distance;
+}
+
+function updateDrawLimitProgressUI({ previewLength = totalDrawnLength } = {}) {
+  const limit = difficultyRules?.maxLineLength ?? null;
+  if (!drawLimitProgress || !drawLimitProgressTrackCanvas || !drawLimitProgressFillCanvas) {
+    return;
+  }
+
+  if (limit == null) {
+    drawLimitProgress.classList.remove("is-visible");
+    drawLimitProgressTrackDrawn = false;
+    const trackCtx = drawLimitProgressTrackCanvas.getContext("2d");
+    const fillCtx = drawLimitProgressFillCanvas.getContext("2d");
+    if (trackCtx) {
+      trackCtx.clearRect(
+        0,
+        0,
+        drawLimitProgressTrackCanvas.width,
+        drawLimitProgressTrackCanvas.height
+      );
+    }
+    if (fillCtx) {
+      fillCtx.clearRect(
+        0,
+        0,
+        drawLimitProgressFillCanvas.width,
+        drawLimitProgressFillCanvas.height
+      );
+    }
+    return;
+  }
+
+  const displayLength = Math.max(
+    0,
+    Number.isFinite(previewLength) ? previewLength : totalDrawnLength
+  );
+  const dpr = window.devicePixelRatio || 1;
+  const pxWidth = drawLimitProgress.clientWidth || 320;
+  const pxHeight = drawLimitProgress.clientHeight || 12;
+  const width = Math.max(1, pxWidth);
+  const height = Math.max(1, pxHeight);
+  const padding = 6;
+  const trackY = 1;
+  const trackW = width - padding * 2;
+  const trackH = Math.max(8, height - 2);
+  const ratio = Math.min(Math.max(displayLength / limit, 0), 1);
+  const fillW = Math.max(0, trackW * ratio);
+
+  // Draw track once
+  if (!drawLimitProgressTrackDrawn) {
+    drawLimitProgressTrackCanvas.width = Math.max(1, width * dpr);
+    drawLimitProgressTrackCanvas.height = Math.max(1, height * dpr);
+    drawLimitProgressTrackCanvas.style.width = `${width}px`;
+    drawLimitProgressTrackCanvas.style.height = `${height}px`;
+
+    const rcTrack = rough.canvas(drawLimitProgressTrackCanvas);
+    const trackCtx = drawLimitProgressTrackCanvas.getContext("2d");
+    if (trackCtx) {
+      trackCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      trackCtx.clearRect(0, 0, width, height);
+    }
+
+    rcTrack.rectangle(padding, trackY, trackW, trackH, {
+      fill: "rgba(79, 59, 36, 0.08)",
+      stroke: "#4f3b24",
+      strokeWidth: 1.2,
+      roughness: 1.8,
+      bowing: 1.2,
+    });
+
+    drawLimitProgressTrackDrawn = true;
+  }
+
+  // Update fill every frame
+  drawLimitProgressFillCanvas.width = Math.max(1, width * dpr);
+  drawLimitProgressFillCanvas.height = Math.max(1, height * dpr);
+  drawLimitProgressFillCanvas.style.width = `${width}px`;
+  drawLimitProgressFillCanvas.style.height = `${height}px`;
+
+  const rcFill = rough.canvas(drawLimitProgressFillCanvas);
+  const fillCtx = drawLimitProgressFillCanvas.getContext("2d");
+  if (fillCtx) {
+    fillCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    fillCtx.clearRect(0, 0, width, height);
+  }
+
+  if (fillW > 0) {
+    rcFill.rectangle(padding, trackY, fillW, trackH, {
+      fill: "rgba(160, 110, 55, 0.72)",
+      stroke: "#4f3b24",
+      strokeWidth: 1,
+      roughness: 2.2,
+      bowing: 1.4,
+    });
+  }
+
+  drawLimitProgress.classList.add("is-visible");
+}
 
 function resizeCanvas() {
   if (!board || !canvas) {
@@ -661,10 +808,11 @@ function resizeCanvas() {
         const strokeWidth = 2;
         const rPhysics = Math.max(2, Math.round(rPixels + strokeWidth / 2));
         try {
+          const shouldSkipGround = challengeModeEnabled || !difficultyRules.hasFloor;
           const body = createCircleBody(px, py, rPhysics, floorYForPhysics, {
             density: obj.isStatic ? 0 : 1,
             isStatic: obj.isStatic,
-            skipGround: challengeModeEnabled,
+            skipGround: shouldSkipGround,
           });
           obj.physicsBody = body;
           obj.physicalRadius = rPixels;
@@ -677,10 +825,11 @@ function resizeCanvas() {
         const widthPx = obj.width > 1 ? obj.width : Math.max(4, obj.width * canvasWidth);
         const heightPx = obj.height > 1 ? obj.height : Math.max(4, obj.height * canvasHeight);
         try {
+          const shouldSkipGround = challengeModeEnabled || !difficultyRules.hasFloor;
           const body = createBoxBody(px, py, widthPx, heightPx, floorYForPhysics, {
             type: "static",
             friction: 0.8,
-            skipGround: challengeModeEnabled,
+            skipGround: shouldSkipGround,
           });
           obj.physicsBody = body;
         } catch (e) {
@@ -692,10 +841,11 @@ function resizeCanvas() {
         const x2 = obj.x2 * canvasWidth;
         const y2 = obj.y2 * canvasHeight;
         try {
+          const shouldSkipGround = challengeModeEnabled || !difficultyRules.hasFloor;
           const body = createEdgeBody(x1, y1, x2, y2, floorYForPhysics, {
             type: "static",
             friction: 0.8,
-            skipGround: challengeModeEnabled,
+            skipGround: shouldSkipGround,
           });
           obj.physicsBody = body;
         } catch (e) {
@@ -708,15 +858,17 @@ function resizeCanvas() {
         // ensure texture/pixel points available
         try {
           obj.createTexture(canvasWidth, canvasHeight);
-          obj.createPhysics(floorYForPhysics, { skipGround: challengeModeEnabled });
+          const shouldSkipGround = challengeModeEnabled || !difficultyRules.hasFloor;
+          obj.createPhysics(floorYForPhysics, { skipGround: shouldSkipGround });
         } catch (e) {
           console.warn("ComplexObject physics creation failed:", e);
         }
       } else if (obj instanceof Rotor && !obj.physicsBody) {
         try {
           obj.createTexture(canvasWidth, canvasHeight);
+          const shouldSkipGround = challengeModeEnabled || !difficultyRules.hasFloor;
           obj.createPhysics(canvasWidth, canvasHeight, floorYForPhysics, {
-            skipGround: challengeModeEnabled,
+            skipGround: shouldSkipGround,
           });
         } catch (e) {
           console.warn("Rotor physics creation failed:", e);
@@ -738,7 +890,7 @@ async function initializeStage(stageNumberOverride) {
 
   resetStageState();
 
-  currentStage = await loadStage(canvas, board, stageNumberOverride);
+  currentStage = await loadStage(canvas, board, stageNumberOverride, currentDifficulty);
   if (currentStage?.coordinateSystem) {
     coordinateSystem = currentStage.coordinateSystem;
   }
@@ -861,6 +1013,7 @@ async function initializeStage(stageNumberOverride) {
 
   createGameExitButton();
   createGameRetryButton();
+  updateDrawLimitProgressUI();
 }
 
 function getPoint(event) {
@@ -1271,7 +1424,7 @@ function tick(timestamp = 0) {
     const remaining = gameObjects.filter((g) => g instanceof Star && !g.collected);
     if (remaining.length === 0 && !stageCleared) {
       stageCleared = true;
-      const currentMode = challengeModeEnabled ? "challenge" : "normal";
+      const currentMode = currentDifficulty;
       syncProgressForMode(currentMode).catch((err) => {
         console.error("[Sync] 데이터 동기화 실패:", err);
       });
@@ -1356,6 +1509,9 @@ function continueDrawing(event) {
   const currentPoint = getPoint(event);
   currentStroke.push(currentPoint);
   lastPoint = currentPoint;
+  updateDrawLimitProgressUI({
+    previewLength: totalDrawnLength + getStrokeDistance(currentStroke),
+  });
   // mark preview cache dirty so it'll be re-generated once per change
   currentStrokePreviewDirty = true;
 }
@@ -1415,6 +1571,11 @@ function stopDrawing(event) {
                   bx,
                   by
                 );
+                // 공 움직임에 진행 바 200px 추가
+                if (difficultyRules.maxLineLength !== null) {
+                  totalDrawnLength += 200;
+                  updateDrawLimitProgressUI();
+                }
               } catch (e) {
                 console.warn("failed to apply impulse:", e);
               }
@@ -1431,12 +1592,23 @@ function stopDrawing(event) {
 
   // If the user drew a very short stroke (tiny jitter), treat it as a click.
   const CLICK_DISTANCE_THRESHOLD = 6; // pixels
-  let totalDist = 0;
-  for (let i = 1; i < currentStroke.length; i += 1) {
-    const a = currentStroke[i - 1];
-    const b = currentStroke[i];
-    totalDist += Math.hypot(b.x - a.x, b.y - a.y);
+  const totalDist = getStrokeDistance(currentStroke);
+
+  if (difficultyRules.maxLineLength !== null) {
+    const nextTotalDrawnLength = totalDrawnLength + totalDist;
+    if (nextTotalDrawnLength > difficultyRules.maxLineLength) {
+      console.debug(
+        `Total draw length too long (${Math.round(nextTotalDrawnLength)}px > ${difficultyRules.maxLineLength}px), rejecting stroke`
+      );
+      if (previewCtx) previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+      currentStrokePreviewDirty = false;
+      currentStrokePreviewLastIndex = 0;
+      currentStroke = null;
+      updateDrawLimitProgressUI();
+      return;
+    }
   }
+
   if (totalDist <= CLICK_DISTANCE_THRESHOLD) {
     if (challengeModeEnabled) {
       currentStroke = null;
@@ -1471,6 +1643,11 @@ function stopDrawing(event) {
                   bx,
                   by
                 );
+                // 공 움직임에 진행 바 200px 추가
+                if (difficultyRules.maxLineLength !== null) {
+                  totalDrawnLength += 200;
+                  updateDrawLimitProgressUI();
+                }
               } catch (e) {
                 console.warn("failed to apply impulse:", e);
               }
@@ -1551,15 +1728,27 @@ function stopDrawing(event) {
   });
 
   const strokeBody = stageCreateStrokeBody(currentStroke);
-  if (strokeBody && !intersectsCancelObject) {
+
+  // 난이도 규칙에 따라 공 위에 그리기를 제한
+  const shouldRejectIfIntersectsBall = !difficultyRules.canDrawOnBall;
+  const shouldCreateStroke =
+    strokeBody && (!shouldRejectIfIntersectsBall || !intersectsCancelObject);
+
+  if (shouldCreateStroke) {
     const floorY = (canvas?.clientHeight || 0) - 24;
+    const shouldSkipGround = challengeModeEnabled || !difficultyRules.hasFloor;
     stageInitializeStrokeBody(strokeBody, floorY, {
-      skipGround: challengeModeEnabled,
+      skipGround: shouldSkipGround,
     });
     // Prefer using the preview canvas snapshot so the finalized texture
     // matches exactly what the player saw during drawing.
     createStrokeTexture(strokeBody, previewCanvas);
     physicsStrokes.push(strokeBody);
+    totalDrawnLength += getStrokeDistance(currentStroke);
+    updateDrawLimitProgressUI();
+  } else if (!shouldCreateStroke && currentStroke) {
+    // 선이 취소됐을 때 (공이나 striped rect와 만났을 때) 진행 바 리셋
+    updateDrawLimitProgressUI();
   }
 
   // clear preview overlay after capturing snapshot for the finalized stroke
@@ -1640,6 +1829,12 @@ window.addEventListener("keydown", async (event) => {
             applyAngularImpulseToBody(obj.physicsBody, ANGULAR_IMPULSE);
 
             console.debug("move ball");
+
+            // 공 움직임에 진행 바 200px 추가
+            if (difficultyRules.maxLineLength !== null) {
+              totalDrawnLength += 200;
+              updateDrawLimitProgressUI();
+            }
           } catch (e) {
             console.warn("moving ball failed:", e);
           }
@@ -1698,4 +1893,12 @@ window.addEventListener("load", () => {
   document.documentElement.classList.add("js-ready");
   const loader = document.getElementById("page-loader");
   if (loader) loader.remove();
+
+  // URL에서 난이도 파라미터를 읽어옴
+  const params = new URLSearchParams(window.location.search);
+  const difficultyParam = params.get("difficulty");
+  if (difficultyParam && Object.values(DIFFICULTY_LEVELS).includes(difficultyParam)) {
+    currentDifficulty = difficultyParam;
+    difficultyRules = getDifficultyRules(currentDifficulty);
+  }
 });

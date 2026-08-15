@@ -3,26 +3,38 @@ import { getChallengeModePreference } from "../challengeMode.js";
 
 export const stageScoreStorageKey = "sketchybook-stage-scores";
 export const stageProgressStorageKey = "sketchybook-stage-progress";
+const DIFFICULTY_KEYS = ["easy", "normal", "hard", "insane"];
 
-function getModeSuffix(mode) {
-  if (mode === "challenge" || mode === true) {
-    return "-challenge";
+function normalizeDifficultyKey(difficulty) {
+  const normalized = typeof difficulty === "string" ? difficulty.trim().toLowerCase() : "";
+
+  if (DIFFICULTY_KEYS.includes(normalized)) {
+    return normalized;
   }
-  if (mode === "normal" || mode === false || mode === undefined) {
-    return getChallengeModePreference() ? "-challenge" : "";
+
+  if (normalized === "challenge") {
+    return getChallengeModePreference() ? "hard" : "normal";
   }
-  return "";
+
+  const selectedDifficulty =
+    window.sessionStorage?.getItem?.("selectedDifficulty") ||
+    new URLSearchParams(window.location.search).get("difficulty") ||
+    "normal";
+
+  const candidate = selectedDifficulty.trim().toLowerCase();
+  return DIFFICULTY_KEYS.includes(candidate) ? candidate : "normal";
 }
 
-function getModeStorageKeys(mode) {
+function getDifficultyStorageKeys(difficulty) {
+  const key = normalizeDifficultyKey(difficulty);
   return {
-    scores: `${stageScoreStorageKey}${getModeSuffix(mode)}`,
-    progress: `${stageProgressStorageKey}${getModeSuffix(mode)}`,
+    scores: `${stageScoreStorageKey}-${key}`,
+    progress: `${stageProgressStorageKey}-${key}`,
   };
 }
 
 export function getStoredStageScores(mode) {
-  const { scores } = getModeStorageKeys(mode);
+  const { scores } = getDifficultyStorageKeys(mode);
   try {
     const raw = window.localStorage.getItem(scores);
     if (!raw) return {};
@@ -35,19 +47,17 @@ export function getStoredStageScores(mode) {
 }
 
 export function getStoredStageProgress(mode) {
-  if (mode === undefined) {
-    const storedScores = getStoredStageScores();
-    const clearedStageNumbers = Object.keys(storedScores)
-      .map((key) => Number(key))
-      .filter((value) => Number.isInteger(value) && value >= 1 && value <= 30);
+  const { progress } = getDifficultyStorageKeys(mode);
+  const storedScores = getStoredStageScores(mode);
+  const clearedStageNumbers = Object.keys(storedScores)
+    .map((key) => Number(key))
+    .filter((value) => Number.isInteger(value) && value >= 1 && value <= 30);
 
-    if (clearedStageNumbers.length > 0) {
-      const highestClearedStage = Math.max(...clearedStageNumbers);
-      return Math.min(30, highestClearedStage + 1);
-    }
+  if (clearedStageNumbers.length > 0) {
+    const highestClearedStage = Math.max(...clearedStageNumbers);
+    return Math.min(30, highestClearedStage + 1);
   }
 
-  const { progress } = getModeStorageKeys(mode);
   try {
     const raw = window.localStorage.getItem(progress);
     if (!raw) return 1;
@@ -68,7 +78,7 @@ export function setStoredStageProgress(stageNumber, mode) {
     return;
   }
 
-  const { progress } = getModeStorageKeys(mode);
+  const { progress } = getDifficultyStorageKeys(mode);
   try {
     window.localStorage.setItem(progress, String(safeStageNumber));
   } catch (error) {
@@ -77,7 +87,7 @@ export function setStoredStageProgress(stageNumber, mode) {
 }
 
 export function setStoredStageScores(scores, mode) {
-  const { scores: scoresKey } = getModeStorageKeys(mode);
+  const { scores: scoresKey } = getDifficultyStorageKeys(mode);
   try {
     window.localStorage.setItem(scoresKey, JSON.stringify(scores || {}));
   } catch (error) {
@@ -97,7 +107,7 @@ export function saveStageProgress(stageNumber, mode) {
     return;
   }
 
-  const { progress } = getModeStorageKeys(mode);
+  const { progress } = getDifficultyStorageKeys(mode);
   try {
     window.localStorage.setItem(progress, String(nextUnlockedStage));
   } catch (error) {
@@ -113,7 +123,7 @@ export function saveStageScore(stageNumber, stars, mode) {
   const storedScores = getStoredStageScores(mode);
   const previousScore = Number(storedScores[safeStageNumber]);
   const shouldOverwrite = !Number.isFinite(previousScore) || previousScore < safeStars;
-  const { scores } = getModeStorageKeys(mode);
+  const { scores } = getDifficultyStorageKeys(mode);
   if (shouldOverwrite) {
     const nextScores = { ...storedScores, [safeStageNumber]: safeStars };
     try {

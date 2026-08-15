@@ -183,7 +183,14 @@ const stageDefinitions = {
     objects: [
       { type: "ball", x: 0.4, y: 0.5 },
       { type: "platform", x: 0.4, y: 0.55 },
-      { type: "stripedRect", x: 0.4, y: 0.55, width: 0.1, height: 0.05 },
+      {
+        type: "stripedRect",
+        x: 0.4,
+        y: 0.55,
+        width: 0.1,
+        height: 0.05,
+        levels: ["hard", "insane"],
+      },
       { type: "platform", x: 0.5, y: 0.55, width: 0.02, height: 0.2 },
       { type: "star", x: 0.6, y: 0.5 },
     ],
@@ -195,7 +202,14 @@ const stageDefinitions = {
     objects: [
       { type: "ball", x: 0.3, y: 0.5 },
       { type: "platform", x: 0.3, y: 0.55 },
-      { type: "stripedRect", x: 0.3, y: 0.55, width: 0.1, height: 0.05 },
+      {
+        type: "stripedRect",
+        x: 0.3,
+        y: 0.55,
+        width: 0.1,
+        height: 0.05,
+        levels: ["hard", "insane"],
+      },
       { type: "star", x: 0.7, y: 0.5 },
     ],
   },
@@ -317,7 +331,14 @@ const stageDefinitions = {
     objects: [
       { type: "ball", x: 0.5, y: 0.7 },
       { type: "platform", x: 0.5, y: 0.75 },
-      { type: "stripedRect", x: 0.5, y: 0.75, width: 0.1, height: 0.05 },
+      {
+        type: "stripedRect",
+        x: 0.5,
+        y: 0.75,
+        width: 0.1,
+        height: 0.05,
+        levels: ["hard", "insane"],
+      },
       {
         type: "rotor",
         points: [
@@ -487,7 +508,7 @@ export function getStageDefinition(stageNumber) {
   return stageDefinitions[parsed] ?? null;
 }
 
-export function createStageFromDefinition(stageNumber, canvas, board) {
+export function createStageFromDefinition(stageNumber, canvas, board, difficulty = "normal") {
   const definition = getStageDefinition(stageNumber);
   if (!definition) {
     return null;
@@ -501,6 +522,7 @@ export function createStageFromDefinition(stageNumber, canvas, board) {
       objects: definition.objects,
     },
     canvas,
-    board
+    board,
+    difficulty
   );
 }

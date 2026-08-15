@@ -5,8 +5,9 @@ import {
   updateStrokeBody,
   stepPhysicsWorld,
 } from "../physics.js";
+import { filterObjectsByDifficulty } from "../difficultyLevels.js";
 
-export function createStageTemplate(definition = {}, canvas, board) {
+export function createStageTemplate(definition = {}, canvas, board, difficulty = "normal") {
   const coordinateSystem = createCoordinateSystem({
     viewportWidth: board.clientWidth,
     viewportHeight: board.clientHeight,
@@ -16,12 +17,16 @@ export function createStageTemplate(definition = {}, canvas, board) {
   const stageNumber = safeDefinition.stageNumber ?? 1;
   const title = safeDefinition.title ?? `Stage ${stageNumber}`;
   const minEvents = Number.isInteger(safeDefinition.minEvents) ? safeDefinition.minEvents : 1;
-  const objects = Array.isArray(safeDefinition.objects) ? safeDefinition.objects : [];
+  const rawObjects = Array.isArray(safeDefinition.objects) ? safeDefinition.objects : [];
+
+  // 난이도에 따라 오브젝트 필터링
+  const objects = filterObjectsByDifficulty(rawObjects, difficulty);
 
   return {
     coordinateSystem,
     minEvents,
     title,
+    difficulty,
     initialize: () => {},
     update: (physicsStrokes, floorY) => {
       stepPhysicsWorld({ deltaTime: 1 / 60 });

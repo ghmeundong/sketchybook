@@ -94,7 +94,9 @@ async function handleProgressRequest(request, env) {
   }
 
   const url = new URL(request.url);
-  const mode = url.searchParams.get("mode") === "challenge" ? "challenge" : "normal";
+  const rawMode = (url.searchParams.get("mode") || "normal").trim().toLowerCase();
+  const validModes = ["easy", "normal", "hard", "insane"];
+  const mode = validModes.includes(rawMode) ? rawMode : "normal";
 
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS progress (

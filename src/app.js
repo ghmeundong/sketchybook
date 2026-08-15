@@ -2,19 +2,32 @@ import paperTexture from "./img/paper-texture.webp";
 import { initializeOrientationPrompt } from "./orientationPrompt.js";
 import { createActionIconCanvas } from "./game/ui/uiIcons.js";
 import { getChallengeModePreference, setChallengeModePreference } from "./game/challengeMode.js";
+import {
+  DIFFICULTY_LEVELS,
+  DIFFICULTY_CONFIG,
+  getDifficultyList,
+  getNextDifficulty,
+  getPreviousDifficulty,
+} from "./game/difficultyLevels.js";
 
 const startTitle = document.querySelector("[data-start-button]");
 const titleText = document.querySelector(".brand-title");
 const settingsToggle = document.querySelector("[data-settings-toggle]");
 const challengeModeToggle = document.querySelector("[data-challenge-mode-toggle]");
+const challengeModeStatus = document.getElementById("challenge-mode-status");
 const settingsPanel = document.getElementById("start-settings-panel");
 const settingsClose = document.querySelector("[data-settings-close]");
+const difficultyPrevBtn = document.querySelector("[data-difficulty-prev]");
+const difficultyNextBtn = document.querySelector("[data-difficulty-next]");
+const difficultyNameDisplay = document.getElementById("difficulty-name");
+const difficultyDescription = document.getElementById("difficulty-description");
 const body = document.body;
 const pageLoader = document.getElementById("page-loader");
 
 const initialTitle = titleText?.textContent?.trim() || "SKETCHYBOOK";
 let backgroundLoaded = false;
 let pageLoadComplete = false;
+let selectedDifficulty = DIFFICULTY_LEVELS.NORMAL; // 기본값
 
 window.__delayLoadReady = true;
 
@@ -63,6 +76,51 @@ function syncChallengeModeToggleUI() {
   const enabled = getChallengeModePreference();
   challengeModeToggle.setAttribute("aria-pressed", String(enabled));
   challengeModeToggle.classList.toggle("is-active", enabled);
+}
+
+function updateChallengeModeAvailability() {
+  if (!challengeModeToggle) return;
+  const config = DIFFICULTY_CONFIG[selectedDifficulty];
+  const isAvailable = config?.enableChallengeMode || false;
+
+  challengeModeToggle.disabled = !isAvailable;
+  challengeModeToggle.style.opacity = isAvailable ? "1" : "0.5";
+  challengeModeToggle.style.cursor = isAvailable ? "pointer" : "not-allowed";
+
+  // 비활성화 난이도에서는 항상 Challenge Mode를 off로 설정
+  if (!isAvailable) {
+    setChallengeModePreference(false);
+    syncChallengeModeToggleUI();
+  }
+
+  if (challengeModeStatus) {
+    if (isAvailable) {
+      challengeModeStatus.innerHTML =
+        "draw only one line <br />no clicks <br />no floor<br /><em>Challenge Mode: Available</em>";
+    } else {
+      challengeModeStatus.innerHTML =
+        "draw only one line <br />no clicks <br />no floor<br /><em>Challenge Mode: Unavailable</em>";
+    }
+  }
+}
+
+function updateDifficultyDisplay() {
+  const config = DIFFICULTY_CONFIG[selectedDifficulty];
+
+  if (difficultyNameDisplay) {
+    difficultyNameDisplay.textContent = config?.name || "Unknown";
+  }
+
+  if (difficultyDescription) {
+    difficultyDescription.textContent = config?.summary || config?.description || "";
+  }
+}
+
+function changeDifficulty(newDifficulty) {
+  selectedDifficulty = newDifficulty;
+  updateDifficultyDisplay();
+  // sessionStorage에 저장하여 게임에서 접근 가능
+  sessionStorage.setItem("selectedDifficulty", selectedDifficulty);
 }
 
 function prepareInitialState() {
@@ -128,11 +186,36 @@ if (settingsToggle && settingsPanel) {
 
 if (challengeModeToggle) {
   challengeModeToggle.addEventListener("click", () => {
+    if (challengeModeToggle.disabled) {
+      return;
+    }
     const nextValue = !getChallengeModePreference();
     setChallengeModePreference(nextValue);
     syncChallengeModeToggleUI();
   });
 }
+
+// 난이도 선택 이벤트 리스너
+if (difficultyPrevBtn) {
+  difficultyPrevBtn.addEventListener("click", () => {
+    const newDifficulty = getPreviousDifficulty(selectedDifficulty);
+    changeDifficulty(newDifficulty);
+    updateChallengeModeAvailability();
+  });
+}
+
+if (difficultyNextBtn) {
+  difficultyNextBtn.addEventListener("click", () => {
+    const newDifficulty = getNextDifficulty(selectedDifficulty);
+    changeDifficulty(newDifficulty);
+    updateChallengeModeAvailability();
+  });
+}
+
+// 초기 난이도 표시
+updateDifficultyDisplay();
+changeDifficulty(selectedDifficulty);
+updateChallengeModeAvailability();
 
 syncChallengeModeToggleUI();
 
@@ -168,6 +251,8 @@ if (startTitle) {
     } catch (e) {
       console.warn("Game preload failed, navigating anyway:", e);
     }
-    window.location.href = "./game.html";
+    // 난이도 파라미터를 URL에 추가하여 게임 페이지로 이동
+    const gameUrl = `./game.html?difficulty=${selectedDifficulty}`;
+    window.location.href = gameUrl;
   });
 }

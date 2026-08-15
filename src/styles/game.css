@@ -41,6 +41,32 @@
   overflow: hidden;
 }
 
+.draw-limit-progress {
+  position: absolute;
+  top: 0.55rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(56%, 26rem);
+  z-index: 70;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  pointer-events: none;
+}
+
+.draw-limit-progress.is-visible {
+  opacity: 1;
+}
+
+#draw-limit-progress-track-canvas,
+#draw-limit-progress-fill-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 0.8rem;
+  background: transparent;
+}
+
 #game-canvas {
   position: absolute;
   inset: 0;
