@@ -63,13 +63,14 @@
                 <div class="settings-option">
                   <div class="settings-option-text">
                     <strong>Challenge mode:</strong>
-                    <span>draw only one line <br />no clicks <br />no floor</span>
+                    <span id="challenge-mode-status">draw only one line <br />no clicks <br />no floor</span>
                   </div>
                   <button
                     class="settings-toggle-switch"
                     type="button"
                     data-challenge-mode-toggle
                     aria-pressed="false"
+                    id="challenge-mode-toggle-btn"
                   >
                     <span class="settings-toggle-switch-thumb"></span>
                   </button>
@@ -81,6 +82,31 @@
             </div>
             <div class="title-stack">
               <h1 class="brand-title">SKETCHYBOOK</h1>
+              <!-- Difficulty Selector -->
+              <div class="difficulty-selector" id="difficulty-selector">
+                <button
+                  class="difficulty-nav-btn difficulty-prev-btn"
+                  type="button"
+                  data-difficulty-prev
+                  aria-label="Previous difficulty"
+                >
+                  &lt;
+                </button>
+                <div class="difficulty-display">
+                  <span class="difficulty-name" id="difficulty-name">Normal</span>
+                </div>
+                <button
+                  class="difficulty-nav-btn difficulty-next-btn"
+                  type="button"
+                  data-difficulty-next
+                  aria-label="Next difficulty"
+                >
+                  &gt;
+                </button>
+              </div>
+              <p class="difficulty-description" id="difficulty-description" aria-live="polite">
+                Floor on / easy draw / no challenge
+              </p>
               <button class="game-title" type="button" data-start-button>Loading...</button>
             </div>
           </section>

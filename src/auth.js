@@ -8,7 +8,7 @@ import { buildApiUrl } from "./services/api.js";
 
 const AUTH_STORAGE_KEY = "sketchy_user";
 const PROGRESS_API_PATH = "/api/progress";
-const SYNC_MODES = ["normal", "challenge"];
+const SYNC_MODES = ["easy", "normal", "hard", "insane"];
 
 export function getStoredUser() {
   const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
@@ -40,7 +40,10 @@ function getAuthHeaders() {
 }
 
 function buildProgressUrl(mode) {
-  return buildApiUrl(`${PROGRESS_API_PATH}?mode=${encodeURIComponent(mode)}`);
+  const normalizedMode = typeof mode === "string" ? mode.trim().toLowerCase() : "normal";
+  const validModes = ["easy", "normal", "hard", "insane"];
+  const safeMode = validModes.includes(normalizedMode) ? normalizedMode : "normal";
+  return buildApiUrl(`${PROGRESS_API_PATH}?mode=${encodeURIComponent(safeMode)}`);
 }
 
 export async function fetchServerProgress(mode) {

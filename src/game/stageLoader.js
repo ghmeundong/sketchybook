@@ -1,12 +1,12 @@
 import { createStageFromDefinition } from "./stages/registry.js";
 
-export async function loadStage(canvas, board, stageNumberOverride) {
+export async function loadStage(canvas, board, stageNumberOverride, difficulty = "normal") {
   const params = new URLSearchParams(window.location.search);
   const requestedStage =
     typeof stageNumberOverride === "number" ? stageNumberOverride : Number(params.get("stage"));
   const stageNumber = Math.min(Math.max(requestedStage || 1, 1), 30);
 
-  const builtStage = createStageFromDefinition(stageNumber, canvas, board);
+  const builtStage = createStageFromDefinition(stageNumber, canvas, board, difficulty);
   if (builtStage) {
     return builtStage;
   }

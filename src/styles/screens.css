@@ -311,12 +311,37 @@
   transform: none;
 }
 
+@keyframes golden-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 2px #d4af37) drop-shadow(0 0 6px rgb(212 175 55 / 40%));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 6px #d4af37) drop-shadow(0 0 12px rgb(212 175 55 / 80%));
+  }
+}
+
 .stage-card svg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
+}
+
+.stage-card.is-challenge-cleared svg {
+  animation: golden-glow 2.5s ease-in-out infinite;
+}
+
+.stage-card.is-challenge-cleared svg rect,
+.stage-card.is-challenge-cleared svg line,
+.stage-card.is-challenge-cleared svg path {
+  stroke: #d4af37 !important;
+  fill: none !important;
+  fill-opacity: 0 !important;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .stage-score-badge {
@@ -341,6 +366,52 @@
   align-items: center;
   gap: clamp(0.8rem, 2vw, 1.1rem);
   margin-top: clamp(1.5rem, 5vh, 3.5rem);
+}
+
+/* Difficulty Selector Styles */
+.difficulty-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.8rem, 2vw, 1.2rem);
+  margin: clamp(1rem, 2.5vh, 1.5rem) 0;
+}
+
+.difficulty-selector button {
+  background: transparent;
+  border: none;
+  color: #4f3b24;
+  padding: 0;
+  font-size: clamp(28px, 2vw, 40px);
+  font-weight: 400;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+
+.difficulty-selector button:hover {
+  opacity: 0.7;
+}
+
+.difficulty-selector button:active {
+  opacity: 0.5;
+}
+
+.difficulty-name {
+  font-size: clamp(16px, 1.1vw, 20px);
+  font-weight: 600;
+  color: #4f3b24;
+  min-width: clamp(6rem, 12vw, 8rem);
+  text-align: center;
+}
+
+.difficulty-description {
+  margin-top: 0.15rem;
+  max-width: clamp(20rem, 36vw, 28rem);
+  font-size: clamp(0.72rem, 0.86vw, 0.95rem);
+  line-height: 1.5;
+  color: rgb(79 59 36 / 86%);
+  text-align: center;
+  letter-spacing: 0.02em;
 }
 
 .brand-title,
