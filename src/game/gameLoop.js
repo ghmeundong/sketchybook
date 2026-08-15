@@ -11,6 +11,7 @@ import {
   applyImpulseAtLocalPoint,
   applyAngularImpulseToBody,
   resetPhysicsWorld,
+  limitBodyVelocity,
 } from "./physics.js";
 import { createStrokeTexture } from "./strokes.js";
 
@@ -364,6 +365,16 @@ export function createGameLoop({
             updateStrokeBody(stroke, floorY);
           });
         }
+
+        // 공의 최대 속도 제한
+        const balls = gameState.gameObjects.filter((g) => isBallObject(g));
+        for (const ball of balls) {
+          if (ball.physicsBody) {
+            const maxLinearVelocity = (gameState.physicsScaleProfile?.screenToWorld || 1) * 800;
+            limitBodyVelocity(ball.physicsBody, maxLinearVelocity, 20);
+          }
+        }
+
         lastPhysicsTime += physicsFrameDuration;
         gameState.stageHasSimulated = true;
       }
@@ -474,15 +485,19 @@ export function createGameLoop({
             const dy = clickPos.y - by;
             const dist = Math.hypot(dx, dy);
             if (dist <= pr + 6) {
-              const IMPULSE_LINEAR = 80023;
-              const ANGULAR_IMPULSE = 999999;
               if (obj.physicsBody) {
                 try {
-                  const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
-                  applyImpulseAtLocalPoint(obj.physicsBody, IMPULSE_LINEAR, 0, 0, offsetY);
-                  applyAngularImpulseToBody(obj.physicsBody, ANGULAR_IMPULSE);
+                  // 속도를 고정값으로 직접 설정 (임펄스로 누적되지 않도록)
+                  const impulseMultiplier = gameState.physicsScaleProfile?.impulseMultiplier || 1;
+                  const fixedVelocity = 280 * impulseMultiplier; // 스페이스바 런칭 용도
+                  if (typeof obj.physicsBody.setLinearVelocity === "function") {
+                    obj.physicsBody.setLinearVelocity({ x: 0, y: -fixedVelocity });
+                  }
+                  if (typeof obj.physicsBody.setAngularVelocity === "function") {
+                    obj.physicsBody.setAngularVelocity(5);
+                  }
                 } catch (e) {
-                  console.warn("failed to apply impulse:", e);
+                  console.warn("failed to set velocity:", e);
                 }
               }
               break;
@@ -516,15 +531,19 @@ export function createGameLoop({
             const dy = clickPos.y - by;
             const dist = Math.hypot(dx, dy);
             if (dist <= pr + 6) {
-              const IMPULSE_LINEAR = 3500;
-              const ANGULAR_IMPULSE = -1.2;
               if (obj.physicsBody) {
                 try {
-                  const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
-                  applyImpulseAtLocalPoint(obj.physicsBody, IMPULSE_LINEAR, 0, 0, offsetY);
-                  applyAngularImpulseToBody(obj.physicsBody, ANGULAR_IMPULSE);
+                  // 속도를 고정값으로 직접 설정 (클릭 용도)
+                  const impulseMultiplier = gameState.physicsScaleProfile?.impulseMultiplier || 1;
+                  const fixedVelocity = 150 * impulseMultiplier; // 클릭 시 약한 힘
+                  if (typeof obj.physicsBody.setLinearVelocity === "function") {
+                    obj.physicsBody.setLinearVelocity({ x: 0, y: -fixedVelocity });
+                  }
+                  if (typeof obj.physicsBody.setAngularVelocity === "function") {
+                    obj.physicsBody.setAngularVelocity(-1);
+                  }
                 } catch (e) {
-                  console.warn("failed to apply impulse:", e);
+                  console.warn("failed to set velocity:", e);
                 }
               }
               break;

@@ -15,8 +15,8 @@ export function createDeviceSafePhysicsProfile({
   width,
   height,
   dpr = 1,
-  referenceWidth = 900,
-  referenceHeight = 600,
+  referenceWidth = 1600,
+  referenceHeight = 900,
   minScale = 0.75,
   maxScale = 1.35,
 }) {
@@ -594,4 +594,31 @@ export function stepPhysicsWorld(options = {}) {
   const substeps = options.substeps ?? 3;
   const velocityIterations = options.velocityIterations ?? 8;
   physicsWorld.step(step, velocityIterations, substeps);
+}
+
+export function limitBodyVelocity(body, maxLinearVelocity = 800, maxAngularVelocity = 20) {
+  if (!body || typeof body.getLinearVelocity !== "function") {
+    return;
+  }
+
+  try {
+    // 선형 속도 제한
+    const linearVel = body.getLinearVelocity();
+    const linearSpeed = Math.hypot(linearVel.x, linearVel.y);
+
+    if (linearSpeed > maxLinearVelocity) {
+      const scale = maxLinearVelocity / linearSpeed;
+      body.setLinearVelocity({ x: linearVel.x * scale, y: linearVel.y * scale });
+    }
+
+    // 각속도 제한
+    if (typeof body.getAngularVelocity === "function") {
+      const angularVel = body.getAngularVelocity();
+      if (Math.abs(angularVel) > maxAngularVelocity) {
+        body.setAngularVelocity(Math.sign(angularVel) * maxAngularVelocity);
+      }
+    }
+  } catch (e) {
+    console.warn("limitBodyVelocity failed:", e);
+  }
 }
