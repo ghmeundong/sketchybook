@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "esbuild": "^0.28.1",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.3",
     "workerd": "^1.20260623.1"
   },
   "devDependencies": {
