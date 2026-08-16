@@ -50,9 +50,10 @@ export const DIFFICULTY_CONFIG = {
     hasFloor: false,
     canDrawOnBall: false,
     enableChallengeMode: true,
-    maxLineLength: 1750,
+    maxLineLength: 1250,
     description: "Maximum difficulty",
-    summary: "Floor off / no ball drawing / challenge mode available / line limit 1750px",
+    summary:
+      "Floor off / no ball drawing / no platform drawing / challenge mode available / line limit 1250px",
   },
 };
 

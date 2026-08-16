@@ -14,6 +14,18 @@
   position: relative;
 }
 
+.start-screen-login {
+  position: absolute;
+  top: clamp(0.75rem, 2vw, 1.25rem);
+  left: clamp(0.75rem, 2vw, 1.25rem);
+  z-index: 2;
+}
+
+.google-signin-container {
+  display: inline-block;
+  vertical-align: middle;
+}
+
 .start-screen-actions {
   position: absolute;
   top: clamp(0.75rem, 2vw, 1.25rem);
@@ -143,11 +155,162 @@
 }
 
 .settings-option {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 0.35rem;
   width: 100%;
+}
+
+.challenge-mode-tooltip {
+  position: fixed;
+  z-index: 40;
+  width: clamp(8.5rem, 16vw, 11rem);
+  min-height: 3.2rem;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0) rotate(-1deg);
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+.challenge-mode-tooltip.is-visible {
+  opacity: 1;
+  transform: translateY(0) rotate(0deg);
+}
+
+.challenge-mode-tooltip svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.challenge-mode-tooltip-label {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0.6rem 0.75rem;
+  color: #4f3b24;
+  font-family: MyeongjoFont, serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.insane-warning-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgb(79 59 36 / 30%);
+  backdrop-filter: blur(2px);
+}
+
+.insane-warning-card {
+  position: relative;
+  width: min(38rem, calc(100vw - 2rem));
+  padding: 1.4rem 1.2rem 1rem;
+  background: rgb(250 244 216 / 96%);
+  border: 2px solid #4f3b24;
+  box-shadow: 0 10px 28px rgb(79 59 36 / 16%);
+  transform: rotate(-0.6deg);
+}
+
+.insane-warning-card::before {
+  content: "";
+  position: absolute;
+  inset: 0.5rem;
+  border: 1.5px solid rgb(79 59 36 / 30%);
+  pointer-events: none;
+}
+
+.insane-warning-eyebrow {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 0.4rem;
+  color: #7a4b1b;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.insane-warning-title {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 0.9rem;
+  color: #4f3b24;
+  font-family: MyeongjoFont, serif;
+  font-size: clamp(1.4rem, 2vw, 2rem);
+  font-weight: 900;
+}
+
+.insane-warning-message,
+.insane-warning-prompt {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 0.9rem;
+  color: #4f3b24;
+  font-family: MyeongjoFont, serif;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.insane-warning-prompt {
+  margin-bottom: 1rem;
+  font-weight: 800;
+}
+
+.insane-warning-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.insane-warning-button {
+  padding: 0.7rem 1.15rem;
+  border: 2px solid #4f3b24;
+  background: transparent;
+  color: #4f3b24;
+  font-family: MyeongjoFont, serif;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    transform 150ms ease,
+    opacity 150ms ease;
+}
+
+.insane-warning-button:hover,
+.insane-warning-button:focus {
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.insane-warning-button:active {
+  transform: translateY(0);
+}
+
+.insane-warning-button.is-primary {
+  background: #4f3b24;
+  color: #fff8e8;
 }
 
 .settings-option-text {
