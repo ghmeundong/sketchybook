@@ -1,34 +1,24 @@
 @import url("./styles/base.css");
 @import url("./styles/screens.css");
 
-.orientation-prompt {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  height: -webkit-fill-available;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  background: rgb(0 0 0 / 70%);
-  z-index: 10000;
+html.is-auto-rotate-portrait {
+  overflow: hidden;
 }
 
-/* .orientation-prompt.is-active {
-  display: flex;
-} */
+html.is-auto-rotate-portrait body {
+  width: 100vh;
+  height: 100vw;
+  overflow: hidden;
+  transform-origin: center center;
+  transform: rotate(90deg);
+  transition: transform 220ms ease;
+}
 
-@media screen and (width <= 900px) and (orientation: portrait) {
-  html.has-orientation-prompt .orientation-prompt {
-    display: flex;
-  }
-
-  /* 세로 모드일 때만 스크롤 방지 */
-  html.has-orientation-prompt body {
-    overflow: hidden;
-  }
+html.is-auto-rotate-portrait #page-content,
+html.is-auto-rotate-portrait .book,
+html.is-auto-rotate-portrait .page {
+  width: 100%;
+  height: 100%;
 }
 
 .orientation-prompt-card {

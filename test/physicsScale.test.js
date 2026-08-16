@@ -7,19 +7,27 @@ import {
 } from "../src/game/physics.js";
 
 describe("createDeviceSafePhysicsProfile", () => {
-  it("returns a stable scale and gravity profile for smaller screens", () => {
-    const profile = createDeviceSafePhysicsProfile({
+  it("keeps the physics world stable regardless of viewport size", () => {
+    const mobileProfile = createDeviceSafePhysicsProfile({
       width: 480,
       height: 800,
       dpr: 2,
-      referenceWidth: 900,
-      referenceHeight: 600,
+      referenceWidth: 1600,
+      referenceHeight: 900,
     });
 
-    expect(profile.scale).toBeGreaterThan(0);
-    expect(profile.gravity.y).toBeGreaterThan(0);
-    expect(profile.impulseMultiplier).toBeGreaterThan(0);
-    expect(profile.maxSubsteps).toBeGreaterThan(0);
+    const desktopProfile = createDeviceSafePhysicsProfile({
+      width: 1600,
+      height: 900,
+      dpr: 2,
+      referenceWidth: 1600,
+      referenceHeight: 900,
+    });
+
+    expect(mobileProfile.scale).toBe(desktopProfile.scale);
+    expect(mobileProfile.gravity.y).toBe(desktopProfile.gravity.y);
+    expect(mobileProfile.floorY).toBe(desktopProfile.floorY);
+    expect(mobileProfile.impulseMultiplier).toBe(desktopProfile.impulseMultiplier);
   });
 
   it("keeps circle body size aligned with the intended radius", () => {
