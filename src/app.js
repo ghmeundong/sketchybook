@@ -334,7 +334,7 @@ function prepareInitialState() {
 }
 
 function preloadGameAssets() {
-  const htmlRequest = fetch("./game.html", { cache: "force-cache" });
+  const htmlRequest = fetch("./index.html", { cache: "force-cache" });
   const scriptRequest = fetch("./src/game/main.js", { cache: "force-cache" });
   const preloadLink = document.createElement("link");
   preloadLink.rel = "modulepreload";
@@ -493,7 +493,7 @@ async function launchGameFromStart() {
     console.warn("Game preload failed, navigating anyway:", e);
   }
 
-  const gameUrl = `./game.html?difficulty=${selectedDifficulty}`;
+  const gameUrl = `./index.html?difficulty=${selectedDifficulty}`;
   window.location.href = gameUrl;
 }
 
