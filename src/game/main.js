@@ -3,7 +3,6 @@ import rough from "roughjs";
 import "../style.css";
 import "../styles/game.css";
 import paperTexture from "../img/paper-texture.webp";
-import { initializeOrientationPrompt } from "../orientationPrompt.js";
 import { createCoordinateSystem } from "./coordinates.js";
 import { loadStage } from "./stageLoader.js";
 import { resolveCircleRadius, segmentIntersectsCircle, segmentIntersectsRect } from "./geometry.js";
@@ -184,7 +183,6 @@ if (backHomeButton) {
 }
 
 refreshStageSelectionButtons();
-initializeOrientationPrompt();
 
 function resetStageState() {
   if (animationFrameId) {
@@ -603,16 +601,14 @@ function resizeCanvas() {
 
   const previousCanvasWidth = canvasWidth;
   const previousCanvasHeight = canvasHeight;
-  const logicalWidth = 1600;
-  const logicalHeight = 900;
-  canvasWidth = logicalWidth;
-  canvasHeight = logicalHeight;
+  canvasWidth = measuredWidth;
+  canvasHeight = measuredHeight;
   const dpr = window.devicePixelRatio || 1;
 
   canvas.width = canvasWidth * dpr;
   canvas.height = canvasHeight * dpr;
-  canvas.style.width = `${measuredWidth}px`;
-  canvas.style.height = `${measuredHeight}px`;
+  canvas.style.width = `${canvasWidth}px`;
+  canvas.style.height = `${canvasHeight}px`;
 
   ctx = canvas.getContext("2d");
   if (!ctx) {
@@ -624,8 +620,6 @@ function resizeCanvas() {
     width: canvasWidth,
     height: canvasHeight,
     dpr,
-    referenceWidth: logicalWidth,
-    referenceHeight: logicalHeight,
   });
   setPhysicsScaleProfile(nextPhysicsProfile);
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -1024,14 +1018,9 @@ async function initializeStage(stageNumberOverride) {
 
 function getPoint(event) {
   const rect = canvas.getBoundingClientRect();
-  const logicalWidth = (coordinateSystem?.logicalWidth ?? canvasWidth) || 1600;
-  const logicalHeight = (coordinateSystem?.logicalHeight ?? canvasHeight) || 900;
-  const x = (event.clientX - rect.left) * (logicalWidth / rect.width);
-  const y = (event.clientY - rect.top) * (logicalHeight / rect.height);
-
   return {
-    x,
-    y,
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top,
   };
 }
 

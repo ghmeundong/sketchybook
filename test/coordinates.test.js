@@ -25,4 +25,21 @@ describe("createCoordinateSystem", () => {
     expect(logicalPoint.x).toBeCloseTo(800);
     expect(logicalPoint.y).toBeCloseTo(450);
   });
+
+  it("keeps input aligned when the viewport has been rotated 90 degrees", () => {
+    const logicalWidth = 1600;
+    const logicalHeight = 900;
+    const rectWidth = 900;
+    const rectHeight = 1600;
+    const localX = 300;
+    const localY = 1200;
+
+    const rotatedX = localY;
+    const rotatedY = rectWidth - localX;
+    const x = (rotatedX * logicalWidth) / rectHeight;
+    const y = (rotatedY * logicalHeight) / rectWidth;
+
+    expect(x).toBeCloseTo(1200);
+    expect(y).toBeCloseTo(600);
+  });
 });

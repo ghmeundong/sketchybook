@@ -1,6 +1,5 @@
 import rough from "roughjs";
 import paperTexture from "./img/paper-texture.webp";
-import { initializeOrientationPrompt } from "./orientationPrompt.js";
 import { createActionIconCanvas } from "./game/ui/uiIcons.js";
 import { getChallengeModePreference, setChallengeModePreference } from "./game/challengeMode.js";
 import {
@@ -295,7 +294,6 @@ function preloadGameAssets() {
 }
 
 prepareInitialState();
-initializeOrientationPrompt();
 
 const bgImage = new Image();
 bgImage.decoding = "async";
