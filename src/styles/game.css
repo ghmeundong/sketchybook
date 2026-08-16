@@ -264,12 +264,62 @@
 
 @media (width <= 768px) {
   .game-page {
-    padding: 1rem;
+    padding: 0.5rem;
+    min-height: 100dvh;
   }
 
   .game-hud {
     flex-direction: column;
     align-items: flex-start;
+    gap: 0.2rem;
+    padding: 0.3rem 0.6rem;
+  }
+
+  .game-stage-label {
+    font-size: 0.9rem;
+  }
+
+  .game-coordinate-label {
+    font-size: 0.7rem;
+  }
+}
+
+@media (width <= 1024px) and (orientation: landscape) {
+  .game-page {
+    padding: 0.3rem;
+    min-height: 100dvh;
+  }
+
+  .game-shell {
+    width: 100%;
     gap: 0.3rem;
+  }
+
+  .game-hud {
+    flex-direction: row;
+    gap: 0.3rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .game-stage-label {
+    font-size: 0.85rem;
+  }
+
+  .game-coordinate-label {
+    font-size: 0.65rem;
+  }
+
+  .game-board {
+    aspect-ratio: 16 / 9;
+  }
+
+  .draw-limit-progress {
+    top: 0.35rem;
+    width: min(50%, 20rem);
+  }
+
+  #draw-limit-progress-track-canvas,
+  #draw-limit-progress-fill-canvas {
+    height: 0.6rem;
   }
 }
