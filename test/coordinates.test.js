@@ -17,4 +17,12 @@ describe("createCoordinateSystem", () => {
     expect(logicalPoint.x).toBeCloseTo(400);
     expect(logicalPoint.y).toBeCloseTo(300);
   });
+
+  it("maps a fit-to-screen pointer back into logical coordinates", () => {
+    const system = createCoordinateSystem({ viewportWidth: 800, viewportHeight: 450 });
+    const logicalPoint = system.toLogicalPoint({ x: 400, y: 225 });
+
+    expect(logicalPoint.x).toBeCloseTo(800);
+    expect(logicalPoint.y).toBeCloseTo(450);
+  });
 });
