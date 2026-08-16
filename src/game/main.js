@@ -184,6 +184,24 @@ if (backHomeButton) {
 
 refreshStageSelectionButtons();
 
+function lockLandscapeOrientation() {
+  if (screen?.orientation?.lock) {
+    screen.orientation.lock("landscape").catch((err) => {
+      console.log("Landscape orientation lock not available:", err);
+    });
+
+    window.addEventListener("orientationchange", () => {
+      if (screen?.orientation?.lock) {
+        screen.orientation.lock("landscape").catch((err) => {
+          console.log("Failed to maintain landscape orientation:", err);
+        });
+      }
+    });
+  }
+}
+
+lockLandscapeOrientation();
+
 function resetStageState() {
   if (animationFrameId) {
     cancelAnimationFrame(animationFrameId);
