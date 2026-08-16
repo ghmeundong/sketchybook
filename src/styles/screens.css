@@ -711,6 +711,26 @@
     padding: 0.25rem;
   }
 
+  /* Mobile landscape specific grid */
+  @media (width <= 1024px) and (orientation: landscape) {
+    .selection-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-rows: auto;
+      gap: clamp(0.4rem, 1vw, 0.6rem);
+      width: min(100%, 90vw);
+    }
+
+    .stage-card {
+      min-height: clamp(4rem, 10vh, 5.5rem);
+      max-width: clamp(4rem, 10vh, 5.5rem);
+      font-size: clamp(0.6rem, 1.5vw, 0.8rem);
+    }
+
+    .stage-score-badge {
+      font-size: 0.7rem;
+    }
+  }
+
   .insane-warning-card {
     width: min(90vw, 28rem);
     padding: 1rem 0.9rem 0.8rem;
