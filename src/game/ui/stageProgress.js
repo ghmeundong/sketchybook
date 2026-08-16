@@ -136,6 +136,35 @@ export function saveStageScore(stageNumber, stars, mode) {
   saveStageProgress(safeStageNumber, mode);
 }
 
+export function saveChallengeCleared(stageNumber, mode) {
+  const safeStageNumber = Number(stageNumber);
+  if (!Number.isInteger(safeStageNumber) || safeStageNumber < 1) return;
+
+  const storedScores = getStoredStageScores(mode);
+  const challengeKey = `challenge_${safeStageNumber}`;
+
+  if (storedScores[challengeKey] === true) {
+    return;
+  }
+
+  const { scores } = getDifficultyStorageKeys(mode);
+  const nextScores = { ...storedScores, [challengeKey]: true };
+  try {
+    window.localStorage.setItem(scores, JSON.stringify(nextScores));
+  } catch (error) {
+    console.warn("Failed to save challenge cleared state:", error);
+  }
+}
+
+export function isChallengeClearedLocal(stageNumber, mode) {
+  const safeStageNumber = Number(stageNumber);
+  if (!Number.isInteger(safeStageNumber) || safeStageNumber < 1) return false;
+
+  const storedScores = getStoredStageScores(mode);
+  const challengeKey = `challenge_${safeStageNumber}`;
+  return storedScores[challengeKey] === true;
+}
+
 export function renderStageSelectionButtons(stageButtons = []) {
   const unlockedStage = getStoredStageProgress();
   stageButtons.forEach((button) => {

@@ -142,6 +142,22 @@ export async function syncProgressForMode(mode) {
 
   for (const [stage, localScore] of Object.entries(localScores)) {
     const serverScore = serverScores[stage];
+
+    // challenge_N 키 처리 (boolean 값)
+    if (typeof stage === "string" && stage.startsWith("challenge_")) {
+      const serverHasChallenge = serverScore === true;
+      const localHasChallenge = localScore === true;
+      // 로컬과 서버 중 하나라도 true면 true로 통합 (OR 연산)
+      if (localHasChallenge || serverHasChallenge) {
+        mergedScores[stage] = true;
+        if (localHasChallenge && !serverHasChallenge) {
+          localIsBetter = true;
+        }
+      }
+      continue;
+    }
+
+    // 숫자 스코어 처리
     if (serverScore !== undefined) {
       if (localScore < serverScore) {
         mergedScores[stage] = localScore; // 로컬 기록이 더 우수함
