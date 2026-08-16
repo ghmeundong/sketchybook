@@ -714,16 +714,16 @@
   /* Mobile landscape specific grid */
   @media (width <= 1024px) and (orientation: landscape) {
     .selection-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       grid-template-rows: auto;
-      gap: clamp(0.4rem, 1vw, 0.6rem);
+      gap: clamp(0.6rem, 1.5vw, 0.9rem);
       width: min(100%, 90vw);
     }
 
     .stage-card {
-      min-height: clamp(4rem, 10vh, 5.5rem);
-      max-width: clamp(4rem, 10vh, 5.5rem);
-      font-size: clamp(0.6rem, 1.5vw, 0.8rem);
+      min-height: clamp(5rem, 12vh, 6.5rem);
+      max-width: clamp(5rem, 12vh, 6.5rem);
+      font-size: clamp(0.7rem, 1.8vw, 0.9rem);
     }
 
     .stage-score-badge {

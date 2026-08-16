@@ -212,7 +212,7 @@ export function renderStageScoreStars({ message, stars = 0 }) {
   const label = document.createElement("span");
   label.textContent = "Score:";
   scoreContainer.appendChild(label);
-  scoreContainer.appendChild(createRoughStarCanvas(safeStars, { size: 24, gap: 6 }));
+  scoreContainer.appendChild(createRoughStarCanvas(safeStars, { size: 16, gap: 4 }));
 }
 
 export function createGameButton({ board, className, label, iconType, position, onClick }) {
