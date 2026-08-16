@@ -624,3 +624,100 @@
     width: min(100%, 22rem);
   }
 }
+
+/* Mobile Landscape Optimization */
+@media (width <= 1024px) and (orientation: landscape) {
+  main {
+    padding: 0.4rem;
+  }
+
+  .start-screen,
+  .selection-screen {
+    padding: 0.4rem;
+  }
+
+  .start-screen-login {
+    top: clamp(0.3rem, 1vw, 0.6rem);
+    left: clamp(0.3rem, 1vw, 0.6rem);
+  }
+
+  .start-screen-actions {
+    top: clamp(0.3rem, 1vw, 0.6rem);
+    right: clamp(0.3rem, 1vw, 0.6rem);
+    gap: 0.3rem;
+  }
+
+  .settings-toggle {
+    width: clamp(1.8rem, 3vw, 2.2rem);
+    height: clamp(1.8rem, 3vw, 2.2rem);
+  }
+
+  .brand-title {
+    font-size: clamp(1.6rem, 5vw, 2.2rem);
+    margin-bottom: 0.2rem;
+  }
+
+  .google-signin-button {
+    font-size: 0.7rem;
+    padding: 0.6rem 0.8rem;
+  }
+
+  .difficulty-selector {
+    gap: clamp(0.5rem, 1.5vw, 0.8rem);
+    margin: clamp(0.6rem, 1.5vh, 0.9rem) 0;
+  }
+
+  .difficulty-selector button {
+    font-size: clamp(20px, 1.5vw, 28px);
+  }
+
+  .difficulty-name {
+    font-size: clamp(0.7rem, 1.2vw, 0.85rem);
+  }
+
+  .difficulty-description {
+    font-size: clamp(0.6rem, 1vw, 0.75rem);
+  }
+
+  .selection-stage-shell {
+    gap: clamp(0.4rem, 1vw, 0.7rem);
+    width: min(100%, clamp(20rem, 70vw, 35rem));
+  }
+
+  .selection-grid {
+    width: min(100%, 18rem);
+  }
+
+  .stage-card {
+    font-size: clamp(0.7rem, 1.8vw, 0.95rem);
+    height: clamp(3rem, 8vw, 4rem);
+    width: 100%;
+  }
+
+  .selection-screen-title {
+    margin: 0 0 clamp(0.8rem, 2vw, 1.2rem);
+    transform: translateY(-1.5rem);
+    font-size: clamp(1.2rem, 4vw, 1.8rem);
+  }
+
+  .selection-nav-btn {
+    width: clamp(1.8rem, 4vw, 2.2rem);
+    height: clamp(1.8rem, 4vw, 2.2rem);
+  }
+
+  .selection-exit-btn {
+    top: clamp(0.4rem, 1.2vw, 0.7rem);
+    left: clamp(0.4rem, 1.2vw, 0.7rem);
+    padding: 0.25rem;
+  }
+
+  .insane-warning-card {
+    width: min(90vw, 28rem);
+    padding: 1rem 0.9rem 0.8rem;
+  }
+
+  .insane-warning-button {
+    font-size: 0.7rem;
+    padding: 0.5rem 0.9rem;
+  }
+}
