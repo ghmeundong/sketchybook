@@ -275,15 +275,31 @@ function changeDifficulty(newDifficulty) {
 
 function lockLandscapeOrientation() {
   try {
-    // Screen Orientation API를 사용해서 landscape 모드로 잠금
+    // 1. 먼저 Fullscreen API로 전체화면 진입
+    const enterFullscreen = async () => {
+      try {
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+          await elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+          await elem.webkitRequestFullscreen();
+        }
+      } catch (e) {
+        // Fullscreen 실패해도 계속 진행
+      }
+    };
+
+    // 2. Screen Orientation API로 landscape 잠금
     if (screen?.orientation?.lock && typeof screen.orientation.lock === "function") {
       screen.orientation
         .lock("landscape")
         .then(() => {
-          // Successfully locked
+          // Success - enter fullscreen after lock
+          enterFullscreen();
         })
         .catch(() => {
-          // Silently ignore errors - API may not be supported
+          // API 미지원 시에도 fullscreen 시도
+          enterFullscreen();
         });
 
       // Orientation 변경 시 계속 landscape 유지
@@ -298,6 +314,9 @@ function lockLandscapeOrientation() {
           // Silently ignore
         }
       });
+    } else {
+      // 비지원 환경에서도 fullscreen 시도
+      enterFullscreen();
     }
   } catch (e) {
     // Silently ignore any errors
@@ -326,6 +345,29 @@ function preloadGameAssets() {
 
 prepareInitialState();
 lockLandscapeOrientation();
+
+// Portrait prompt 버튼 클릭
+const portraitBtn = document.getElementById("portrait-fullscreen-btn");
+if (portraitBtn) {
+  portraitBtn.addEventListener("click", async () => {
+    try {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        await elem.requestFullscreen();
+      } else if (elem.webkitRequestFullscreen) {
+        await elem.webkitRequestFullscreen();
+      }
+
+      if (screen?.orientation?.lock) {
+        screen.orientation.lock("landscape-primary").catch(() => {
+          screen.orientation.lock("landscape").catch(() => {});
+        });
+      }
+    } catch (e) {
+      console.error("Fullscreen request failed:", e);
+    }
+  });
+}
 
 const bgImage = new Image();
 bgImage.decoding = "async";

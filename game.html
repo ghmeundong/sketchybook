@@ -2,11 +2,74 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Sketchybook stage gameplay screen" />
+    <meta name="theme-color" content="#f5ebcf" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Sketchybook" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="manifest" href="/manifest.json" />
     <title>Sketchybook Stage</title>
     <style>
+      html {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      @media (orientation: portrait) and (max-width: 1024px) {
+        #page-content {
+          display: none !important;
+        }
+        #portrait-prompt {
+          display: flex !important;
+        }
+      }
+      @media (orientation: landscape) or (min-width: 1025px) {
+        #portrait-prompt {
+          display: none !important;
+        }
+      }
+      #portrait-prompt {
+        position: fixed;
+        inset: 0;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+        flex-direction: column;
+        gap: 2rem;
+        padding: 2rem;
+        text-align: center;
+        z-index: 9999;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      #portrait-prompt h1 {
+        color: #fff;
+        font-size: 1.5rem;
+        margin: 0;
+      }
+      #portrait-prompt p {
+        color: #ccc;
+        font-size: 1rem;
+        margin: 0;
+      }
+      #portrait-prompt .rotate-icon {
+        font-size: 4rem;
+        animation: rotate-animation 2s infinite;
+      }
+      @keyframes rotate-animation {
+        0%, 100% { transform: rotate(0deg); }
+        50% { transform: rotate(90deg); }
+      }
       #page-loader {
         position: fixed;
         inset: 0;
@@ -37,6 +100,12 @@
     </style>
   </head>
   <body>
+    <div id="portrait-prompt">
+      <div class="rotate-icon">📱</div>
+      <h1>Rotate Device</h1>
+      <p>Please rotate your device to landscape mode</p>
+      <button id="portrait-fullscreen-btn" style="padding: 10px 20px; font-size: 1rem; background: #4f3b24; color: #fff8e8; border: none; border-radius: 4px; cursor: pointer; margin-top: 1rem;">Enter Fullscreen</button>
+    </div>
     <div id="page-loader">Loading game…</div>
     <main id="page-content" class="game-page">
       <div class="page page-selection is-active">
