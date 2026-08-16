@@ -273,6 +273,24 @@ function changeDifficulty(newDifficulty) {
   sessionStorage.setItem("selectedDifficulty", selectedDifficulty);
 }
 
+function lockLandscapeOrientation() {
+  // Screen Orientation API를 사용해서 landscape 모드로 잠금
+  if (screen?.orientation?.lock) {
+    screen.orientation.lock("landscape").catch((err) => {
+      console.log("Landscape orientation lock not available:", err);
+    });
+
+    // Orientation 변경 시 계속 landscape 유지
+    window.addEventListener("orientationchange", () => {
+      if (screen?.orientation?.lock) {
+        screen.orientation.lock("landscape").catch((err) => {
+          console.log("Failed to maintain landscape orientation:", err);
+        });
+      }
+    });
+  }
+}
+
 function prepareInitialState() {
   body.style.backgroundColor = "#000";
   body.style.backgroundImage = "none";
@@ -294,6 +312,7 @@ function preloadGameAssets() {
 }
 
 prepareInitialState();
+lockLandscapeOrientation();
 
 const bgImage = new Image();
 bgImage.decoding = "async";
