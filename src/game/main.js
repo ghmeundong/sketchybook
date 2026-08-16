@@ -185,18 +185,31 @@ if (backHomeButton) {
 refreshStageSelectionButtons();
 
 function lockLandscapeOrientation() {
-  if (screen?.orientation?.lock) {
-    screen.orientation.lock("landscape").catch((err) => {
-      console.log("Landscape orientation lock not available:", err);
-    });
-
-    window.addEventListener("orientationchange", () => {
-      if (screen?.orientation?.lock) {
-        screen.orientation.lock("landscape").catch((err) => {
-          console.log("Failed to maintain landscape orientation:", err);
+  try {
+    if (screen?.orientation?.lock && typeof screen.orientation.lock === "function") {
+      screen.orientation
+        .lock("landscape")
+        .then(() => {
+          // Successfully locked
+        })
+        .catch(() => {
+          // Silently ignore errors - API may not be supported
         });
-      }
-    });
+
+      window.addEventListener("orientationchange", () => {
+        try {
+          if (screen?.orientation?.lock && typeof screen.orientation.lock === "function") {
+            screen.orientation.lock("landscape").catch(() => {
+              // Silently ignore
+            });
+          }
+        } catch (e) {
+          // Silently ignore
+        }
+      });
+    }
+  } catch (e) {
+    // Silently ignore any errors
   }
 }
 

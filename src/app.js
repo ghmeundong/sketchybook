@@ -274,20 +274,33 @@ function changeDifficulty(newDifficulty) {
 }
 
 function lockLandscapeOrientation() {
-  // Screen Orientation API를 사용해서 landscape 모드로 잠금
-  if (screen?.orientation?.lock) {
-    screen.orientation.lock("landscape").catch((err) => {
-      console.log("Landscape orientation lock not available:", err);
-    });
-
-    // Orientation 변경 시 계속 landscape 유지
-    window.addEventListener("orientationchange", () => {
-      if (screen?.orientation?.lock) {
-        screen.orientation.lock("landscape").catch((err) => {
-          console.log("Failed to maintain landscape orientation:", err);
+  try {
+    // Screen Orientation API를 사용해서 landscape 모드로 잠금
+    if (screen?.orientation?.lock && typeof screen.orientation.lock === "function") {
+      screen.orientation
+        .lock("landscape")
+        .then(() => {
+          // Successfully locked
+        })
+        .catch(() => {
+          // Silently ignore errors - API may not be supported
         });
-      }
-    });
+
+      // Orientation 변경 시 계속 landscape 유지
+      window.addEventListener("orientationchange", () => {
+        try {
+          if (screen?.orientation?.lock && typeof screen.orientation.lock === "function") {
+            screen.orientation.lock("landscape").catch(() => {
+              // Silently ignore
+            });
+          }
+        } catch (e) {
+          // Silently ignore
+        }
+      });
+    }
+  } catch (e) {
+    // Silently ignore any errors
   }
 }
 
