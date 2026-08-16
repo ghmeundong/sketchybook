@@ -20,26 +20,20 @@ export function createDeviceSafePhysicsProfile({
   minScale = 0.75,
   maxScale = 1.35,
 }) {
+  const widthScale = width / referenceWidth;
+  const heightScale = height / referenceHeight;
+  const scale = Math.min(Math.max(Math.min(widthScale, heightScale), minScale), maxScale);
   const safeDpr = Math.max(1, Number.isFinite(dpr) ? dpr : 1);
-  const safeReferenceWidth = Number.isFinite(referenceWidth) ? referenceWidth : 1600;
-  const safeReferenceHeight = Number.isFinite(referenceHeight) ? referenceHeight : 900;
-
-  // Keep the game world fixed across devices so the same physics feel is preserved
-  // regardless of screen size. Only the visual presentation should be fit to the
-  // viewport, not the simulation itself.
-  const scale = 1;
 
   return {
     scale,
-    screenToWorld: 1,
-    worldToScreen: 1,
-    gravity: { x: 0, y: DEFAULT_GRAVITY_Y },
-    floorY: safeReferenceHeight - 32,
-    impulseMultiplier: 1.4,
-    radiusMultiplier: 1,
+    screenToWorld: 1 / scale,
+    worldToScreen: scale,
+    gravity: { x: 0, y: DEFAULT_GRAVITY_Y * scale },
+    floorY: height - 32 * scale,
+    impulseMultiplier: 1.4 * scale,
+    radiusMultiplier: scale,
     maxSubsteps: Math.min(4, Math.max(1, Math.round(60 / safeDpr))),
-    logicalWidth: safeReferenceWidth,
-    logicalHeight: safeReferenceHeight,
   };
 }
 
