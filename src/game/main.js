@@ -87,6 +87,7 @@ let gameExitButton = null;
 let gameRetryButton = null;
 let challengeModeEnabled = false;
 let challengeModeStrokeCount = 0;
+let isFullscreenExitedByUser = false;
 
 const body = document.body;
 body.style.backgroundImage = `url(${paperTexture})`;
@@ -352,13 +353,6 @@ function createStageClearOverlay() {
       hideStageClearOverlay();
       setActivePage(selectionPage);
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
-      if (document.fullscreenElement) {
-        try {
-          await document.exitFullscreen();
-        } catch (err) {
-          console.warn("전체화면 해제 실패:", err);
-        }
-      }
     });
   }
   if (retryBtn) {
@@ -431,14 +425,6 @@ function createGameExitButton() {
     hideStageClearOverlay();
     setActivePage(selectionPage);
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
-    // exit fullscreen
-    if (document.fullscreenElement) {
-      try {
-        await document.exitFullscreen();
-      } catch (err) {
-        console.warn("전체화면 해제 실패:", err);
-      }
-    }
   });
 
   board.appendChild(gameExitButton);
@@ -517,6 +503,30 @@ async function initializePageFlow() {
     stagePageIndex = getStagePageIndexForStage(currentStageNumber, stagePageSize, totalStagePages);
     setActivePage(selectionPage);
   }
+}
+
+// Fullscreen reentry logic: if user exits fullscreen via ESC or F11,
+// they can re-enter by clicking on the game board
+document.addEventListener("fullscreenchange", () => {
+  if (!document.fullscreenElement && playPage.classList.contains("is-active")) {
+    isFullscreenExitedByUser = true;
+  }
+});
+
+// Re-enter fullscreen when clicking game board if user previously exited
+if (board) {
+  board.addEventListener("click", async (event) => {
+    if (isFullscreenExitedByUser && !document.fullscreenElement) {
+      try {
+        await document.documentElement.requestFullscreen().catch(() => {
+          // Silent fail for browsers/platforms that don't support fullscreen
+        });
+        isFullscreenExitedByUser = false;
+      } catch (err) {
+        console.warn("Fullscreen reentry failed:", err);
+      }
+    }
+  });
 }
 
 let isDrawing = false;
