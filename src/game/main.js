@@ -27,6 +27,8 @@ import {
   getStoredStageProgress,
   renderStageSelectionButtons as renderStageSelectionButtonsUI,
   renderStageScoreBadge,
+  saveChallengeCleared,
+  isChallengeClearedLocal,
 } from "./ui/stageProgress.js";
 import {
   createStrokeBody,
@@ -95,13 +97,11 @@ body.style.backgroundRepeat = "no-repeat";
 body.style.backgroundAttachment = "fixed";
 
 function isChallengeClearedStage(stageNumber) {
-  const key = `sketchybook.challenge-cleared-${currentDifficulty}-${stageNumber}`;
-  return localStorage.getItem(key) === "true";
+  return isChallengeClearedLocal(stageNumber, currentDifficulty);
 }
 
 function setChallengeCleared(stageNumber) {
-  const key = `sketchybook.challenge-cleared-${currentDifficulty}-${stageNumber}`;
-  localStorage.setItem(key, "true");
+  saveChallengeCleared(stageNumber, currentDifficulty);
 }
 
 function refreshStageSelectionButtons() {
