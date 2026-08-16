@@ -3,6 +3,7 @@ import "./app.js";
 import rough from "roughjs";
 import { syncProgressToServerOnLogin, getIdToken } from "./auth.js";
 import { buildApiUrl } from "./services/api.js";
+import { createActionIconCanvas } from "./game/ui/uiIcons.js";
 
 /* global google */
 window.addEventListener("load", () => {
@@ -41,22 +42,40 @@ function showSignedIn(user) {
   const container = document.getElementById("google-signin");
   if (!container) return;
   container.innerHTML = "";
+
   const info = document.createElement("div");
   info.style.display = "flex";
   info.style.alignItems = "center";
   info.style.gap = "0.5rem";
-  const label = document.createElement("span");
-  label.textContent = user.name || user.email || "Signed in";
+
   const signOutBtn = document.createElement("button");
   signOutBtn.type = "button";
-  signOutBtn.textContent = "Sign out";
+  signOutBtn.className = "game-exit-btn sign-out-btn";
+  signOutBtn.setAttribute("aria-label", "Sign out");
+  signOutBtn.title = "Sign out";
+  signOutBtn.style.background = "transparent";
+  signOutBtn.style.border = "none";
+  signOutBtn.style.cursor = "pointer";
+  signOutBtn.style.padding = "0.2rem";
+  signOutBtn.style.display = "inline-flex";
+  signOutBtn.style.alignItems = "center";
+  signOutBtn.style.justifyContent = "center";
+  signOutBtn.style.opacity = "0.7";
+  signOutBtn.appendChild(createActionIconCanvas("exit", { w: 52, h: 36, strokeWidth: 2.2 }));
   signOutBtn.addEventListener("click", () => {
     localStorage.removeItem("sketchy_user");
     renderSignInButton();
   });
+
+  const label = document.createElement("span");
+  label.textContent = user.name || user.email || "Signed in";
+  label.style.fontSize = "0.82rem";
+  label.style.lineHeight = "1.2";
+  label.style.color = "#4f3b24";
+
+  info.appendChild(signOutBtn);
   info.appendChild(label);
   container.appendChild(info);
-  container.appendChild(signOutBtn);
 }
 
 function renderSignInButton() {
@@ -143,7 +162,7 @@ function drawRoughBorderAround(buttonEl, svgEl) {
 async function handleAuthCode(code) {
   if (!code) return;
 
-  renderAuthStatus("로그인 인증 코드 처리 중…");
+  renderAuthStatus("Processing login authentication code…");
 
   try {
     const controller = new AbortController();

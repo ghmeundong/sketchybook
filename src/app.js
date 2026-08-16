@@ -1,3 +1,4 @@
+import rough from "roughjs";
 import paperTexture from "./img/paper-texture.webp";
 import { initializeOrientationPrompt } from "./orientationPrompt.js";
 import { createActionIconCanvas } from "./game/ui/uiIcons.js";
@@ -15,6 +16,7 @@ const titleText = document.querySelector(".brand-title");
 const settingsToggle = document.querySelector("[data-settings-toggle]");
 const challengeModeToggle = document.querySelector("[data-challenge-mode-toggle]");
 const challengeModeStatus = document.getElementById("challenge-mode-status");
+const challengeModeOption = document.querySelector(".settings-option");
 const settingsPanel = document.getElementById("start-settings-panel");
 const settingsClose = document.querySelector("[data-settings-close]");
 const difficultyPrevBtn = document.querySelector("[data-difficulty-prev]");
@@ -27,7 +29,19 @@ const pageLoader = document.getElementById("page-loader");
 const initialTitle = titleText?.textContent?.trim() || "SKETCHYBOOK";
 let backgroundLoaded = false;
 let pageLoadComplete = false;
-let selectedDifficulty = DIFFICULTY_LEVELS.NORMAL; // 기본값
+
+function getStoredSelectedDifficulty() {
+  const rawValue = sessionStorage.getItem("selectedDifficulty");
+  const normalized = typeof rawValue === "string" ? rawValue.trim().toLowerCase() : "";
+
+  if (normalized && Object.values(DIFFICULTY_LEVELS).includes(normalized)) {
+    return normalized;
+  }
+
+  return DIFFICULTY_LEVELS.NORMAL;
+}
+
+let selectedDifficulty = getStoredSelectedDifficulty();
 
 window.__delayLoadReady = true;
 
@@ -78,6 +92,145 @@ function syncChallengeModeToggleUI() {
   challengeModeToggle.classList.toggle("is-active", enabled);
 }
 
+function createChallengeModeTooltip() {
+  const tooltipHost = challengeModeToggle?.parentElement;
+  if (!tooltipHost || challengeModeToggle.dataset.tooltipReady === "true") {
+    return tooltipHost?.querySelector(".challenge-mode-tooltip") || null;
+  }
+
+  const tooltip = document.createElement("div");
+  tooltip.className = "challenge-mode-tooltip";
+  tooltip.setAttribute("role", "status");
+  tooltip.setAttribute("aria-live", "polite");
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 220 82");
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.style.position = "absolute";
+  svg.style.inset = "0";
+  svg.style.width = "100%";
+  svg.style.height = "100%";
+  svg.style.pointerEvents = "none";
+
+  const rc = rough.svg(svg);
+  const roughFrame = rc.rectangle(8, 8, 202, 66, {
+    stroke: "#4f3b24",
+    strokeWidth: 2,
+    roughness: 2,
+    bowing: 1.2,
+    fill: "rgba(250, 244, 216, 0.96)",
+    fillStyle: "solid",
+  });
+  svg.appendChild(roughFrame);
+
+  const label = document.createElement("div");
+  label.className = "challenge-mode-tooltip-label";
+  label.textContent = "Hard or insane levels only";
+
+  tooltip.appendChild(svg);
+  tooltip.appendChild(label);
+  tooltipHost.appendChild(tooltip);
+  challengeModeToggle.dataset.tooltipReady = "true";
+
+  return tooltip;
+}
+
+function positionChallengeModeTooltip(event) {
+  const tooltip = challengeModeToggle?.parentElement?.querySelector(".challenge-mode-tooltip");
+  if (!tooltip) return;
+
+  const mouseX = event?.clientX ?? window.innerWidth / 2;
+  const mouseY = event?.clientY ?? window.innerHeight / 2;
+  const offset = 18;
+  const tooltipWidth = tooltip.offsetWidth || 140;
+
+  tooltip.style.left = `${Math.max(12, mouseX - tooltipWidth - offset)}px`;
+  tooltip.style.top = `${mouseY - 8}px`;
+  tooltip.style.transform = "translateY(0) rotate(0deg)";
+}
+
+function showChallengeModeTooltip(event) {
+  const tooltip = createChallengeModeTooltip();
+  if (!tooltip) return;
+  positionChallengeModeTooltip(event);
+  tooltip.classList.add("is-visible");
+}
+
+function hideChallengeModeTooltip() {
+  const tooltip = challengeModeToggle?.parentElement?.querySelector(".challenge-mode-tooltip");
+  if (!tooltip) return;
+  tooltip.classList.remove("is-visible");
+}
+
+function createInsaneStartWarningModal() {
+  const existing = document.querySelector(".insane-warning-modal");
+  if (existing) {
+    return existing;
+  }
+
+  const modal = document.createElement("div");
+  modal.className = "insane-warning-modal";
+  modal.setAttribute("role", "dialog");
+  modal.setAttribute("aria-modal", "true");
+  modal.setAttribute("aria-label", "Insane level warning");
+
+  const card = document.createElement("div");
+  card.className = "insane-warning-card";
+
+  const eyebrow = document.createElement("div");
+  eyebrow.className = "insane-warning-eyebrow";
+  eyebrow.textContent = "Warning";
+
+  const title = document.createElement("h2");
+  title.className = "insane-warning-title";
+  title.textContent = "Insane difficulty";
+
+  const message = document.createElement("p");
+  message.className = "insane-warning-message";
+  message.textContent =
+    "We strongly recommend that you understand every mechanic, map structure, and principle before attempting this level. This is not a level created for fun; it is a brutal challenge designed for the most unforgiving difficulty.";
+
+  const prompt = document.createElement("p");
+  prompt.className = "insane-warning-prompt";
+  prompt.textContent = "Do you really want to continue to this level?";
+
+  const actions = document.createElement("div");
+  actions.className = "insane-warning-actions";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "insane-warning-button is-secondary";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => {
+    modal.remove();
+  });
+
+  const confirmBtn = document.createElement("button");
+  confirmBtn.type = "button";
+  confirmBtn.className = "insane-warning-button is-primary";
+  confirmBtn.textContent = "Continue";
+  confirmBtn.addEventListener("click", async () => {
+    modal.remove();
+    await launchGameFromStart();
+  });
+
+  actions.appendChild(cancelBtn);
+  actions.appendChild(confirmBtn);
+  card.appendChild(eyebrow);
+  card.appendChild(title);
+  card.appendChild(message);
+  card.appendChild(prompt);
+  card.appendChild(actions);
+  modal.appendChild(card);
+  document.body.appendChild(modal);
+
+  return modal;
+}
+
+function showInsaneStartWarningModal() {
+  createInsaneStartWarningModal();
+}
+
 function updateChallengeModeAvailability() {
   if (!challengeModeToggle) return;
   const config = DIFFICULTY_CONFIG[selectedDifficulty];
@@ -94,14 +247,10 @@ function updateChallengeModeAvailability() {
   }
 
   if (challengeModeStatus) {
-    if (isAvailable) {
-      challengeModeStatus.innerHTML =
-        "draw only one line <br />no clicks <br />no floor<br /><em>Challenge Mode: Available</em>";
-    } else {
-      challengeModeStatus.innerHTML =
-        "draw only one line <br />no clicks <br />no floor<br /><em>Challenge Mode: Unavailable</em>";
-    }
+    challengeModeStatus.innerHTML = "draw only one line <br />no clicks <br />no floor";
   }
+
+  hideChallengeModeTooltip();
 }
 
 function updateDifficultyDisplay() {
@@ -117,7 +266,9 @@ function updateDifficultyDisplay() {
 }
 
 function changeDifficulty(newDifficulty) {
-  selectedDifficulty = newDifficulty;
+  selectedDifficulty = Object.values(DIFFICULTY_LEVELS).includes(newDifficulty)
+    ? newDifficulty
+    : DIFFICULTY_LEVELS.NORMAL;
   updateDifficultyDisplay();
   // sessionStorage에 저장하여 게임에서 접근 가능
   sessionStorage.setItem("selectedDifficulty", selectedDifficulty);
@@ -184,7 +335,7 @@ if (settingsToggle && settingsPanel) {
   });
 }
 
-if (challengeModeToggle) {
+if (challengeModeToggle && challengeModeOption) {
   challengeModeToggle.addEventListener("click", () => {
     if (challengeModeToggle.disabled) {
       return;
@@ -193,6 +344,24 @@ if (challengeModeToggle) {
     setChallengeModePreference(nextValue);
     syncChallengeModeToggleUI();
   });
+
+  challengeModeToggle.addEventListener("pointerenter", (event) => {
+    if (challengeModeToggle.disabled) {
+      showChallengeModeTooltip(event);
+    }
+  });
+  challengeModeToggle.addEventListener("pointermove", (event) => {
+    if (challengeModeToggle.disabled) {
+      positionChallengeModeTooltip(event);
+    }
+  });
+  challengeModeToggle.addEventListener("pointerleave", hideChallengeModeTooltip);
+  challengeModeToggle.addEventListener("focus", (event) => {
+    if (challengeModeToggle.disabled) {
+      showChallengeModeTooltip(event);
+    }
+  });
+  challengeModeToggle.addEventListener("blur", hideChallengeModeTooltip);
 }
 
 // 난이도 선택 이벤트 리스너
@@ -234,25 +403,37 @@ document.addEventListener("click", (event) => {
   }
 });
 
+async function launchGameFromStart() {
+  if (startTitle.dataset.loading === "true") {
+    return;
+  }
+
+  startTitle.dataset.loading = "true";
+  showStartButton(false);
+  setLoaderText("Loading game...");
+  if (pageLoader) {
+    pageLoader.style.display = "flex";
+  }
+
+  try {
+    await preloadGameAssets();
+  } catch (e) {
+    console.warn("Game preload failed, navigating anyway:", e);
+  }
+
+  const gameUrl = `./game.html?difficulty=${selectedDifficulty}`;
+  window.location.href = gameUrl;
+}
+
 if (startTitle) {
   startTitle.addEventListener("click", async (event) => {
     event.preventDefault();
-    if (startTitle.dataset.loading === "true") {
+
+    if (selectedDifficulty === DIFFICULTY_LEVELS.INSANE) {
+      showInsaneStartWarningModal();
       return;
     }
-    startTitle.dataset.loading = "true";
-    showStartButton(false);
-    setLoaderText("Loading game...");
-    if (pageLoader) {
-      pageLoader.style.display = "flex";
-    }
-    try {
-      await preloadGameAssets();
-    } catch (e) {
-      console.warn("Game preload failed, navigating anyway:", e);
-    }
-    // 난이도 파라미터를 URL에 추가하여 게임 페이지로 이동
-    const gameUrl = `./game.html?difficulty=${selectedDifficulty}`;
-    window.location.href = gameUrl;
+
+    await launchGameFromStart();
   });
 }

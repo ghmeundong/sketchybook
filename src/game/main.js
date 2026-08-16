@@ -465,6 +465,8 @@ let currentStrokePreviewDirty = false;
 let currentStrokePreviewLastIndex = 0;
 let previewCanvas = null;
 let previewCtx = null;
+let floorTextureCanvas = null;
+let floorTextureKey = null;
 let stageCleared = false;
 let stageHasSimulated = false;
 let stageEventCount = 0;
@@ -1444,10 +1446,68 @@ function tick(timestamp = 0) {
   animationFrameId = window.requestAnimationFrame(tick);
 }
 
+function ensureFloorTexture() {
+  if (!canvasWidth || !canvasHeight) {
+    return null;
+  }
+
+  const floorY = getPhysicsScaleProfile()?.floorY ?? Math.max(0, canvasHeight - 24);
+  const grassHeight = 18;
+  const textureKey = `${canvasWidth}x${canvasHeight}:${floorY}:${grassHeight}:${difficultyRules.hasFloor}:${challengeModeEnabled}`;
+
+  if (floorTextureCanvas && floorTextureKey === textureKey) {
+    return floorTextureCanvas;
+  }
+
+  const floorCanvas = document.createElement("canvas");
+  floorCanvas.width = canvasWidth;
+  floorCanvas.height = canvasHeight;
+
+  const floorCtx = floorCanvas.getContext("2d");
+  if (!floorCtx) {
+    return null;
+  }
+
+  floorCtx.fillStyle = "#8d6a42";
+  floorCtx.fillRect(0, floorY, canvasWidth, canvasHeight - floorY);
+
+  const grassLineColor = "#4a7b5b";
+  floorCtx.fillStyle = grassLineColor;
+  floorCtx.fillRect(0, floorY, canvasWidth, grassHeight);
+
+  const roughFloor = rough.canvas(floorCanvas);
+  const segmentLength = 20;
+  const step = Math.max(18, Math.min(28, canvasWidth / 18));
+  for (let index = 0; index < canvasWidth; index += step) {
+    const xStart = index + (index % 2 === 0 ? 0 : 5);
+    const xEnd = Math.min(canvasWidth, xStart + segmentLength + (index % 3 === 0 ? 8 : 0));
+    const yBase = floorY + 2 + (index % 4) * 1.2;
+    drawStroke({ x: xStart, y: yBase }, { x: xEnd, y: yBase + (index % 2 === 0 ? 2 : 4) }, 10, {
+      color: grassLineColor,
+      alpha: 1,
+      roughness: 2.3,
+      targetCanvas: floorCanvas,
+      roughCanvasOverride: roughFloor,
+    });
+  }
+
+  floorTextureCanvas = floorCanvas;
+  floorTextureKey = textureKey;
+  return floorTextureCanvas;
+}
+
 function render() {
   if (!roughCanvas || !ctx) return;
 
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+  const shouldRenderFloor = !challengeModeEnabled && difficultyRules.hasFloor;
+  if (shouldRenderFloor) {
+    const cachedFloor = ensureFloorTexture();
+    if (cachedFloor) {
+      ctx.drawImage(cachedFloor, 0, 0);
+    }
+  }
 
   // Check if in fullscreen mode
   const isFullscreen = document.fullscreenElement || window.innerHeight === screen.height;

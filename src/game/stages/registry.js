@@ -500,6 +500,33 @@ const stageDefinitions = {
   },
 };
 
+function addInsanePlatformRestrictions(objects = []) {
+  if (!Array.isArray(objects)) {
+    return [];
+  }
+
+  return objects.flatMap((obj) => {
+    if (obj?.type !== "platform") {
+      return [obj];
+    }
+
+    const width = typeof obj.width === "number" ? obj.width : 0.1;
+    const height = typeof obj.height === "number" ? obj.height : 0.05;
+
+    return [
+      obj,
+      {
+        type: "stripedRect",
+        x: obj.x ?? 0.5,
+        y: obj.y ?? 0.5,
+        width,
+        height,
+        levels: ["insane"],
+      },
+    ];
+  });
+}
+
 export function getStageDefinition(stageNumber) {
   const parsed = Number(stageNumber);
   if (!Number.isInteger(parsed)) {
@@ -514,12 +541,17 @@ export function createStageFromDefinition(stageNumber, canvas, board, difficulty
     return null;
   }
 
+  const objects =
+    difficulty === "insane"
+      ? addInsanePlatformRestrictions(definition.objects)
+      : definition.objects;
+
   return createStageTemplate(
     {
       stageNumber: definition.id,
       title: definition.title,
       minEvents: definition.minEvents,
-      objects: definition.objects,
+      objects,
     },
     canvas,
     board,
