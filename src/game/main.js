@@ -249,9 +249,11 @@ function strokeIntersectsObject(stroke, object) {
   );
 }
 
-function findStrokeAttachment(stroke, floorY) {
+function findStrokeAttachment(stroke, floorY, hasFloor = true) {
   if (!stroke?.length) return null;
-  if (!challengeModeEnabled && stroke.some((point) => point.y >= floorY)) return { type: "floor" };
+  if (hasFloor && !challengeModeEnabled && stroke.some((point) => point.y >= floorY)) {
+    return { type: "floor" };
+  }
 
   return gameObjects.find((object) => strokeIntersectsObject(stroke, object)) || null;
 }
@@ -1980,7 +1982,7 @@ function stopDrawing(event) {
 
   if (shouldCreateStroke) {
     const floorY = (canvas?.clientHeight || 0) - 24;
-    const attachment = findStrokeAttachment(currentStroke, floorY);
+    const attachment = findStrokeAttachment(currentStroke, floorY, difficultyRules.hasFloor);
     const attachmentBody = attachment?.physicsBody;
     const isMovingAttachment =
       attachmentBody && typeof attachmentBody.getType === "function"
