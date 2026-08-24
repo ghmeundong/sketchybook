@@ -402,7 +402,8 @@ function setActivePage(page) {
 }
 
 async function tryEnterFullscreen() {
-  if (document.fullscreenElement) {
+  const isFullscreen = Boolean(document.fullscreenElement || window.innerHeight === screen.height);
+  if (isFullscreen) {
     return;
   }
   if (document.documentElement.requestFullscreen) {
