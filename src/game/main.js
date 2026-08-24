@@ -2014,6 +2014,13 @@ function stopDrawing(event) {
 
 canvas?.addEventListener("pointerdown", startDrawing);
 canvas?.addEventListener("pointermove", continueDrawing);
+document.addEventListener(
+  "pointerdown",
+  () => {
+    void tryEnterFullscreen();
+  },
+  { passive: true }
+);
 window.addEventListener("pointerup", stopDrawing);
 window.addEventListener("pointerleave", stopDrawing);
 
