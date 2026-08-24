@@ -1,10 +1,24 @@
 let promptInstance = null;
 
-// 1. 단순 모바일 터치 기기인지 검사 (크기 변화를 실시간으로 감지하지 않음)
 export function isMobileDevice() {
   const hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
   const isSmallScreen = window.matchMedia("(max-width: 900px)").matches;
   return hasTouch && isSmallScreen;
+}
+
+function requestLandscapeMode() {
+  const fullscreenRequest =
+    document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
+
+  const fullscreenPromise = fullscreenRequest
+    ? fullscreenRequest.call(document.documentElement)
+    : Promise.resolve();
+  const orientationPromise =
+    screen?.orientation?.lock && typeof screen.orientation.lock === "function"
+      ? screen.orientation.lock("landscape")
+      : Promise.resolve();
+
+  return Promise.allSettled([fullscreenPromise, orientationPromise]);
 }
 
 function createPrompt() {
@@ -12,32 +26,51 @@ function createPrompt() {
   overlay.className = "orientation-prompt";
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-live", "polite");
-  overlay.setAttribute("aria-label", "Rotate device to landscape");
+  overlay.setAttribute("aria-label", "Enter landscape mode");
   overlay.innerHTML = `
     <div class="orientation-prompt-card">
-      <p class="orientation-prompt-eyebrow">Mobile play</p>
-      <h2 class="orientation-prompt-title">Please rotate your device</h2>
+      <p class="orientation-prompt-eyebrow">Mobile mode</p>
+      <h2 class="orientation-prompt-title">Play in landscape</h2>
       <p class="orientation-prompt-body">
-        Sketchybook plays best in landscape mode. Turn your phone sideways to continue.
+        Sketchybook is designed for a wider screen. Enter landscape mode to continue.
       </p>
       <div class="orientation-prompt-icon" aria-hidden="true">
         <span class="orientation-prompt-device"></span>
       </div>
+      <button class="orientation-prompt-button" type="button">
+        Enter landscape mode
+      </button>
+      <p class="orientation-prompt-status" aria-live="polite"></p>
     </div>
   `;
+
+  const button = overlay.querySelector(".orientation-prompt-button");
+  const status = overlay.querySelector(".orientation-prompt-status");
+  button?.addEventListener("click", async () => {
+    if (!button) return;
+    button.disabled = true;
+    button.textContent = "Entering landscape mode...";
+    if (status) status.textContent = "";
+
+    await requestLandscapeMode();
+
+    button.disabled = false;
+    button.textContent = "Enter landscape mode";
+    if (window.innerHeight > window.innerWidth && status) {
+      status.textContent = "Please rotate your device sideways to continue.";
+    }
+  });
 
   document.body.appendChild(overlay);
   return overlay;
 }
 
-// 2. 초기화 함수 심플하게 변경
 export function initializeOrientationPrompt() {
   if (promptInstance) return promptInstance;
   if (!document.body) return null;
 
   promptInstance = createPrompt();
 
-  // 모바일 기기라면 최상단 html 태그에 클래스 주입
   if (isMobileDevice()) {
     document.documentElement.classList.add("has-orientation-prompt");
   }
