@@ -127,6 +127,11 @@ function getRenderDpr() {
   return Math.min(2, Math.max(1, window.devicePixelRatio || 1));
 }
 
+function getStrokeWidth() {
+  const viewportScale = canvasHeight > 0 ? canvasHeight / 900 : 1;
+  return Math.min(10, Math.max(4, 8 * viewportScale));
+}
+
 const body = document.body;
 body.style.backgroundImage = `url(${paperTexture})`;
 body.style.backgroundSize = "cover";
@@ -350,6 +355,17 @@ function resetStageState() {
   stageMinEvents = 0;
   totalDrawnLength = 0;
   drawLimitProgressTrackDrawn = false;
+  lastPhysicsTime = 0;
+  floorTextureCanvas = null;
+  floorTextureKey = null;
+  currentStrokePreviewDirty = false;
+  currentStrokePreviewLastIndex = 0;
+  if (ctx && canvasWidth > 0 && canvasHeight > 0) {
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  }
+  if (previewCtx && canvasWidth > 0 && canvasHeight > 0) {
+    previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+  }
   updateDrawLimitProgressUI();
   hideStageClearOverlay();
   hideGameRetryButton();
@@ -734,6 +750,7 @@ function resizeCanvas() {
 
   const measuredWidth = board.clientWidth;
   const measuredHeight = board.clientHeight;
+  const dpr = getRenderDpr();
 
   if (shouldDeferResize(measuredWidth, measuredHeight)) {
     return;
@@ -741,9 +758,21 @@ function resizeCanvas() {
 
   const previousCanvasWidth = canvasWidth;
   const previousCanvasHeight = canvasHeight;
+  let previewSnapshot = null;
+  if (
+    currentStroke?.length &&
+    previewCanvas &&
+    previousCanvasWidth > 0 &&
+    previousCanvasHeight > 0
+  ) {
+    previewSnapshot = document.createElement("canvas");
+    previewSnapshot.width = previewCanvas.width;
+    previewSnapshot.height = previewCanvas.height;
+    const snapshotCtx = previewSnapshot.getContext("2d");
+    snapshotCtx?.drawImage(previewCanvas, 0, 0);
+  }
   canvasWidth = measuredWidth;
   canvasHeight = measuredHeight;
-  const dpr = getRenderDpr();
 
   canvas.width = canvasWidth * dpr;
   canvas.height = canvasHeight * dpr;
@@ -789,6 +818,19 @@ function resizeCanvas() {
   previewCtx = previewCanvas.getContext("2d");
   previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+  if (previewSnapshot && previousCanvasWidth > 0 && previousCanvasHeight > 0) {
+    previewCtx.drawImage(
+      previewSnapshot,
+      0,
+      0,
+      previewSnapshot.width,
+      previewSnapshot.height,
+      0,
+      0,
+      canvasWidth,
+      canvasHeight
+    );
+  }
 
   const needsLayoutRemap =
     previousCanvasWidth > 0 &&
@@ -903,9 +945,7 @@ function resizeCanvas() {
     currentStroke = currentStroke.map((point) =>
       rescalePoint(point, previousCanvasWidth, previousCanvasHeight, canvasWidth, canvasHeight)
     );
-    currentStrokePreviewLastIndex = 0;
     currentStrokePreviewDirty = false;
-    if (previewCtx) previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
   }
 
   const shouldRebuildPhysics = shouldRebuildPhysicsWorld({
@@ -1029,6 +1069,9 @@ async function initializeStage(stageNumberOverride) {
   }
 
   resetStageState();
+  if (Number.isInteger(stageNumberOverride)) {
+    currentStageNumber = stageNumberOverride;
+  }
 
   currentStage = await loadStage(canvas, board, stageNumberOverride, currentDifficulty);
   if (currentStage?.coordinateSystem) {
@@ -1194,7 +1237,7 @@ function drawStroke(start, end, width = 8, options = {}) {
 
   const targetColor = options.color || "#4f3b24";
   const alpha = options.alpha ?? 0.15;
-  const scaledWidth = Math.max(1.5, width * 0.55);
+  const scaledWidth = Math.max(1.5, width * 0.55 * (getStrokeWidth() / 8));
   const dx = end.x - start.x;
   const dy = end.y - start.y;
   const distance = Math.hypot(dx, dy);
@@ -1214,7 +1257,7 @@ function drawStroke(start, end, width = 8, options = {}) {
   targetRough.ctx.restore();
 }
 
-function drawStrokePreview(points, width = 8) {
+function drawStrokePreview(points) {
   if (!points || points.length < 2 || !ctx) return;
 
   const dpr = getRenderDpr();
@@ -1241,9 +1284,8 @@ function drawStrokePreview(points, width = 8) {
   if (lastIdx === 0) {
     previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
     const rc = rough.canvas(previewCanvas);
-    for (let i = 0; i < points.length - 1; i += 1) {
-      drawStroke(points[i], points[i + 1], width, {
-        targetCanvas: previewCanvas,
+    for (let index = 0; index < points.length - 1; index += 1) {
+      drawStroke(points[index], points[index + 1], 8, {
         roughCanvasOverride: rc,
       });
     }
@@ -1254,9 +1296,8 @@ function drawStrokePreview(points, width = 8) {
 
   if (lastIdx < points.length - 1) {
     const rc = rough.canvas(previewCanvas);
-    for (let i = Math.max(0, lastIdx); i < points.length - 1; i += 1) {
-      drawStroke(points[i], points[i + 1], width, {
-        targetCanvas: previewCanvas,
+    for (let index = Math.max(0, lastIdx); index < points.length - 1; index += 1) {
+      drawStroke(points[index], points[index + 1], 8, {
         roughCanvasOverride: rc,
       });
     }
@@ -1673,7 +1714,7 @@ function render() {
   }
 
   if (currentStroke && currentStroke.length > 1) {
-    drawStrokePreview(currentStroke, 8);
+    drawStrokePreview(currentStroke);
   }
 
   physicsStrokes.forEach((stroke) => drawPhysicsStroke(stroke));
