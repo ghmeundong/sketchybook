@@ -75,6 +75,30 @@ const stagePageSize = 6;
 const totalStageCount = 30;
 const totalStagePages = Math.ceil(totalStageCount / stagePageSize);
 
+const helpToggle = document.querySelector("[data-help-toggle]");
+const helpPanel = document.getElementById("selection-help-panel");
+
+function setHelpPanelVisible(visible = true) {
+  if (!helpPanel || !helpToggle) return;
+  helpPanel.hidden = !visible;
+  helpToggle.setAttribute("aria-expanded", String(visible));
+}
+
+if (helpToggle && helpPanel) {
+  helpToggle.addEventListener("click", () => {
+    setHelpPanelVisible(helpPanel.hidden);
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    const clickedToggle = target === helpToggle || helpToggle.contains(target);
+    const clickedPanel = helpPanel.contains(target);
+    if (!helpPanel.hidden && !clickedToggle && !clickedPanel) {
+      setHelpPanelVisible(false);
+    }
+  });
+}
+
 // 난이도 관련 변수
 let currentDifficulty = DIFFICULTY_LEVELS.NORMAL;
 let difficultyRules = getDifficultyRules(currentDifficulty);
@@ -87,7 +111,6 @@ let gameExitButton = null;
 let gameRetryButton = null;
 let challengeModeEnabled = false;
 let challengeModeStrokeCount = 0;
-let isFullscreenExitedByUser = false;
 
 const body = document.body;
 body.style.backgroundImage = `url(${paperTexture})`;
@@ -236,29 +259,6 @@ function lockLandscapeOrientation() {
 }
 
 lockLandscapeOrientation();
-
-// Portrait prompt 버튼 클릭
-const portraitBtn = document.getElementById("portrait-fullscreen-btn");
-if (portraitBtn) {
-  portraitBtn.addEventListener("click", async () => {
-    try {
-      const elem = document.documentElement;
-      if (elem.requestFullscreen) {
-        await elem.requestFullscreen();
-      } else if (elem.webkitRequestFullscreen) {
-        await elem.webkitRequestFullscreen();
-      }
-
-      if (screen?.orientation?.lock) {
-        screen.orientation.lock("landscape-primary").catch(() => {
-          screen.orientation.lock("landscape").catch(() => {});
-        });
-      }
-    } catch (e) {
-      console.error("Fullscreen request failed:", e);
-    }
-  });
-}
 
 function resetStageState() {
   if (animationFrameId) {
@@ -503,30 +503,6 @@ async function initializePageFlow() {
     stagePageIndex = getStagePageIndexForStage(currentStageNumber, stagePageSize, totalStagePages);
     setActivePage(selectionPage);
   }
-}
-
-// Fullscreen reentry logic: if user exits fullscreen via ESC or F11,
-// they can re-enter by clicking on the game board
-document.addEventListener("fullscreenchange", () => {
-  if (!document.fullscreenElement && playPage.classList.contains("is-active")) {
-    isFullscreenExitedByUser = true;
-  }
-});
-
-// Re-enter fullscreen when clicking game board if user previously exited
-if (board) {
-  board.addEventListener("click", async (event) => {
-    if (isFullscreenExitedByUser && !document.fullscreenElement) {
-      try {
-        await document.documentElement.requestFullscreen().catch(() => {
-          // Silent fail for browsers/platforms that don't support fullscreen
-        });
-        isFullscreenExitedByUser = false;
-      } catch (err) {
-        console.warn("Fullscreen reentry failed:", err);
-      }
-    }
-  });
 }
 
 let isDrawing = false;
@@ -1911,14 +1887,6 @@ window.addEventListener("orientationchange", resizeCanvas);
 window.addEventListener("visibilitychange", () => {
   isWindowFocused = !document.hidden;
   syncGamePlayState();
-});
-window.addEventListener("fullscreenchange", async () => {
-  isWindowFocused = document.hasFocus();
-  syncGamePlayState();
-  if (!document.fullscreenElement) return;
-  if (!currentStage || stageHasSimulated || physicsStrokes.length > 0) return;
-  await initializeStage(currentStageNumber);
-  resizeCanvas();
 });
 window.addEventListener("focus", () => {
   isWindowFocused = true;

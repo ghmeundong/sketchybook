@@ -26,50 +26,7 @@
         padding: 0;
         overflow: hidden;
       }
-      @media (orientation: portrait) and (max-width: 1024px) {
-        #page-content {
-          display: none !important;
-        }
-        #portrait-prompt {
-          display: flex !important;
-        }
-      }
-      @media (orientation: landscape) or (min-width: 1025px) {
-        #portrait-prompt {
-          display: none !important;
-        }
-      }
-      #portrait-prompt {
-        position: fixed;
-        inset: 0;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
-        flex-direction: column;
-        gap: 2rem;
-        padding: 2rem;
-        text-align: center;
-        z-index: 999;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      }
-      #portrait-prompt h1 {
-        color: #fff;
-        font-size: 1.5rem;
-        margin: 0;
-      }
-      #portrait-prompt p {
-        color: #ccc;
-        font-size: 1rem;
-        margin: 0;
-      }
-      #portrait-prompt .rotate-icon {
-        font-size: 4rem;
-        animation: rotate-animation 2s infinite;
-      }
-      @keyframes rotate-animation {
-        0%, 100% { transform: rotate(0deg); }
-        50% { transform: rotate(90deg); }
-      }
+
       #page-loader {
         position: fixed;
         inset: 0;
@@ -100,12 +57,6 @@
     </style>
   </head>
   <body>
-    <div id="portrait-prompt">
-      <div class="rotate-icon">📱</div>
-      <h1>Rotate Device</h1>
-      <p>Please rotate your device to landscape mode</p>
-      <button id="portrait-fullscreen-btn" style="padding: 10px 20px; font-size: 1rem; background: #4f3b24; color: #fff8e8; border: none; border-radius: 4px; cursor: pointer; margin-top: 1rem;">Enter Fullscreen</button>
-    </div>
     <div id="page-loader">Loading Sketchybook…</div>
     <main id="page-content">
       <div id="book" class="book">
@@ -115,14 +66,24 @@
               <div id="google-signin" class="google-signin-container"></div>
             </div>
             <div class="start-screen-actions">
-              <button
-                class="settings-toggle game-exit-btn"
-                type="button"
-                data-settings-toggle
-                aria-expanded="false"
-                aria-controls="start-settings-panel"
-                aria-label="Open settings"
-              ></button>
+              <div class="start-screen-tools">
+                <button
+                  class="settings-toggle game-exit-btn"
+                  type="button"
+                  data-settings-toggle
+                  aria-expanded="false"
+                  aria-controls="start-settings-panel"
+                  aria-label="Open settings"
+                ></button>
+                <button
+                  class="help-toggle"
+                  type="button"
+                  data-help-toggle
+                  aria-expanded="false"
+                  aria-controls="start-help-panel"
+                  aria-label="How to play"
+                >?</button>
+              </div>
               <div class="settings-panel" id="start-settings-panel" hidden>
                 <p class="settings-panel-title">Settings</p>
                 <div class="settings-option">
@@ -143,6 +104,13 @@
                 <button class="settings-panel-close" type="button" data-settings-close>
                   Close
                 </button>
+              </div>
+              <div class="help-panel" id="start-help-panel" hidden>
+                <p class="help-panel-title">How to play</p>
+                <p><strong>Click:</strong> Launch the ball</p>
+                <p><strong>Spacebar:</strong> Launch the ball</p>
+                <p><strong>Drag:</strong> Draw a line to guide the ball</p>
+                <p><strong>R:</strong> Retry the stage</p>
               </div>
             </div>
             <div class="title-stack">
@@ -175,79 +143,6 @@
               <button class="game-title" type="button" data-start-button>Loading...</button>
             </div>
           </section>
-        </div>
-
-        <!-- Game Selection Page -->
-        <div class="page page-selection">
-          <section class="selection-screen" aria-label="Game selection screen">
-            <button
-              class="game-exit-btn selection-exit-btn"
-              type="button"
-              data-back-home-button
-              aria-label="Back to start screen"
-            >
-              <span class="selection-back-button__icon" data-back-home-icon></span>
-            </button>
-            <h1 class="brand-title selection-screen-title">SKETCHYBOOK</h1>
-            <div class="selection-stage-shell">
-              <button
-                class="selection-nav-btn selection-nav-btn--prev"
-                type="button"
-                data-stage-page="prev"
-                aria-label="Show previous stages"
-              ></button>
-              <div class="selection-grid" aria-label="Stage selection grid">
-                <button class="stage-card" type="button" data-stage="1" aria-label="Stage 1">Stage 1</button>
-                <button class="stage-card" type="button" data-stage="2" aria-label="Stage 2">Stage 2</button>
-                <button class="stage-card" type="button" data-stage="3" aria-label="Stage 3">Stage 3</button>
-                <button class="stage-card" type="button" data-stage="4" aria-label="Stage 4">Stage 4</button>
-                <button class="stage-card" type="button" data-stage="5" aria-label="Stage 5">Stage 5</button>
-                <button class="stage-card" type="button" data-stage="6" aria-label="Stage 6">Stage 6</button>
-                <button class="stage-card" type="button" data-stage="7" aria-label="Stage 7">Stage 7</button>
-                <button class="stage-card" type="button" data-stage="8" aria-label="Stage 8">Stage 8</button>
-                <button class="stage-card" type="button" data-stage="9" aria-label="Stage 9">Stage 9</button>
-                <button class="stage-card" type="button" data-stage="10" aria-label="Stage 10">Stage 10</button>
-                <button class="stage-card" type="button" data-stage="11" aria-label="Stage 11">Stage 11</button>
-                <button class="stage-card" type="button" data-stage="12" aria-label="Stage 12">Stage 12</button>
-                <button class="stage-card" type="button" data-stage="13" aria-label="Stage 13">Stage 13</button>
-                <button class="stage-card" type="button" data-stage="14" aria-label="Stage 14">Stage 14</button>
-                <button class="stage-card" type="button" data-stage="15" aria-label="Stage 15">Stage 15</button>
-                <button class="stage-card" type="button" data-stage="16" aria-label="Stage 16">Stage 16</button>
-                <button class="stage-card" type="button" data-stage="17" aria-label="Stage 17">Stage 17</button>
-                <button class="stage-card" type="button" data-stage="18" aria-label="Stage 18">Stage 18</button>
-                <button class="stage-card" type="button" data-stage="19" aria-label="Stage 19">Stage 19</button>
-                <button class="stage-card" type="button" data-stage="20" aria-label="Stage 20">Stage 20</button>
-                <button class="stage-card" type="button" data-stage="21" aria-label="Stage 21">Stage 21</button>
-                <button class="stage-card" type="button" data-stage="22" aria-label="Stage 22">Stage 22</button>
-                <button class="stage-card" type="button" data-stage="23" aria-label="Stage 23">Stage 23</button>
-                <button class="stage-card" type="button" data-stage="24" aria-label="Stage 24">Stage 24</button>
-                <button class="stage-card" type="button" data-stage="25" aria-label="Stage 25">Stage 25</button>
-                <button class="stage-card" type="button" data-stage="26" aria-label="Stage 26">Stage 26</button>
-                <button class="stage-card" type="button" data-stage="27" aria-label="Stage 27">Stage 27</button>
-                <button class="stage-card" type="button" data-stage="28" aria-label="Stage 28">Stage 28</button>
-                <button class="stage-card" type="button" data-stage="29" aria-label="Stage 29">Stage 29</button>
-                <button class="stage-card" type="button" data-stage="30" aria-label="Stage 30">Stage 30</button>
-              </div>
-              <button
-                class="selection-nav-btn selection-nav-btn--next"
-                type="button"
-                data-stage-page="next"
-                aria-label="Show next stages"
-              ></button>
-            </div>
-          </section>
-        </div>
-
-        <!-- Game Play Page -->
-        <div class="page page-play">
-          <div class="game-board" id="game-board">
-            <div class="draw-limit-progress" id="draw-limit-progress" aria-live="polite" aria-label="Draw limit progress">
-              <canvas id="draw-limit-progress-track-canvas"></canvas>
-              <canvas id="draw-limit-progress-fill-canvas"></canvas>
-            </div>
-            <div class="game-grid"></div>
-            <canvas id="game-canvas"></canvas>
-          </div>
         </div>
       </div>
     </main>

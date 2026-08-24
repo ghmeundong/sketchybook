@@ -20,7 +20,9 @@ export function createStageTemplate(definition = {}, canvas, board, difficulty =
   const rawObjects = Array.isArray(safeDefinition.objects) ? safeDefinition.objects : [];
 
   // 난이도에 따라 오브젝트 필터링
-  const objects = filterObjectsByDifficulty(rawObjects, difficulty);
+  const objects = filterObjectsByDifficulty(rawObjects, difficulty).filter(
+    (object) => !(difficulty === "hard" || difficulty === "insane") || object.type !== "text"
+  );
 
   return {
     coordinateSystem,

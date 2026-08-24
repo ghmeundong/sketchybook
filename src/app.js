@@ -18,6 +18,8 @@ const challengeModeStatus = document.getElementById("challenge-mode-status");
 const challengeModeOption = document.querySelector(".settings-option");
 const settingsPanel = document.getElementById("start-settings-panel");
 const settingsClose = document.querySelector("[data-settings-close]");
+const helpToggle = document.querySelector("[data-help-toggle]");
+const helpPanel = document.getElementById("start-help-panel");
 const difficultyPrevBtn = document.querySelector("[data-difficulty-prev]");
 const difficultyNextBtn = document.querySelector("[data-difficulty-next]");
 const difficultyNameDisplay = document.getElementById("difficulty-name");
@@ -82,6 +84,12 @@ function setSettingsPanelVisible(visible = true) {
   if (!settingsPanel || !settingsToggle) return;
   settingsPanel.hidden = !visible;
   settingsToggle.setAttribute("aria-expanded", String(visible));
+}
+
+function setHelpPanelVisible(visible = true) {
+  if (!helpPanel || !helpToggle) return;
+  helpPanel.hidden = !visible;
+  helpToggle.setAttribute("aria-expanded", String(visible));
 }
 
 function syncChallengeModeToggleUI() {
@@ -275,32 +283,11 @@ function changeDifficulty(newDifficulty) {
 
 function lockLandscapeOrientation() {
   try {
-    // 1. 먼저 Fullscreen API로 전체화면 진입
-    const enterFullscreen = async () => {
-      try {
-        const elem = document.documentElement;
-        if (elem.requestFullscreen) {
-          await elem.requestFullscreen();
-        } else if (elem.webkitRequestFullscreen) {
-          await elem.webkitRequestFullscreen();
-        }
-      } catch (e) {
-        // Fullscreen 실패해도 계속 진행
-      }
-    };
-
-    // 2. Screen Orientation API로 landscape 잠금
+    // Screen Orientation API로 landscape 잠금
     if (screen?.orientation?.lock && typeof screen.orientation.lock === "function") {
-      screen.orientation
-        .lock("landscape")
-        .then(() => {
-          // Success - enter fullscreen after lock
-          enterFullscreen();
-        })
-        .catch(() => {
-          // API 미지원 시에도 fullscreen 시도
-          enterFullscreen();
-        });
+      screen.orientation.lock("landscape").catch(() => {
+        // Silently ignore
+      });
 
       // Orientation 변경 시 계속 landscape 유지
       window.addEventListener("orientationchange", () => {
@@ -314,9 +301,6 @@ function lockLandscapeOrientation() {
           // Silently ignore
         }
       });
-    } else {
-      // 비지원 환경에서도 fullscreen 시도
-      enterFullscreen();
     }
   } catch (e) {
     // Silently ignore any errors
@@ -334,7 +318,7 @@ function prepareInitialState() {
 }
 
 function preloadGameAssets() {
-  const htmlRequest = fetch("./index.html", { cache: "force-cache" });
+  const htmlRequest = fetch("./game.html", { cache: "force-cache" });
   const scriptRequest = fetch("./src/game/main.js", { cache: "force-cache" });
   const preloadLink = document.createElement("link");
   preloadLink.rel = "modulepreload";
@@ -345,29 +329,6 @@ function preloadGameAssets() {
 
 prepareInitialState();
 lockLandscapeOrientation();
-
-// Portrait prompt 버튼 클릭
-const portraitBtn = document.getElementById("portrait-fullscreen-btn");
-if (portraitBtn) {
-  portraitBtn.addEventListener("click", async () => {
-    try {
-      const elem = document.documentElement;
-      if (elem.requestFullscreen) {
-        await elem.requestFullscreen();
-      } else if (elem.webkitRequestFullscreen) {
-        await elem.webkitRequestFullscreen();
-      }
-
-      if (screen?.orientation?.lock) {
-        screen.orientation.lock("landscape-primary").catch(() => {
-          screen.orientation.lock("landscape").catch(() => {});
-        });
-      }
-    } catch (e) {
-      console.error("Fullscreen request failed:", e);
-    }
-  });
-}
 
 const bgImage = new Image();
 bgImage.decoding = "async";
@@ -404,6 +365,13 @@ if (settingsToggle && settingsPanel) {
   );
   settingsToggle.addEventListener("click", () => {
     setSettingsPanelVisible(settingsPanel.hidden);
+  });
+}
+
+if (helpToggle && helpPanel) {
+  helpToggle.addEventListener("click", () => {
+    setSettingsPanelVisible(false);
+    setHelpPanelVisible(helpPanel.hidden);
   });
 }
 
@@ -470,8 +438,13 @@ document.addEventListener("click", (event) => {
   const target = event.target;
   const clickedToggle = target === settingsToggle || settingsToggle?.contains(target);
   const clickedPanel = settingsPanel?.contains(target);
+  const clickedHelpToggle = target === helpToggle || helpToggle?.contains(target);
+  const clickedHelpPanel = helpPanel?.contains(target);
   if (!settingsPanel?.hidden && !clickedToggle && !clickedPanel) {
     setSettingsPanelVisible(false);
+  }
+  if (!helpPanel?.hidden && !clickedHelpToggle && !clickedHelpPanel) {
+    setHelpPanelVisible(false);
   }
 });
 
@@ -493,7 +466,7 @@ async function launchGameFromStart() {
     console.warn("Game preload failed, navigating anyway:", e);
   }
 
-  const gameUrl = `./index.html?difficulty=${selectedDifficulty}`;
+  const gameUrl = `./game.html?difficulty=${selectedDifficulty}`;
   window.location.href = gameUrl;
 }
 
