@@ -30,8 +30,12 @@ export function createStageTemplate(definition = {}, canvas, board, difficulty =
     title,
     difficulty,
     initialize: () => {},
-    update: (physicsStrokes, floorY) => {
-      stepPhysicsWorld({ deltaTime: 1 / 60 });
+    update: (physicsStrokes, floorY, physicsOptions = {}) => {
+      stepPhysicsWorld({
+        deltaTime: physicsOptions.deltaTime ?? 1 / 60,
+        substeps: physicsOptions.substeps,
+        velocityIterations: physicsOptions.velocityIterations,
+      });
       physicsStrokes.forEach((stroke) => updateStrokeBody(stroke, floorY));
     },
     objects,

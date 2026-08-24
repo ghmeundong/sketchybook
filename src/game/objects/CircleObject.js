@@ -22,7 +22,7 @@ export class CircleObject {
     const padding = 8;
     const size = diameter + padding * 2;
 
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const off = document.createElement("canvas");
     off.width = size * dpr;
     off.height = size * dpr;

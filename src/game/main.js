@@ -43,6 +43,7 @@ import {
   createDeviceSafePhysicsProfile,
   getPhysicsScaleProfile,
   setPhysicsScaleProfile,
+  attachBodyToBody,
 } from "./physics.js";
 import {
   CircleObject,
@@ -122,6 +123,10 @@ let gameRetryButton = null;
 let challengeModeEnabled = false;
 let challengeModeStrokeCount = 0;
 
+function getRenderDpr() {
+  return Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+}
+
 const body = document.body;
 body.style.backgroundImage = `url(${paperTexture})`;
 body.style.backgroundSize = "cover";
@@ -170,6 +175,80 @@ function updateStageSelectionPage() {
     button.disabled = shouldDisable;
     button.classList.toggle("is-disabled", shouldDisable);
   });
+}
+
+function segmentsCross(first, second) {
+  const orientation = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+  const firstSide = orientation(first.a, first.b, second.a);
+  const secondSide = orientation(first.a, first.b, second.b);
+  const thirdSide = orientation(second.a, second.b, first.a);
+  const fourthSide = orientation(second.a, second.b, first.b);
+
+  return (
+    ((firstSide > 0 && secondSide < 0) || (firstSide < 0 && secondSide > 0)) &&
+    ((thirdSide > 0 && fourthSide < 0) || (thirdSide < 0 && fourthSide > 0))
+  );
+}
+
+function strokeIntersectsObject(stroke, object) {
+  if (!stroke?.length || !object) return false;
+
+  const strokeSegments = stroke.slice(1).map((point, index) => ({
+    a: stroke[index],
+    b: point,
+  }));
+
+  if (object instanceof CircleObject || object instanceof Ball) {
+    const x = object.screenX ?? object.nx * canvasWidth;
+    const y = object.screenY ?? object.ny * canvasHeight;
+    const radius =
+      object.physicalRadius ??
+      (object.radius > 1 ? object.radius : object.radius * Math.min(canvasWidth, canvasHeight));
+    return strokeSegments.some(({ a, b }) =>
+      segmentIntersectsCircle({ x1: a.x, y1: a.y, x2: b.x, y2: b.y }, { x, y, radius })
+    );
+  }
+
+  if (object instanceof Platform || object instanceof StripedRectObject) {
+    const x = object.screenX ?? object.nx * canvasWidth;
+    const y = object.screenY ?? object.ny * canvasHeight;
+    const width = object.width > 1 ? object.width : object.width * canvasWidth;
+    const height = object.height > 1 ? object.height : object.height * canvasHeight;
+    return strokeSegments.some(({ a, b }) =>
+      segmentIntersectsRect(
+        { x1: a.x, y1: a.y, x2: b.x, y2: b.y },
+        { x: x - width / 2, y: y - height / 2, width, height }
+      )
+    );
+  }
+
+  const points =
+    object instanceof Segment
+      ? [
+          { x: object.x1 * canvasWidth, y: object.y1 * canvasHeight },
+          { x: object.x2 * canvasWidth, y: object.y2 * canvasHeight },
+        ]
+      : object.pixelPoints;
+  if (!Array.isArray(points) || points.length < 2) return false;
+
+  const objectSegments = points.slice(1).map((point, index) => ({
+    a: points[index],
+    b: point,
+  }));
+  if (object.closed) {
+    objectSegments.push({ a: points[points.length - 1], b: points[0] });
+  }
+
+  return strokeSegments.some((strokeSegment) =>
+    objectSegments.some((objectSegment) => segmentsCross(strokeSegment, objectSegment))
+  );
+}
+
+function findStrokeAttachment(stroke, floorY) {
+  if (!stroke?.length) return null;
+  if (!challengeModeEnabled && stroke.some((point) => point.y >= floorY)) return { type: "floor" };
+
+  return gameObjects.find((object) => strokeIntersectsObject(stroke, object)) || null;
 }
 
 function drawRoughFrame(card) {
@@ -585,7 +664,7 @@ function updateDrawLimitProgressUI({ previewLength = totalDrawnLength } = {}) {
     0,
     Number.isFinite(previewLength) ? previewLength : totalDrawnLength
   );
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = getRenderDpr();
   const pxWidth = drawLimitProgress.clientWidth || 320;
   const pxHeight = drawLimitProgress.clientHeight || 12;
   const width = Math.max(1, pxWidth);
@@ -664,7 +743,7 @@ function resizeCanvas() {
   const previousCanvasHeight = canvasHeight;
   canvasWidth = measuredWidth;
   canvasHeight = measuredHeight;
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = getRenderDpr();
 
   canvas.width = canvasWidth * dpr;
   canvas.height = canvasHeight * dpr;
@@ -1138,7 +1217,7 @@ function drawStroke(start, end, width = 8, options = {}) {
 function drawStrokePreview(points, width = 8) {
   if (!points || points.length < 2 || !ctx) return;
 
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = getRenderDpr();
   if (!previewCtx || !previewCanvas) return;
 
   // Ensure preview canvas uses same pixel size as main canvas
@@ -1231,7 +1310,7 @@ function createStrokeTexture(stroke, previewSource) {
     offscreenCtx.clearRect(0, 0, width, height);
 
     // previewSource is a high-DPR canvas (internal pixels = css * dpr).
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = getRenderDpr();
     const sx = (centerX + minX - padding) * dpr;
     const sy = (centerY + minY - padding) * dpr;
     const sw = width * dpr;
@@ -1356,7 +1435,11 @@ function tick(timestamp = 0) {
       setPhysicsScaleProfile(nextProfile);
 
       if (currentStage && typeof currentStage.update === "function") {
-        currentStage.update(physicsStrokes, floorY);
+        currentStage.update(physicsStrokes, floorY, {
+          deltaTime: deltaSeconds,
+          substeps: nextProfile.maxSubsteps,
+          velocityIterations: 8,
+        });
       } else {
         stepPhysicsWorld({
           deltaTime: deltaSeconds,
@@ -1855,10 +1938,21 @@ function stopDrawing(event) {
 
   if (shouldCreateStroke) {
     const floorY = (canvas?.clientHeight || 0) - 24;
+    const attachment = findStrokeAttachment(currentStroke, floorY);
+    const attachmentBody = attachment?.physicsBody;
+    const isMovingAttachment =
+      attachmentBody && typeof attachmentBody.getType === "function"
+        ? attachmentBody.getType() !== "static"
+        : false;
     const shouldSkipGround = challengeModeEnabled || !difficultyRules.hasFloor;
     stageInitializeStrokeBody(strokeBody, floorY, {
       skipGround: shouldSkipGround,
+      type: attachment && !isMovingAttachment ? "static" : "dynamic",
     });
+    if (isMovingAttachment) {
+      const targetPosition = attachmentBody.getPosition();
+      attachBodyToBody(strokeBody.physicsBody, attachmentBody, targetPosition);
+    }
     // Prefer using the preview canvas snapshot so the finalized texture
     // matches exactly what the player saw during drawing.
     createStrokeTexture(strokeBody, previewCanvas);

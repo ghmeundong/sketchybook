@@ -15,7 +15,7 @@ export class Star {
     const diameter = Math.max(2, Math.ceil(r * 2));
     const padding = 8;
     const size = diameter + padding * 2;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
 
     const off = document.createElement("canvas");
     off.width = size * dpr;

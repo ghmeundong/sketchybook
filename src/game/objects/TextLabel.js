@@ -35,7 +35,7 @@ export class TextLabel {
     off.width = width;
     off.height = height;
 
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const scaledWidth = width * dpr;
     const scaledHeight = height * dpr;
     off.width = scaledWidth;

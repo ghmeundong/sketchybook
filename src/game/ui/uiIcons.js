@@ -4,7 +4,7 @@ export function createRoughStarCanvas(stars = 0, { size = 24, gap = 6 } = {}) {
   const safeStars = Math.max(0, Math.min(3, Number.isFinite(stars) ? Math.round(stars) : 0));
   const canvasWidth = safeStars * size + (safeStars - 1) * gap;
   const canvasHeight = size;
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
   const canvas = document.createElement("canvas");
   canvas.width = canvasWidth * dpr;
   canvas.height = canvasHeight * dpr;
@@ -54,7 +54,7 @@ export function createActionIconCanvas(
   { w = 64, h = 40, stroke = "#4f3b24", fill = "#4f3b24", strokeWidth = 3 } = {}
 ) {
   const canvas = document.createElement("canvas");
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
   canvas.width = w * dpr;
   canvas.height = h * dpr;
   canvas.style.width = `${w}px`;
