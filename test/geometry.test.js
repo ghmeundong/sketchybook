@@ -40,7 +40,7 @@ describe("segmentIntersectsCircle", () => {
 
   it("returns false when a segment only touches the circle boundary", () => {
     expect(
-      segmentIntersectsCircle({ x1: 0, y1: 0, x2: 10, y2: 0 }, { x: 5, y: 0, radius: 5 })
+      segmentIntersectsCircle({ x1: 0, y1: 5, x2: 10, y2: 5 }, { x: 5, y: 0, radius: 5 })
     ).toBe(false);
   });
 });
@@ -54,7 +54,7 @@ describe("segmentIntersectsRect", () => {
 
   it("returns false when a segment only touches the rectangle edge", () => {
     expect(
-      segmentIntersectsRect({ x1: 0, y1: 0, x2: 10, y2: 0 }, { x: 5, y: 0, width: 2, height: 2 })
+      segmentIntersectsRect({ x1: 0, y1: 2, x2: 10, y2: 2 }, { x: 5, y: 0, width: 2, height: 2 })
     ).toBe(false);
   });
 });

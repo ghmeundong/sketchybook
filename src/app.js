@@ -317,16 +317,6 @@ function prepareInitialState() {
   showStartButton(false);
 }
 
-function preloadGameAssets() {
-  const htmlRequest = fetch("./game.html", { cache: "force-cache" });
-  const scriptRequest = fetch("./src/game/main.js", { cache: "force-cache" });
-  const preloadLink = document.createElement("link");
-  preloadLink.rel = "modulepreload";
-  preloadLink.href = "./src/game/main.js";
-  document.head.appendChild(preloadLink);
-  return Promise.all([htmlRequest, scriptRequest]);
-}
-
 prepareInitialState();
 lockLandscapeOrientation();
 
@@ -448,30 +438,28 @@ document.addEventListener("click", (event) => {
   }
 });
 
-async function launchGameFromStart() {
+function launchGameFromStart() {
   if (startTitle.dataset.loading === "true") {
     return;
   }
 
   startTitle.dataset.loading = "true";
   showStartButton(false);
-  setLoaderText("Loading game...");
-  if (pageLoader) {
-    pageLoader.style.display = "flex";
-  }
-
-  try {
-    await preloadGameAssets();
-  } catch (e) {
-    console.warn("Game preload failed, navigating anyway:", e);
-  }
-
-  const gameUrl = `./game.html?difficulty=${selectedDifficulty}`;
-  window.location.href = gameUrl;
+  window.dispatchEvent(
+    new CustomEvent("sketchybook:start-game", {
+      detail: { difficulty: selectedDifficulty },
+    })
+  );
 }
 
+window.addEventListener("sketchybook:show-start", () => {
+  if (!startTitle) return;
+  startTitle.dataset.loading = "false";
+  showStartButton(true);
+});
+
 if (startTitle) {
-  startTitle.addEventListener("click", async (event) => {
+  startTitle.addEventListener("click", (event) => {
     event.preventDefault();
 
     if (selectedDifficulty === DIFFICULTY_LEVELS.INSANE) {
@@ -479,6 +467,6 @@ if (startTitle) {
       return;
     }
 
-    await launchGameFromStart();
+    launchGameFromStart();
   });
 }

@@ -43,7 +43,7 @@ const stageDefinitions = {
     title: "Stage 4",
     minEvents: 1,
     objects: [
-      { type: "text", x: 0.5, y: 0.3, text: "drawing on the ball is not allowed" },
+      { type: "text", x: 0.5, y: 0.3, text: "A red dot is a axis" },
       { type: "ball", x: 0.35, y: 0.5 },
       { type: "star", x: 0.65, y: 0.4 },
       {
@@ -76,7 +76,7 @@ const stageDefinitions = {
     title: "Stage 5",
     minEvents: 1,
     objects: [
-      { type: "text", x: 0.3, y: 0.5, text: "A red dot is a axis" },
+      { type: "text", x: 0.3, y: 0.5, text: "try to attach line to the rotor" },
       {
         type: "rotor",
         points: [

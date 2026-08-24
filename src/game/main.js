@@ -67,6 +67,7 @@ const drawLimitProgressFillCanvas = document.getElementById("draw-limit-progress
 const selectionPage = document.querySelector(".page-selection");
 let drawLimitProgressTrackDrawn = false;
 const playPage = document.querySelector(".page-play");
+const startPage = document.querySelector(".page-start");
 const stageButtons = Array.from(document.querySelectorAll(".stage-card"));
 const stagePageButtons = Array.from(document.querySelectorAll("[data-stage-page]"));
 const backHomeButton = document.querySelector("[data-back-home-button]");
@@ -75,7 +76,7 @@ const stagePageSize = 6;
 const totalStageCount = 30;
 const totalStagePages = Math.ceil(totalStageCount / stagePageSize);
 
-const helpToggle = document.querySelector("[data-help-toggle]");
+const helpToggle = document.querySelector("[data-selection-help-toggle]");
 const helpPanel = document.getElementById("selection-help-panel");
 
 function setHelpPanelVisible(visible = true) {
@@ -100,7 +101,16 @@ if (helpToggle && helpPanel) {
 }
 
 // 난이도 관련 변수
-let currentDifficulty = DIFFICULTY_LEVELS.NORMAL;
+function getInitialDifficulty() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedDifficulty =
+    params.get("difficulty") || sessionStorage.getItem("selectedDifficulty");
+  return Object.values(DIFFICULTY_LEVELS).includes(requestedDifficulty)
+    ? requestedDifficulty
+    : DIFFICULTY_LEVELS.NORMAL;
+}
+
+let currentDifficulty = getInitialDifficulty();
 let difficultyRules = getDifficultyRules(currentDifficulty);
 
 let stageClearOverlay = null;
@@ -202,7 +212,8 @@ stagePageButtons.forEach((button) => {
 if (backHomeButton) {
   backHomeButton.appendChild(createActionIconCanvas("exit", { w: 60, h: 48, strokeWidth: 2.5 }));
   backHomeButton.addEventListener("click", () => {
-    window.location.href = "./index.html";
+    setActivePage(startPage);
+    window.dispatchEvent(new Event("sketchybook:show-start"));
   });
 }
 
@@ -210,32 +221,11 @@ refreshStageSelectionButtons();
 
 function lockLandscapeOrientation() {
   try {
-    // 1. 먼저 Fullscreen API로 전체화면 진입
-    const enterFullscreen = async () => {
-      try {
-        const elem = document.documentElement;
-        if (elem.requestFullscreen) {
-          await elem.requestFullscreen();
-        } else if (elem.webkitRequestFullscreen) {
-          await elem.webkitRequestFullscreen();
-        }
-      } catch (e) {
-        // Fullscreen 실패해도 계속 진행
-      }
-    };
-
-    // 2. Screen Orientation API로 landscape 잠금
+    // Screen Orientation API로 landscape 잠금
     if (screen?.orientation?.lock && typeof screen.orientation.lock === "function") {
-      screen.orientation
-        .lock("landscape")
-        .then(() => {
-          // Success - enter fullscreen after lock
-          enterFullscreen();
-        })
-        .catch(() => {
-          // API 미지원 시에도 fullscreen 시도
-          enterFullscreen();
-        });
+      screen.orientation.lock("landscape").catch(() => {
+        // Silently ignore
+      });
 
       // Orientation 변경 시 계속 landscape 유지
       window.addEventListener("orientationchange", () => {
@@ -249,9 +239,6 @@ function lockLandscapeOrientation() {
           // Silently ignore
         }
       });
-    } else {
-      // 비지원 환경에서도 fullscreen 시도
-      enterFullscreen();
     }
   } catch (e) {
     // Silently ignore any errors
@@ -301,7 +288,7 @@ function updateStageUrl(stageNumber = null) {
 }
 
 function setActivePage(page) {
-  [selectionPage, playPage].forEach((item) => {
+  [startPage, selectionPage, playPage].forEach((item) => {
     if (!item) return;
     item.classList.toggle("is-active", item === page);
   });
@@ -491,6 +478,19 @@ async function startStage(stageNumber) {
   resizeCanvas();
 }
 
+window.addEventListener("sketchybook:start-game", async (event) => {
+  const requestedDifficulty = event.detail?.difficulty;
+  if (Object.values(DIFFICULTY_LEVELS).includes(requestedDifficulty)) {
+    currentDifficulty = requestedDifficulty;
+    difficultyRules = getDifficultyRules(currentDifficulty);
+    sessionStorage.setItem("selectedDifficulty", currentDifficulty);
+  }
+
+  await tryEnterFullscreen();
+  setActivePage(selectionPage);
+  updateStageSelectionPage();
+});
+
 async function initializePageFlow() {
   const requestedStage = getRequestedStageFromUrl();
   if (requestedStage) {
@@ -501,7 +501,7 @@ async function initializePageFlow() {
     resizeCanvas();
   } else {
     stagePageIndex = getStagePageIndexForStage(currentStageNumber, stagePageSize, totalStagePages);
-    setActivePage(selectionPage);
+    setActivePage(startPage);
   }
 }
 
@@ -2004,12 +2004,4 @@ window.addEventListener("load", () => {
   document.documentElement.classList.add("js-ready");
   const loader = document.getElementById("page-loader");
   if (loader) loader.remove();
-
-  // URL에서 난이도 파라미터를 읽어옴
-  const params = new URLSearchParams(window.location.search);
-  const difficultyParam = params.get("difficulty");
-  if (difficultyParam && Object.values(DIFFICULTY_LEVELS).includes(difficultyParam)) {
-    currentDifficulty = difficultyParam;
-    difficultyRules = getDifficultyRules(currentDifficulty);
-  }
 });

@@ -1,5 +1,6 @@
 import "./style.css";
 import "./app.js";
+import "./game/main.js";
 import rough from "roughjs";
 import { syncProgressToServerOnLogin, getIdToken } from "./auth.js";
 import { buildApiUrl } from "./services/api.js";
