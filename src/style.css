@@ -66,7 +66,7 @@
 .orientation-prompt-icon {
   display: grid;
   place-items: center;
-  margin: 0 auto;
+  margin: 0 auto 1.25rem;
 }
 
 .orientation-prompt-device {
@@ -76,7 +76,7 @@
   border: 0.2rem solid currentcolor;
   border-radius: 0.8rem;
   position: relative;
-  transform: rotate(90deg);
+  animation: orientation-device-rotate 2.4s ease-in-out infinite;
 }
 
 .orientation-prompt-device::before {
@@ -85,4 +85,46 @@
   inset: 0.55rem;
   border: 0.14rem solid currentcolor;
   border-radius: 0.45rem;
+}
+
+.orientation-prompt-button {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: #4f3b24;
+  color: #fff8e8;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.orientation-prompt-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.orientation-prompt-status {
+  min-height: 1.25rem;
+  margin: 0.65rem 0 0;
+  color: #725537;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+@keyframes orientation-device-rotate {
+  0%,
+  25% {
+    transform: rotate(0deg);
+  }
+
+  55%,
+  75% {
+    transform: rotate(90deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
 }
