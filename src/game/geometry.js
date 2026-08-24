@@ -143,10 +143,10 @@ export function segmentIntersectsRect(segment, rect) {
   const top = y;
   const bottom = y + height;
 
-  if (x1 >= left && x1 <= right && y1 >= top && y1 <= bottom) {
+  if (x1 > left && x1 < right && y1 > top && y1 < bottom) {
     return true;
   }
-  if (x2 >= left && x2 <= right && y2 >= top && y2 <= bottom) {
+  if (x2 > left && x2 < right && y2 > top && y2 < bottom) {
     return true;
   }
 
@@ -184,7 +184,10 @@ export function segmentIntersectsRect(segment, rect) {
     }
   }
 
-  return true;
+  const midpointT = (t0 + t1) / 2;
+  const midpointX = x1 + dx * midpointT;
+  const midpointY = y1 + dy * midpointT;
+  return midpointX > left && midpointX < right && midpointY > top && midpointY < bottom;
 }
 
 export function getCanvasVisualAnchor(canvas, fallbackAnchor = null) {
