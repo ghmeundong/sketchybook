@@ -35,10 +35,18 @@
 .game-board {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  height: 100%;
   border: none;
   background: transparent;
   overflow: hidden;
+}
+
+.page-play {
+  top: calc(-1 * var(--page-padding));
+  left: 50%;
+  width: 100vw;
+  height: 100dvh;
+  transform: translateX(-50%);
 }
 
 .draw-limit-progress {
@@ -310,7 +318,8 @@
   }
 
   .game-board {
-    aspect-ratio: 16 / 9;
+    width: 100%;
+    height: 100%;
   }
 
   .draw-limit-progress {

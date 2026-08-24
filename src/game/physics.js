@@ -101,9 +101,10 @@ function ensurePhysicsGround(floorY, options = {}) {
 
 function createPlanckBody(stroke, floorY, options = {}) {
   ensurePhysicsGround(floorY, options);
+  stroke.freezeOnContact = options.freezeOnContact === true;
 
   const body = physicsWorld.createBody({
-    type: "dynamic",
+    type: options.type ?? "dynamic",
     position: { x: stroke.body.x, y: stroke.body.y },
   });
   body.setLinearDamping(0);
@@ -125,7 +126,7 @@ function createPlanckBody(stroke, floorY, options = {}) {
 
     const fixture = body.createFixture({
       shape: planck.Box(length / 2, thickness / 2, planck.Vec2(midpointX, midpointY), angle),
-      density: 39,
+      density: options.density ?? (body.getType() === "dynamic" ? 39 : 0),
       friction: 0.8,
       restitution: 0,
     });
@@ -496,6 +497,22 @@ export function createRotorBody(points, axis = {}, floorY = 0, options = {}) {
   }
 
   return body;
+}
+
+export function attachBodyToBody(body, targetBody, anchor) {
+  if (!body || !targetBody || !anchor) return null;
+
+  const joint = physicsWorld.createJoint(
+    planck.WeldJoint(
+      {
+        collideConnected: false,
+      },
+      body,
+      targetBody,
+      planck.Vec2(anchor.x, anchor.y)
+    )
+  );
+  return joint;
 }
 
 export function applyImpulseToBody(body, ix, iy) {

@@ -39,7 +39,7 @@ export class Portal {
     const sizeW = Math.ceil(w + padding * 2);
     const sizeH = Math.ceil(h + padding * 2);
 
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const off = document.createElement("canvas");
     off.width = sizeW * dpr;
     off.height = sizeH * dpr;
