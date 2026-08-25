@@ -135,8 +135,13 @@ function getStrokeWidth() {
 
 function getBallImpulseValues() {
   const profile = getPhysicsScaleProfile();
-  const viewportScale = canvasHeight > 0 ? canvasHeight / 900 : 1;
-  const scale = profile?.scale ?? Math.min(1, Math.max(0.5, viewportScale));
+  const referenceDimension = 900;
+  const viewportDimension =
+    canvasHeight > 0 ? Math.min(canvasWidth, canvasHeight) : referenceDimension;
+  const dimensionScale = viewportDimension / referenceDimension;
+  const massScale = dimensionScale * dimensionScale;
+  const physicsScale = profile?.scale ?? Math.min(1, Math.max(0.5, dimensionScale));
+  const scale = Math.min(1.25, Math.max(0.15, massScale * physicsScale));
   return {
     linear: 99999 * scale,
     angular: 99999 * scale,
@@ -1814,31 +1819,8 @@ function stopDrawing(event) {
           const dy = clickPos.y - by;
           const dist = Math.hypot(dx, dy);
           if (dist <= pr + 6) {
-            // apply impulse to the right
-            // Apply an off-center impulse to produce immediate torque (less sliding)
-            const { linear: impulseLinear, angular: angularImpulse } = getBallImpulseValues();
             if (obj.physicsBody) {
-              try {
-                const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
-                applyImpulseAtLocalPoint(obj.physicsBody, impulseLinear, 0, 0, offsetY);
-                applyAngularImpulseToBody(obj.physicsBody, angularImpulse);
-                console.debug(
-                  "applied off-center impulse",
-                  impulseLinear,
-                  "and angular impulse",
-                  angularImpulse,
-                  "to ball at",
-                  bx,
-                  by
-                );
-                // 공 움직임에 진행 바 200px 추가
-                if (difficultyRules.maxLineLength !== null) {
-                  totalDrawnLength += 200;
-                  updateDrawLimitProgressUI();
-                }
-              } catch (e) {
-                console.warn("failed to apply impulse:", e);
-              }
+              launchBallFromInput();
             }
             break;
           }

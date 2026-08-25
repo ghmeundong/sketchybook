@@ -126,6 +126,42 @@
   transform: rotate(-2deg) translate(1px, 1px);
 }
 
+.mobile-launch-ball {
+  position: relative;
+  display: block;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0 auto;
+  border: 2px solid rgb(255 248 232 / 92%);
+  border-radius: 50%;
+  background: #2f3e6f;
+  box-shadow: inset -2px -2px 0 rgb(17 26 58 / 35%);
+}
+
+.mobile-launch-ball::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 0.35rem);
+  width: 1.6rem;
+  height: 0.35rem;
+  border-top: 2px solid rgb(255 248 232 / 84%);
+  border-bottom: 2px solid rgb(255 248 232 / 58%);
+  transform: translateY(-50%);
+}
+
+.mobile-launch-ball::before {
+  content: ">";
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 1.65rem);
+  color: rgb(255 248 232 / 92%);
+  font-family: MyeongjoFont, serif;
+  font-size: 1.15rem;
+  line-height: 1;
+  transform: translateY(-56%);
+}
+
 @media (hover: none) and (pointer: coarse) {
   .mobile-launch-btn {
     display: block;
