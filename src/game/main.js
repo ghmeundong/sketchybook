@@ -255,7 +255,11 @@ function findStrokeAttachment(stroke, floorY, hasFloor = true) {
     return { type: "floor" };
   }
 
-  return gameObjects.find((object) => strokeIntersectsObject(stroke, object)) || null;
+  return (
+    gameObjects.find(
+      (object) => object instanceof Rotor && strokeIntersectsObject(stroke, object)
+    ) || null
+  );
 }
 
 function drawRoughFrame(card) {

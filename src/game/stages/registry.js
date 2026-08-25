@@ -76,7 +76,7 @@ const stageDefinitions = {
     title: "Stage 5",
     minEvents: 1,
     objects: [
-      { type: "text", x: 0.3, y: 0.5, text: "try to attach line to the rotor" },
+      { type: "text", x: 0.3, y: 0.5, text: "tip: rotors are attachable" },
       {
         type: "rotor",
         points: [
