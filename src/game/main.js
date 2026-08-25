@@ -133,6 +133,16 @@ function getStrokeWidth() {
   return Math.min(10, Math.max(4, 8 * viewportScale));
 }
 
+function getBallImpulseValues() {
+  const profile = getPhysicsScaleProfile();
+  const viewportScale = canvasHeight > 0 ? canvasHeight / 900 : 1;
+  const scale = profile?.scale ?? Math.min(1, Math.max(0.5, viewportScale));
+  return {
+    linear: 99999 * scale,
+    angular: 99999 * scale,
+  };
+}
+
 const body = document.body;
 body.style.backgroundImage = `url(${paperTexture})`;
 body.style.backgroundSize = "cover";
@@ -1806,18 +1816,17 @@ function stopDrawing(event) {
           if (dist <= pr + 6) {
             // apply impulse to the right
             // Apply an off-center impulse to produce immediate torque (less sliding)
-            const IMPULSE_LINEAR = 99999; // reduced linear impulse
-            const ANGULAR_IMPULSE = 99999; // stronger angular impulse for visible rolling
+            const { linear: impulseLinear, angular: angularImpulse } = getBallImpulseValues();
             if (obj.physicsBody) {
               try {
                 const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
-                applyImpulseAtLocalPoint(obj.physicsBody, IMPULSE_LINEAR, 0, 0, offsetY);
-                applyAngularImpulseToBody(obj.physicsBody, ANGULAR_IMPULSE);
+                applyImpulseAtLocalPoint(obj.physicsBody, impulseLinear, 0, 0, offsetY);
+                applyAngularImpulseToBody(obj.physicsBody, angularImpulse);
                 console.debug(
                   "applied off-center impulse",
-                  IMPULSE_LINEAR,
+                  impulseLinear,
                   "and angular impulse",
-                  ANGULAR_IMPULSE,
+                  angularImpulse,
                   "to ball at",
                   bx,
                   by
@@ -2067,11 +2076,10 @@ function launchBallFromInput(eventRepeat = false) {
   for (const obj of gameObjects) {
     if (obj instanceof Ball && obj.physicsBody) {
       try {
-        const IMPULSE_LINEAR = 99999;
-        const ANGULAR_IMPULSE = 99999;
+        const { linear: impulseLinear, angular: angularImpulse } = getBallImpulseValues();
         const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
-        applyImpulseAtLocalPoint(obj.physicsBody, IMPULSE_LINEAR, 0, 0, offsetY);
-        applyAngularImpulseToBody(obj.physicsBody, ANGULAR_IMPULSE);
+        applyImpulseAtLocalPoint(obj.physicsBody, impulseLinear, 0, 0, offsetY);
+        applyAngularImpulseToBody(obj.physicsBody, angularImpulse);
         if (difficultyRules.maxLineLength !== null) {
           totalDrawnLength += 200;
           updateDrawLimitProgressUI();
