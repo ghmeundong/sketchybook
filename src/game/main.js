@@ -669,6 +669,11 @@ function getStrokeDistance(points) {
   return distance;
 }
 
+function isDrawLimitReached() {
+  const limit = difficultyRules?.maxLineLength ?? null;
+  return limit != null && totalDrawnLength >= limit;
+}
+
 function updateDrawLimitProgressUI({ previewLength = totalDrawnLength } = {}) {
   const limit = difficultyRules?.maxLineLength ?? null;
   if (!drawLimitProgress || !drawLimitProgressTrackCanvas || !drawLimitProgressFillCanvas) {
@@ -677,6 +682,7 @@ function updateDrawLimitProgressUI({ previewLength = totalDrawnLength } = {}) {
 
   if (limit == null) {
     drawLimitProgress.classList.remove("is-visible");
+    if (mobileLaunchButton) mobileLaunchButton.disabled = false;
     drawLimitProgressTrackDrawn = false;
     const trackCtx = drawLimitProgressTrackCanvas.getContext("2d");
     const fillCtx = drawLimitProgressFillCanvas.getContext("2d");
@@ -703,6 +709,10 @@ function updateDrawLimitProgressUI({ previewLength = totalDrawnLength } = {}) {
     0,
     Number.isFinite(previewLength) ? previewLength : totalDrawnLength
   );
+  if (mobileLaunchButton) {
+    mobileLaunchButton.disabled = isDrawLimitReached();
+    mobileLaunchButton.setAttribute("aria-disabled", String(mobileLaunchButton.disabled));
+  }
   const dpr = getRenderDpr();
   const pxWidth = drawLimitProgress.clientWidth || 320;
   const pxHeight = drawLimitProgress.clientHeight || 12;
@@ -2022,6 +2032,8 @@ window.addEventListener("pointercancel", () => {
 
 function launchBallFromInput(eventRepeat = false) {
   const isGameActive = playPage?.classList.contains("is-active");
+  if (isDrawLimitReached()) return;
+
   const canLaunchBall = shouldHandleSpacebarAction({
     isGameActive,
     challengeModeEnabled,
