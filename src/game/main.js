@@ -1869,30 +1869,8 @@ function stopDrawing(event) {
           const dy = clickPos.y - by;
           const dist = Math.hypot(dx, dy);
           if (dist <= pr + 6) {
-            const IMPULSE_LINEAR = 3500;
-            const ANGULAR_IMPULSE = -1.2;
             if (obj.physicsBody) {
-              try {
-                const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
-                applyImpulseAtLocalPoint(obj.physicsBody, IMPULSE_LINEAR, 0, 0, offsetY);
-                applyAngularImpulseToBody(obj.physicsBody, ANGULAR_IMPULSE);
-                console.debug(
-                  "applied impulse (short drag)",
-                  IMPULSE_LINEAR,
-                  "and angular impulse",
-                  ANGULAR_IMPULSE,
-                  "to ball at",
-                  bx,
-                  by
-                );
-                // 공 움직임에 진행 바 200px 추가
-                if (difficultyRules.maxLineLength !== null) {
-                  totalDrawnLength += 200;
-                  updateDrawLimitProgressUI();
-                }
-              } catch (e) {
-                console.warn("failed to apply impulse:", e);
-              }
+              launchBallFromInput();
             }
             break;
           }
