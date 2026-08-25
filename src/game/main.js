@@ -62,6 +62,7 @@ import { DIFFICULTY_LEVELS, DIFFICULTY_CONFIG, getDifficultyRules } from "./diff
 
 const board = document.querySelector("#game-board");
 const canvas = document.querySelector("#game-canvas");
+const mobileLaunchButton = document.querySelector("[data-mobile-launch]");
 const drawLimitProgress = document.getElementById("draw-limit-progress");
 const drawLimitProgressTrackCanvas = document.getElementById("draw-limit-progress-track-canvas");
 const drawLimitProgressFillCanvas = document.getElementById("draw-limit-progress-fill-canvas");
@@ -2049,6 +2050,45 @@ window.addEventListener("pointercancel", () => {
   stopDrawing();
 });
 
+function launchBallFromInput(eventRepeat = false) {
+  const isGameActive = playPage?.classList.contains("is-active");
+  const canLaunchBall = shouldHandleSpacebarAction({
+    isGameActive,
+    challengeModeEnabled,
+    challengeModeStrokeCount,
+    stageCleared,
+    stageClearOverlayVisible: Boolean(stageClearOverlay?.classList.contains("is-visible")),
+    eventRepeat,
+  });
+
+  if (!canLaunchBall) return;
+
+  stageEventCount += 1;
+  for (const obj of gameObjects) {
+    if (obj instanceof Ball && obj.physicsBody) {
+      try {
+        const IMPULSE_LINEAR = 99999;
+        const ANGULAR_IMPULSE = 99999;
+        const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
+        applyImpulseAtLocalPoint(obj.physicsBody, IMPULSE_LINEAR, 0, 0, offsetY);
+        applyAngularImpulseToBody(obj.physicsBody, ANGULAR_IMPULSE);
+        if (difficultyRules.maxLineLength !== null) {
+          totalDrawnLength += 200;
+          updateDrawLimitProgressUI();
+        }
+      } catch (error) {
+        console.warn("moving ball failed:", error);
+      }
+      break;
+    }
+  }
+}
+
+mobileLaunchButton?.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  launchBallFromInput();
+});
+
 window.addEventListener("keydown", async (event) => {
   const isGameActive = playPage?.classList.contains("is-active");
 
@@ -2061,47 +2101,7 @@ window.addEventListener("keydown", async (event) => {
 
   if (event.key === " " || event.code === "Space") {
     event.preventDefault();
-
-    const canLaunchBall = shouldHandleSpacebarAction({
-      isGameActive,
-      challengeModeEnabled,
-      challengeModeStrokeCount,
-      stageCleared,
-      stageClearOverlayVisible: Boolean(stageClearOverlay?.classList.contains("is-visible")),
-      eventRepeat: event.repeat,
-    });
-
-    if (!canLaunchBall) {
-      return;
-    }
-
-    stageEventCount += 1;
-
-    if (gameObjects && gameObjects.length) {
-      for (const obj of gameObjects) {
-        if (obj instanceof Ball && obj.physicsBody) {
-          try {
-            const IMPULSE_LINEAR = 99999;
-            const ANGULAR_IMPULSE = 99999;
-            const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
-
-            applyImpulseAtLocalPoint(obj.physicsBody, IMPULSE_LINEAR, 0, 0, offsetY);
-            applyAngularImpulseToBody(obj.physicsBody, ANGULAR_IMPULSE);
-
-            console.debug("move ball");
-
-            // 공 움직임에 진행 바 200px 추가
-            if (difficultyRules.maxLineLength !== null) {
-              totalDrawnLength += 200;
-              updateDrawLimitProgressUI();
-            }
-          } catch (e) {
-            console.warn("moving ball failed:", e);
-          }
-          break;
-        }
-      }
-    }
+    launchBallFromInput(event.repeat);
   }
 });
 
