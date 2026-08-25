@@ -6,6 +6,14 @@ export function isMobileDevice() {
   return hasTouch && isSmallScreen;
 }
 
+function isFullscreen() {
+  return Boolean(
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    window.innerHeight === screen.height
+  );
+}
+
 function requestLandscapeMode() {
   const fullscreenRequest =
     document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
@@ -71,9 +79,16 @@ export function initializeOrientationPrompt() {
 
   promptInstance = createPrompt();
 
-  if (isMobileDevice()) {
-    document.documentElement.classList.add("has-orientation-prompt");
-  }
+  const updatePromptVisibility = () => {
+    document.documentElement.classList.toggle(
+      "has-orientation-prompt",
+      isMobileDevice() && !isFullscreen()
+    );
+  };
+
+  updatePromptVisibility();
+  document.addEventListener("fullscreenchange", updatePromptVisibility);
+  document.addEventListener("webkitfullscreenchange", updatePromptVisibility);
 
   return promptInstance;
 }
