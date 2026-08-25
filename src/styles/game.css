@@ -93,13 +93,14 @@
   z-index: 80;
   min-width: clamp(5.2rem, 14vw, 7rem);
   min-height: clamp(3rem, 8vw, 3.8rem);
-  padding: 0.4rem 0.8rem;
-  border: 1px solid rgb(255 248 232 / 62%);
-  border-radius: 0.35rem;
-  background: rgb(79 59 36 / 46%);
+  padding: 0.35rem 0.8rem;
+  border: 1px solid rgb(255 248 232 / 54%);
+  border-radius: 0.5rem;
+  background: rgb(47 62 111 / 52%);
   box-shadow:
-    inset 0 0 0 2px rgb(79 59 36 / 18%),
-    2px 3px 0 rgb(44 32 20 / 22%);
+    inset 0 0 0 2px rgb(255 248 232 / 12%),
+    inset 0 -3px 0 rgb(17 26 58 / 26%),
+    2px 3px 0 rgb(44 32 20 / 24%);
   color: rgb(255 248 232 / 94%);
   font-family: MyeongjoFont, serif;
   font-size: clamp(1rem, 3vw, 1.35rem);
@@ -108,7 +109,6 @@
   line-height: 1;
   cursor: pointer;
   opacity: 0.78;
-  transform: rotate(-2deg);
   backdrop-filter: blur(2px);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -123,43 +123,49 @@
 
 .mobile-launch-btn:active {
   opacity: 0.95;
-  transform: rotate(-2deg) translate(1px, 1px);
+  transform: translate(1px, 2px);
+  box-shadow:
+    inset 0 0 0 2px rgb(255 248 232 / 10%),
+    inset 0 1px 0 rgb(17 26 58 / 20%),
+    1px 1px 0 rgb(44 32 20 / 20%);
+}
+
+.mobile-launch-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  gap: 0.45rem;
 }
 
 .mobile-launch-ball {
-  position: relative;
   display: block;
   width: 1.15rem;
   height: 1.15rem;
-  margin: 0 auto;
   border: 2px solid rgb(255 248 232 / 92%);
   border-radius: 50%;
   background: #2f3e6f;
-  box-shadow: inset -2px -2px 0 rgb(17 26 58 / 35%);
+  box-shadow:
+    inset -2px -2px 0 rgb(17 26 58 / 35%),
+    0 1px 0 rgb(255 248 232 / 18%);
 }
 
-.mobile-launch-ball::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: calc(100% + 0.35rem);
-  width: 1.6rem;
-  height: 0.35rem;
+.mobile-launch-trail {
+  display: block;
+  width: 1.55rem;
+  height: 0.45rem;
   border-top: 2px solid rgb(255 248 232 / 84%);
   border-bottom: 2px solid rgb(255 248 232 / 58%);
-  transform: translateY(-50%);
 }
 
-.mobile-launch-ball::before {
-  content: ">";
-  position: absolute;
-  top: 50%;
-  left: calc(100% + 1.65rem);
-  color: rgb(255 248 232 / 92%);
-  font-family: MyeongjoFont, serif;
-  font-size: 1.15rem;
-  line-height: 1;
-  transform: translateY(-56%);
+.mobile-launch-arrow {
+  display: block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-top: 2px solid rgb(255 248 232 / 92%);
+  border-right: 2px solid rgb(255 248 232 / 92%);
+  transform: rotate(45deg);
 }
 
 @media (hover: none) and (pointer: coarse) {
