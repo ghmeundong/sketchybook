@@ -1659,7 +1659,8 @@ function ensureFloorTexture() {
 
   const floorY = getPhysicsScaleProfile()?.floorY ?? Math.max(0, canvasHeight - 24);
   const grassHeight = 18;
-  const textureKey = `${canvasWidth}x${canvasHeight}:${floorY}:${grassHeight}:${difficultyRules.hasFloor}:${challengeModeEnabled}`;
+  const floorOverscan = Math.max(32, Math.round(canvasHeight * 0.08));
+  const textureKey = `${canvasWidth}x${canvasHeight}:${floorY}:${floorOverscan}:${grassHeight}:${difficultyRules.hasFloor}:${challengeModeEnabled}`;
 
   if (floorTextureCanvas && floorTextureKey === textureKey) {
     return floorTextureCanvas;
@@ -1667,7 +1668,7 @@ function ensureFloorTexture() {
 
   const floorCanvas = document.createElement("canvas");
   floorCanvas.width = canvasWidth;
-  floorCanvas.height = canvasHeight;
+  floorCanvas.height = canvasHeight + floorOverscan;
 
   const floorCtx = floorCanvas.getContext("2d");
   if (!floorCtx) {
@@ -1675,7 +1676,7 @@ function ensureFloorTexture() {
   }
 
   floorCtx.fillStyle = "#8d6a42";
-  floorCtx.fillRect(0, floorY, canvasWidth, canvasHeight - floorY);
+  floorCtx.fillRect(0, floorY, canvasWidth, floorCanvas.height - floorY);
 
   const grassLineColor = "#4a7b5b";
   floorCtx.fillStyle = grassLineColor;
