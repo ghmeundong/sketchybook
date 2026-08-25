@@ -149,7 +149,7 @@ async function handleProgressRequest(request, env) {
     .bind(userSub, mode)
     .first();
 
-  let finalProgress = Math.min(30, Math.max(1, Math.floor(body.progress) || 1));
+  let finalProgress = Math.min(18, Math.max(1, Math.floor(body.progress) || 1));
   let finalScores = body.scores || {};
 
   if (existingRow) {

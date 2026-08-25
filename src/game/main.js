@@ -75,7 +75,7 @@ const stagePageButtons = Array.from(document.querySelectorAll("[data-stage-page]
 const backHomeButton = document.querySelector("[data-back-home-button]");
 let stagePageIndex = 0;
 const stagePageSize = 6;
-const totalStageCount = 30;
+const totalStageCount = 18;
 const totalStagePages = Math.ceil(totalStageCount / stagePageSize);
 
 const helpToggle = document.querySelector("[data-selection-help-toggle]");

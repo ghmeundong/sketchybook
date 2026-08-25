@@ -2,6 +2,10 @@
 
 > A hand-drawn style puzzle game - Draw lines to guide the ball and collect stars!
 
+## Version 1
+
+Sketchybook V1 is complete through Stage 18. Future major design changes and stage expansion will be developed separately in Sketchybook2.
+
 ## 🎯 Game Concept
 
 **Core Mechanic**: Draw lines on screen to guide a rolling ball through the path and collect all the stars in this casual puzzle game.

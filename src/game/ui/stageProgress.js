@@ -51,18 +51,18 @@ export function getStoredStageProgress(mode) {
   const storedScores = getStoredStageScores(mode);
   const clearedStageNumbers = Object.keys(storedScores)
     .map((key) => Number(key))
-    .filter((value) => Number.isInteger(value) && value >= 1 && value <= 30);
+    .filter((value) => Number.isInteger(value) && value >= 1 && value <= 18);
 
   if (clearedStageNumbers.length > 0) {
     const highestClearedStage = Math.max(...clearedStageNumbers);
-    return Math.min(30, highestClearedStage + 1);
+    return Math.min(18, highestClearedStage + 1);
   }
 
   try {
     const raw = window.localStorage.getItem(progress);
     if (!raw) return 1;
     const parsed = Number(raw);
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 30) {
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 18) {
       return 1;
     }
     return parsed;
@@ -101,7 +101,7 @@ export function saveStageProgress(stageNumber, mode) {
     return;
   }
 
-  const nextUnlockedStage = Math.min(30, Math.max(1, safeStageNumber + 1));
+  const nextUnlockedStage = Math.min(18, Math.max(1, safeStageNumber + 1));
   const currentUnlockedStage = getStoredStageProgress(mode);
   if (currentUnlockedStage >= nextUnlockedStage) {
     return;
