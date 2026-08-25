@@ -85,6 +85,39 @@
   touch-action: none;
 }
 
+.mobile-launch-btn {
+  display: none;
+  position: absolute;
+  right: clamp(0.6rem, 2vw, 1.2rem);
+  bottom: clamp(0.6rem, 2vw, 1.2rem);
+  z-index: 80;
+  min-width: 4.5rem;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.65rem;
+  border: none;
+  background: rgb(79 59 36 / 28%);
+  color: rgb(255 248 232 / 88%);
+  font-family: MyeongjoFont, serif;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.72;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.mobile-launch-btn:active {
+  opacity: 0.95;
+  transform: translateY(1px);
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .mobile-launch-btn {
+    display: block;
+  }
+}
+
 .stage-clear-overlay {
   position: absolute;
   top: 50%;
