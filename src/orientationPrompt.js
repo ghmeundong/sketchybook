@@ -2,7 +2,7 @@ let promptInstance = null;
 
 export function isMobileDevice() {
   const hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-  const isSmallScreen = window.matchMedia("(max-width: 900px)").matches;
+  const isSmallScreen = window.matchMedia("(max-width: 600px)").matches;
   return hasTouch && isSmallScreen;
 }
 
