@@ -159,15 +159,6 @@
   border-bottom: 2px solid rgb(255 248 232 / 58%);
 }
 
-.mobile-launch-arrow {
-  display: block;
-  width: 0.65rem;
-  height: 0.65rem;
-  border-top: 2px solid rgb(255 248 232 / 92%);
-  border-right: 2px solid rgb(255 248 232 / 92%);
-  transform: rotate(45deg);
-}
-
 @media (hover: none) and (pointer: coarse) {
   .mobile-launch-btn {
     display: block;
