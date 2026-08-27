@@ -7,9 +7,13 @@ set "BUILD_DIR=%TEMP%\Sketchybook-release-%RANDOM%"
 echo Cleaning previous temporary build...
 if exist "%BUILD_DIR%" rmdir /s /q "%BUILD_DIR%"
 
-echo Preparing icon...
-call npm run prepare:icon
-if errorlevel 1 goto :failed
+if not exist "%~dp0public\sketchybook.ico" (
+	echo Preparing icon...
+	call npm run prepare:icon
+	if errorlevel 1 goto :failed
+) else (
+	echo Existing icon found, skipping icon generation.
+)
 
 echo Building Electron app...
 call npm run build:electron
