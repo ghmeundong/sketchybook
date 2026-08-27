@@ -360,7 +360,7 @@
   display: flex;
   justify-content: center;
   gap: 0.75rem;
-  margin-top: 0.5rem;
+  margin-top: 0.1rem;
 }
 
 .insane-warning-button {
@@ -403,6 +403,10 @@
   font-size: 0.9rem;
   line-height: 1.25;
   text-align: right;
+}
+
+.challenge-mode-constraints {
+  color: #c0392b;
 }
 
 .settings-toggle-switch {
@@ -673,6 +677,7 @@
 
 .difficulty-description {
   margin-top: 0.15rem;
+  height: 4rem;
   max-width: clamp(20rem, 36vw, 28rem);
   font-size: clamp(0.72rem, 0.86vw, 0.95rem);
   line-height: 1.5;
@@ -708,7 +713,7 @@
   cursor: pointer;
   user-select: none;
   font-weight: 700;
-  margin-top: clamp(2.2rem, 6vh, 4rem);
+  margin-top: 0.5rem;
   background: transparent;
   border: none;
   color: inherit;

@@ -146,6 +146,7 @@ export function showStageClearOverlay({
   stageButtons,
   canvas,
   stageNumber,
+  difficulty,
   onAfterSave,
 }) {
   if (!overlay || !message) return;
@@ -155,11 +156,11 @@ export function showStageClearOverlay({
   renderStageScoreStars({ message, stars });
 
   if (stageNumber) {
-    saveStageScore(stageNumber, stars);
-    renderStageSelectionButtons(stageButtons);
+    saveStageScore(stageNumber, stars, difficulty);
+    renderStageSelectionButtons(stageButtons, difficulty);
     const stageButton = stageButtons.find((button) => Number(button.dataset.stage) === stageNumber);
     if (stageButton) {
-      renderStageScoreBadge(stageButton, stageNumber);
+      renderStageScoreBadge(stageButton, stageNumber, difficulty);
     }
   }
 
