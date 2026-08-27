@@ -3,7 +3,7 @@ import rough from "roughjs";
 import "../style.css";
 import "../styles/game.css";
 import paperTexture from "../img/paper-texture.webp";
-import dragSoundUrl from "../audio/Objects, Writing, Marker Writing Sound, Drag.wav";
+import dragSoundUrl from "../audio/Pencil On Paper, Stroke Normalized.wav";
 import { createCoordinateSystem } from "./coordinates.js";
 import { loadStage } from "./stageLoader.js";
 import { resolveCircleRadius, segmentIntersectsCircle, segmentIntersectsRect } from "./geometry.js";
@@ -675,78 +675,95 @@ let stageMinEvents = 0;
 let isWindowFocused = true;
 let totalDrawnLength = 0;
 const drawingAudio = new Audio(dragSoundUrl);
-const DRAWING_AUDIO_START_END = 0.18;
-const DRAWING_AUDIO_LOOP_START = 0.18;
-const DRAWING_AUDIO_LOOP_END = 0.86;
-let drawingAudioStartTimer = null;
-let drawingAudioLoopHandler = null;
-let drawingAudioEndTimer = null;
+const DRAWING_AUDIO_LOOP_START = 0.37;
+const DRAWING_AUDIO_LOOP_END = 0.53;
+const DRAWING_AUDIO_IDLE_DELAY = 80;
+const DRAWING_AUDIO_START_VOLUME = 0.12;
+const DRAWING_AUDIO_SPEED_DEAD_ZONE = 35;
+const DRAWING_AUDIO_MIN_VOLUME = 0.12;
+const DRAWING_AUDIO_MAX_VOLUME = 0.72;
+const DRAWING_AUDIO_SPEED_RANGE = 700;
+let drawingAudioLoopTimer = null;
+let drawingAudioIdleTimer = null;
+let drawingAudioMotionActive = false;
+let drawingAudioBaseVolume = 0;
 let lastDrawingAudioPoint = null;
 let lastDrawingAudioTime = 0;
 
 drawingAudio.preload = "auto";
 drawingAudio.volume = 0;
 
+function getDrawingAudioDuration() {
+  return Number.isFinite(drawingAudio.duration) ? drawingAudio.duration : 1.1;
+}
+
 function getDrawingAudioTime(fraction) {
-  const duration = Number.isFinite(drawingAudio.duration) ? drawingAudio.duration : 1.1;
-  return duration * fraction;
+  return getDrawingAudioDuration() * fraction;
 }
 
 function setDrawingAudioVolume(speed = 0) {
-  const speedVolume = Math.min(0.78, Math.max(0.1, 0.1 + speed / 900));
+  if (speed <= DRAWING_AUDIO_SPEED_DEAD_ZONE) {
+    drawingAudioBaseVolume = 0;
+    drawingAudio.volume = 0;
+    return;
+  }
+
+  const normalizedSpeed = Math.min(
+    1,
+    (speed - DRAWING_AUDIO_SPEED_DEAD_ZONE) / DRAWING_AUDIO_SPEED_RANGE
+  );
+  const speedVolume =
+    DRAWING_AUDIO_MIN_VOLUME +
+    (DRAWING_AUDIO_MAX_VOLUME - DRAWING_AUDIO_MIN_VOLUME) * normalizedSpeed ** 1.1;
+  drawingAudioBaseVolume = speedVolume;
   drawingAudio.volume = speedVolume;
 }
 
+function scheduleDrawingAudioIdleStop() {
+  if (drawingAudioIdleTimer) clearTimeout(drawingAudioIdleTimer);
+  drawingAudioIdleTimer = window.setTimeout(() => {
+    drawingAudioMotionActive = false;
+    drawingAudio.pause();
+    drawingAudio.volume = 0;
+    drawingAudioIdleTimer = null;
+  }, DRAWING_AUDIO_IDLE_DELAY);
+}
+
 function stopDrawingAudio() {
-  if (drawingAudioStartTimer) clearTimeout(drawingAudioStartTimer);
-  if (drawingAudioEndTimer) clearTimeout(drawingAudioEndTimer);
-  if (drawingAudioLoopHandler)
-    drawingAudio.removeEventListener("timeupdate", drawingAudioLoopHandler);
-  drawingAudioStartTimer = null;
-  drawingAudioEndTimer = null;
-  drawingAudioLoopHandler = null;
+  if (drawingAudioLoopTimer) clearInterval(drawingAudioLoopTimer);
+  if (drawingAudioIdleTimer) clearTimeout(drawingAudioIdleTimer);
+  drawingAudioLoopTimer = null;
+  drawingAudioIdleTimer = null;
+  drawingAudioMotionActive = false;
   drawingAudio.pause();
   drawingAudio.currentTime = 0;
   drawingAudio.volume = 0;
+  drawingAudioBaseVolume = 0;
   lastDrawingAudioPoint = null;
   lastDrawingAudioTime = 0;
 }
 
 function startDrawingAudio() {
   stopDrawingAudio();
-  drawingAudio.currentTime = 0;
-  setDrawingAudioVolume(0);
+  drawingAudioMotionActive = true;
+  drawingAudioBaseVolume = DRAWING_AUDIO_START_VOLUME;
+  drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_START);
+  drawingAudio.volume = DRAWING_AUDIO_START_VOLUME;
   void drawingAudio.play().catch(() => {});
-
-  drawingAudioStartTimer = window.setTimeout(
-    () => {
+  drawingAudioLoopTimer = window.setInterval(() => {
+    if (!drawingAudioMotionActive) return;
+    if (drawingAudio.paused) {
       drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_START);
-      drawingAudioLoopHandler = () => {
-        if (drawingAudio.currentTime >= getDrawingAudioTime(DRAWING_AUDIO_LOOP_END)) {
-          drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_START);
-        }
-      };
-      drawingAudio.addEventListener("timeupdate", drawingAudioLoopHandler);
-      drawingAudioStartTimer = null;
-    },
-    getDrawingAudioTime(DRAWING_AUDIO_START_END) * 1000
-  );
+      void drawingAudio.play().catch(() => {});
+    }
+    if (drawingAudio.currentTime >= getDrawingAudioTime(DRAWING_AUDIO_LOOP_END)) {
+      drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_START);
+    }
+  }, 10);
 }
 
 function finishDrawingAudio() {
-  if (drawingAudioStartTimer) clearTimeout(drawingAudioStartTimer);
-  if (drawingAudioLoopHandler)
-    drawingAudio.removeEventListener("timeupdate", drawingAudioLoopHandler);
-  drawingAudioStartTimer = null;
-  drawingAudioLoopHandler = null;
-  drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_END);
-  setDrawingAudioVolume(0);
-  void drawingAudio.play().catch(() => {});
-  const duration = Number.isFinite(drawingAudio.duration) ? drawingAudio.duration : 1.1;
-  drawingAudioEndTimer = window.setTimeout(
-    stopDrawingAudio,
-    Math.max(80, (1 - DRAWING_AUDIO_LOOP_END) * duration * 1000)
-  );
+  stopDrawingAudio();
 }
 
 function updateDrawingAudio(event) {
@@ -754,11 +771,15 @@ function updateDrawingAudio(event) {
   const now = performance.now();
   if (lastDrawingAudioPoint && lastDrawingAudioTime) {
     const elapsed = Math.max(1, now - lastDrawingAudioTime);
-    const speed =
-      (Math.hypot(point.x - lastDrawingAudioPoint.x, point.y - lastDrawingAudioPoint.y) / elapsed) *
-      1000;
+    const distance = Math.hypot(
+      point.x - lastDrawingAudioPoint.x,
+      point.y - lastDrawingAudioPoint.y
+    );
+    const speed = (distance / elapsed) * 1000;
     setDrawingAudioVolume(speed);
   }
+  drawingAudioMotionActive = true;
+  scheduleDrawingAudioIdleStop();
   lastDrawingAudioPoint = point;
   lastDrawingAudioTime = now;
 }
@@ -1912,6 +1933,7 @@ function startDrawing(event) {
   isDrawing = true;
   lastPoint = getPoint(event);
   startDrawingAudio();
+  scheduleDrawingAudioIdleStop();
   lastDrawingAudioPoint = lastPoint;
   lastDrawingAudioTime = performance.now();
   currentStroke = [];
