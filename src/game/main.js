@@ -3,6 +3,7 @@ import rough from "roughjs";
 import "../style.css";
 import "../styles/game.css";
 import paperTexture from "../img/paper-texture.webp";
+import dragSoundUrl from "../audio/Objects, Writing, Marker Writing Sound, Drag.wav";
 import { createCoordinateSystem } from "./coordinates.js";
 import { loadStage } from "./stageLoader.js";
 import { resolveCircleRadius, segmentIntersectsCircle, segmentIntersectsRect } from "./geometry.js";
@@ -673,6 +674,94 @@ let stageEventCount = 0;
 let stageMinEvents = 0;
 let isWindowFocused = true;
 let totalDrawnLength = 0;
+const drawingAudio = new Audio(dragSoundUrl);
+const DRAWING_AUDIO_START_END = 0.18;
+const DRAWING_AUDIO_LOOP_START = 0.18;
+const DRAWING_AUDIO_LOOP_END = 0.86;
+let drawingAudioStartTimer = null;
+let drawingAudioLoopHandler = null;
+let drawingAudioEndTimer = null;
+let lastDrawingAudioPoint = null;
+let lastDrawingAudioTime = 0;
+
+drawingAudio.preload = "auto";
+drawingAudio.volume = 0;
+
+function getDrawingAudioTime(fraction) {
+  const duration = Number.isFinite(drawingAudio.duration) ? drawingAudio.duration : 1.1;
+  return duration * fraction;
+}
+
+function setDrawingAudioVolume(speed = 0) {
+  const speedVolume = Math.min(0.78, Math.max(0.1, 0.1 + speed / 900));
+  drawingAudio.volume = speedVolume;
+}
+
+function stopDrawingAudio() {
+  if (drawingAudioStartTimer) clearTimeout(drawingAudioStartTimer);
+  if (drawingAudioEndTimer) clearTimeout(drawingAudioEndTimer);
+  if (drawingAudioLoopHandler)
+    drawingAudio.removeEventListener("timeupdate", drawingAudioLoopHandler);
+  drawingAudioStartTimer = null;
+  drawingAudioEndTimer = null;
+  drawingAudioLoopHandler = null;
+  drawingAudio.pause();
+  drawingAudio.currentTime = 0;
+  drawingAudio.volume = 0;
+  lastDrawingAudioPoint = null;
+  lastDrawingAudioTime = 0;
+}
+
+function startDrawingAudio() {
+  stopDrawingAudio();
+  drawingAudio.currentTime = 0;
+  setDrawingAudioVolume(0);
+  void drawingAudio.play().catch(() => {});
+
+  drawingAudioStartTimer = window.setTimeout(
+    () => {
+      drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_START);
+      drawingAudioLoopHandler = () => {
+        if (drawingAudio.currentTime >= getDrawingAudioTime(DRAWING_AUDIO_LOOP_END)) {
+          drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_START);
+        }
+      };
+      drawingAudio.addEventListener("timeupdate", drawingAudioLoopHandler);
+      drawingAudioStartTimer = null;
+    },
+    getDrawingAudioTime(DRAWING_AUDIO_START_END) * 1000
+  );
+}
+
+function finishDrawingAudio() {
+  if (drawingAudioStartTimer) clearTimeout(drawingAudioStartTimer);
+  if (drawingAudioLoopHandler)
+    drawingAudio.removeEventListener("timeupdate", drawingAudioLoopHandler);
+  drawingAudioStartTimer = null;
+  drawingAudioLoopHandler = null;
+  drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_END);
+  setDrawingAudioVolume(0);
+  void drawingAudio.play().catch(() => {});
+  const duration = Number.isFinite(drawingAudio.duration) ? drawingAudio.duration : 1.1;
+  drawingAudioEndTimer = window.setTimeout(
+    stopDrawingAudio,
+    Math.max(80, (1 - DRAWING_AUDIO_LOOP_END) * duration * 1000)
+  );
+}
+
+function updateDrawingAudio(event) {
+  const point = getPoint(event);
+  const now = performance.now();
+  if (lastDrawingAudioPoint && lastDrawingAudioTime) {
+    const elapsed = Math.max(1, now - lastDrawingAudioTime);
+    const speed =
+      (Math.hypot(point.x - lastDrawingAudioPoint.x, point.y - lastDrawingAudioPoint.y) / elapsed) *
+      1000;
+    setDrawingAudioVolume(speed);
+  }
+  lastDrawingAudioPoint = point;
+  lastDrawingAudioTime = now;
+}
 
 // Game objects (balls, stars, etc.) that stages can declare.
 let gameObjects = [];
@@ -1822,6 +1911,9 @@ function startDrawing(event) {
   stageEventCount += 1;
   isDrawing = true;
   lastPoint = getPoint(event);
+  startDrawingAudio();
+  lastDrawingAudioPoint = lastPoint;
+  lastDrawingAudioTime = performance.now();
   currentStroke = [];
   // reset preview cache for a new stroke
   if (previewCtx) previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -1836,6 +1928,7 @@ function continueDrawing(event) {
   }
 
   const currentPoint = getPoint(event);
+  updateDrawingAudio(event);
   currentStroke.push(currentPoint);
   lastPoint = currentPoint;
   updateDrawLimitProgressUI({
@@ -1849,6 +1942,8 @@ function stopDrawing(event) {
   if (!isDrawing) {
     return;
   }
+
+  finishDrawingAudio();
 
   if (stageCleared) {
     isDrawing = false;
