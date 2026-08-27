@@ -26,9 +26,14 @@ function createWindow() {
   window.on("enter-full-screen", () => notifyFullscreenChange(true));
   window.on("leave-full-screen", () => notifyFullscreenChange(false));
   window.webContents.on("before-input-event", (event, input) => {
-    if (input.type === "keyDown" && input.key === "F11") {
+    if (input.type !== "keyDown") return;
+
+    if (input.key === "F11") {
       event.preventDefault();
       window.setFullScreen(!window.isFullScreen());
+    } else if (input.key === "Escape" && window.isFullScreen()) {
+      event.preventDefault();
+      window.setFullScreen(false);
     }
   });
 
