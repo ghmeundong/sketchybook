@@ -4,9 +4,9 @@ import path from "path";
 
 const __dirname = path.resolve();
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   root: "./",
-  base: "/sketchybook/",
+  base: mode === "electron" ? "./" : "/sketchybook/",
   publicDir: "public",
   resolve: {
     alias: {
@@ -45,4 +45,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

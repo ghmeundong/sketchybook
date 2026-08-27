@@ -165,8 +165,8 @@ export function isChallengeClearedLocal(stageNumber, mode) {
   return storedScores[challengeKey] === true;
 }
 
-export function renderStageSelectionButtons(stageButtons = []) {
-  const unlockedStage = getStoredStageProgress();
+export function renderStageSelectionButtons(stageButtons = [], mode) {
+  const unlockedStage = getStoredStageProgress(mode);
   stageButtons.forEach((button) => {
     const stageNumber = Number(button.dataset.stage);
     const isUnlocked = stageNumber <= unlockedStage;
@@ -176,11 +176,17 @@ export function renderStageSelectionButtons(stageButtons = []) {
   });
 }
 
-export function renderStageScoreBadge(card, stageNumber) {
-  const score = getStoredStageScores()[stageNumber];
-  if (!card || !score) return;
+export function renderStageScoreBadge(card, stageNumber, mode) {
+  const score = getStoredStageScores(mode)[stageNumber];
+  if (!card) return;
 
-  let badge = card.querySelector(".stage-score-badge");
+  const existingBadge = card.querySelector(".stage-score-badge");
+  if (!score) {
+    existingBadge?.remove();
+    return;
+  }
+
+  let badge = existingBadge;
   if (!badge) {
     badge = document.createElement("div");
     badge.className = "stage-score-badge";

@@ -7,6 +7,9 @@
     "dev": "vite",
     "dev:backend": "cd backend && npm run dev",
     "dev:full": "concurrently \"vite\" \"cd backend && npm run dev\"",
+    "dev:electron": "npm run build:electron && electron .",
+    "build:electron": "vite build --mode electron",
+    "build:exe": "npm run build:electron && electron-builder --win",
     "build": "vite build",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
@@ -16,6 +19,23 @@
     "lint": "eslint . && stylelint \"src/**/*.css\" \"public/**/*.css\"",
     "format": "prettier --write .",
     "prepare": "husky"
+  },
+  "main": "electron/main.cjs",
+  "build": {
+    "appId": "com.sketchybook.app",
+    "productName": "Sketchybook",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis",
+      "artifactName": "Sketchybook-Setup-${version}.${ext}"
+    }
   },
   "lint-staged": {
     "*.js": [
@@ -30,7 +50,9 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
-    "concurrently": "^8.0.0",
+    "concurrently": "^8.2.2",
+    "electron": "^44.0.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.6",

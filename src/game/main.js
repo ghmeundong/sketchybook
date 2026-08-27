@@ -15,7 +15,7 @@ import {
   showStageClearOverlay as showStageClearOverlayUI,
   hideStageClearOverlay as hideStageClearOverlayUI,
 } from "./ui/gameUi.js";
-import { getChallengeModePreference } from "./challengeMode.js";
+import { getChallengeModePreference, setChallengeModePreference } from "./challengeMode.js";
 import {
   shouldAdvancePhysics,
   shouldHandleSpacebarAction,
@@ -167,12 +167,12 @@ function setChallengeCleared(stageNumber) {
 }
 
 function refreshStageSelectionButtons() {
-  renderStageSelectionButtonsUI(stageButtons);
+  renderStageSelectionButtonsUI(stageButtons, currentDifficulty);
   updateStageSelectionPage();
 }
 
 function updateStageSelectionPage() {
-  const unlockedStage = getStoredStageProgress();
+  const unlockedStage = getStoredStageProgress(currentDifficulty);
   const startIndex = stagePageIndex * stagePageSize;
   const endIndex = startIndex + stagePageSize;
 
@@ -310,7 +310,7 @@ function drawRoughFrame(card) {
 stageButtons.forEach((card) => {
   drawRoughFrame(card);
   const stageNumber = Number(card.dataset.stage);
-  renderStageScoreBadge(card, stageNumber);
+  renderStageScoreBadge(card, stageNumber, currentDifficulty);
 });
 
 stagePageButtons.forEach((button) => {
@@ -364,7 +364,8 @@ function resetStageState() {
   // 난이도 규칙 적용: Challenge 모드는 hard/insane에서만 활성화 가능
   const userPrefersChallenge = getChallengeModePreference();
   const canEnableChallenge = difficultyRules.enableChallengeMode;
-  challengeModeEnabled = userPrefersChallenge && canEnableChallenge;
+  challengeModeEnabled =
+    currentDifficulty === DIFFICULTY_LEVELS.INSANE || (userPrefersChallenge && canEnableChallenge);
 
   resetPhysicsWorld();
   gameObjects = [];
@@ -499,6 +500,7 @@ function showStageClearOverlay(message = "Stage Cleared!") {
     stageButtons,
     canvas,
     stageNumber: currentStageNumber,
+    difficulty: currentDifficulty,
     onAfterSave: () => {
       refreshStageSelectionButtons();
     },
@@ -604,12 +606,15 @@ window.addEventListener("sketchybook:start-game", async (event) => {
   if (Object.values(DIFFICULTY_LEVELS).includes(requestedDifficulty)) {
     currentDifficulty = requestedDifficulty;
     difficultyRules = getDifficultyRules(currentDifficulty);
+    if (currentDifficulty === DIFFICULTY_LEVELS.INSANE) {
+      setChallengeModePreference(true);
+    }
     sessionStorage.setItem("selectedDifficulty", currentDifficulty);
   }
 
-  await tryEnterFullscreen();
   setActivePage(selectionPage);
   updateStageSelectionPage();
+  await tryEnterFullscreen();
 });
 
 async function initializePageFlow() {
@@ -672,13 +677,39 @@ function getStrokeDistance(points) {
   return distance;
 }
 
-function isDrawLimitReached() {
+function getLogicalStrokeDistance(points) {
+  if (!Array.isArray(points) || points.length < 2) {
+    return 0;
+  }
+
+  if (!coordinateSystem) {
+    return getStrokeDistance(points);
+  }
+
+  let distance = 0;
+  for (let i = 1; i < points.length; i += 1) {
+    const previous = coordinateSystem.toLogicalPoint(points[i - 1]);
+    const current = coordinateSystem.toLogicalPoint(points[i]);
+    distance += Math.hypot(current.x - previous.x, current.y - previous.y);
+  }
+  return distance;
+}
+
+function getLineLengthLimit() {
   const limit = difficultyRules?.maxLineLength ?? null;
+  if (limit == null) {
+    return null;
+  }
+  return limit;
+}
+
+function isDrawLimitReached() {
+  const limit = getLineLengthLimit();
   return limit != null && totalDrawnLength >= limit;
 }
 
 function updateDrawLimitProgressUI({ previewLength = totalDrawnLength } = {}) {
-  const limit = difficultyRules?.maxLineLength ?? null;
+  const limit = getLineLengthLimit();
   if (!drawLimitProgress || !drawLimitProgressTrackCanvas || !drawLimitProgressFillCanvas) {
     return;
   }
@@ -1790,7 +1821,7 @@ function continueDrawing(event) {
   currentStroke.push(currentPoint);
   lastPoint = currentPoint;
   updateDrawLimitProgressUI({
-    previewLength: totalDrawnLength + getStrokeDistance(currentStroke),
+    previewLength: totalDrawnLength + getLogicalStrokeDistance(currentStroke),
   });
   // mark preview cache dirty so it'll be re-generated once per change
   currentStrokePreviewDirty = true;
@@ -1850,11 +1881,12 @@ function stopDrawing(event) {
   const CLICK_DISTANCE_THRESHOLD = 6; // pixels
   const totalDist = getStrokeDistance(currentStroke);
 
-  if (difficultyRules.maxLineLength !== null) {
+  const lineLengthLimit = getLineLengthLimit();
+  if (lineLengthLimit !== null) {
     const nextTotalDrawnLength = totalDrawnLength + totalDist;
-    if (nextTotalDrawnLength > difficultyRules.maxLineLength) {
+    if (nextTotalDrawnLength > lineLengthLimit) {
       console.debug(
-        `Total draw length too long (${Math.round(nextTotalDrawnLength)}px > ${difficultyRules.maxLineLength}px), rejecting stroke`
+        `Total draw length too long (${Math.round(nextTotalDrawnLength)}px > ${Math.round(lineLengthLimit)}px), rejecting stroke`
       );
       if (previewCtx) previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
       currentStrokePreviewDirty = false;
@@ -1989,7 +2021,7 @@ function stopDrawing(event) {
     // matches exactly what the player saw during drawing.
     createStrokeTexture(strokeBody, previewCanvas);
     physicsStrokes.push(strokeBody);
-    totalDrawnLength += getStrokeDistance(currentStroke);
+    totalDrawnLength += getLogicalStrokeDistance(currentStroke);
     updateDrawLimitProgressUI();
   } else if (!shouldCreateStroke && currentStroke) {
     // 선이 취소됐을 때 (공이나 striped rect와 만났을 때) 진행 바 리셋
@@ -2059,7 +2091,7 @@ function launchBallFromInput(eventRepeat = false) {
         const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
         applyImpulseAtLocalPoint(obj.physicsBody, impulseLinear, 0, 0, offsetY);
         applyAngularImpulseToBody(obj.physicsBody, angularImpulse);
-        if (difficultyRules.maxLineLength !== null) {
+        if (getLineLengthLimit() !== null) {
           totalDrawnLength += 200;
           updateDrawLimitProgressUI();
         }

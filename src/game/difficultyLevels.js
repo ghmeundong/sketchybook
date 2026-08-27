@@ -19,7 +19,7 @@ export const DIFFICULTY_CONFIG = {
     enableChallengeMode: false,
     maxLineLength: null, // 제한 없음
     description: "Learning mode",
-    summary: "Floor on / easy draw / challenge mode unavailable / no line limit",
+    summary: "Floor on / easy draw / no line limit / challenge mode unavailable",
   },
   [DIFFICULTY_LEVELS.NORMAL]: {
     id: "normal",
@@ -30,7 +30,7 @@ export const DIFFICULTY_CONFIG = {
     enableChallengeMode: false,
     maxLineLength: 5000,
     description: "Standard mode",
-    summary: "Floor on / normal draw / challenge mode unavailable / line limit 5000px",
+    summary: "Floor on / normal draw / line limit 5000 / challenge mode unavailable",
   },
   [DIFFICULTY_LEVELS.HARD]: {
     id: "hard",
@@ -41,7 +41,7 @@ export const DIFFICULTY_CONFIG = {
     enableChallengeMode: true,
     maxLineLength: 2500,
     description: "No safety net",
-    summary: "Floor off / no ball drawing / challenge mode available / line limit 2500px",
+    summary: "no floor / no ball drawing / line limit 2500 / challenge mode available",
   },
   [DIFFICULTY_LEVELS.INSANE]: {
     id: "insane",
@@ -53,7 +53,7 @@ export const DIFFICULTY_CONFIG = {
     maxLineLength: 1250,
     description: "Maximum difficulty",
     summary:
-      "Floor off / no ball drawing / no platform drawing / challenge mode available / line limit 1250px",
+      "no floor / no ball drawing / no platform drawing / line limit 1250 / challenge mode forced",
   },
 };
 

@@ -133,7 +133,10 @@ function createChallengeModeTooltip() {
 
   const label = document.createElement("div");
   label.className = "challenge-mode-tooltip-label";
-  label.textContent = "Hard or insane levels only";
+  label.textContent =
+    selectedDifficulty === DIFFICULTY_LEVELS.INSANE
+      ? "Challenge Mode is always on in Insane and cannot be turned off."
+      : "Challenge Mode is available on Hard and Insane levels only.";
 
   tooltip.appendChild(svg);
   tooltip.appendChild(label);
@@ -160,6 +163,13 @@ function positionChallengeModeTooltip(event) {
 function showChallengeModeTooltip(event) {
   const tooltip = createChallengeModeTooltip();
   if (!tooltip) return;
+  const label = tooltip.querySelector(".challenge-mode-tooltip-label");
+  if (label) {
+    label.textContent =
+      selectedDifficulty === DIFFICULTY_LEVELS.INSANE
+        ? "Challenge Mode is always on in Insane and cannot be turned off."
+        : "Challenge Mode is available on Hard and Insane levels only.";
+  }
   positionChallengeModeTooltip(event);
   tooltip.classList.add("is-visible");
 }
@@ -219,7 +229,7 @@ function createInsaneStartWarningModal() {
   confirmBtn.textContent = "Continue";
   confirmBtn.addEventListener("click", async () => {
     modal.remove();
-    await launchGameFromStart();
+    await launchGameFromStart(true);
   });
 
   actions.appendChild(cancelBtn);
@@ -242,20 +252,26 @@ function showInsaneStartWarningModal() {
 function updateChallengeModeAvailability() {
   if (!challengeModeToggle) return;
   const config = DIFFICULTY_CONFIG[selectedDifficulty];
+  const isInsane = selectedDifficulty === DIFFICULTY_LEVELS.INSANE;
   const isAvailable = config?.enableChallengeMode || false;
 
-  challengeModeToggle.disabled = !isAvailable;
-  challengeModeToggle.style.opacity = isAvailable ? "1" : "0.5";
-  challengeModeToggle.style.cursor = isAvailable ? "pointer" : "not-allowed";
-
-  // 비활성화 난이도에서는 항상 Challenge Mode를 off로 설정
-  if (!isAvailable) {
+  if (isInsane) {
+    setChallengeModePreference(true);
+  } else if (!isAvailable) {
     setChallengeModePreference(false);
-    syncChallengeModeToggleUI();
   }
 
+  challengeModeToggle.disabled = !isAvailable || isInsane;
+  challengeModeToggle.style.opacity = isAvailable && !isInsane ? "1" : "0.5";
+  challengeModeToggle.style.cursor = isAvailable && !isInsane ? "pointer" : "not-allowed";
+
+  // 비활성화 난이도에서는 항상 Challenge Mode를 off로 설정
+  syncChallengeModeToggleUI();
+
   if (challengeModeStatus) {
-    challengeModeStatus.innerHTML = "draw only one line <br />no clicks <br />no floor";
+    challengeModeStatus.innerHTML = isInsane
+      ? 'Challenge Mode is always on in Insane.<br />It cannot be turned off.<br /><span class="challenge-mode-constraints">draw only one line <br />no clicks</span>'
+      : '<span class="challenge-mode-constraints">draw only one line <br />no clicks</span>';
   }
 
   hideChallengeModeTooltip();
@@ -269,14 +285,27 @@ function updateDifficultyDisplay() {
   }
 
   if (difficultyDescription) {
-    difficultyDescription.textContent = config?.summary || config?.description || "";
+    const summary = config?.summary || config?.description || "";
+    const isChallengeDescriptionVisible =
+      selectedDifficulty === DIFFICULTY_LEVELS.INSANE ||
+      (selectedDifficulty === DIFFICULTY_LEVELS.HARD && getChallengeModePreference());
+    difficultyDescription.innerHTML = isChallengeDescriptionVisible
+      ? `${summary} / <span class="challenge-mode-constraints">draw only one line / no clicks</span>`
+      : summary;
   }
 }
 
 function changeDifficulty(newDifficulty) {
+  const previousDifficulty = selectedDifficulty;
   selectedDifficulty = Object.values(DIFFICULTY_LEVELS).includes(newDifficulty)
     ? newDifficulty
     : DIFFICULTY_LEVELS.NORMAL;
+  if (
+    previousDifficulty === DIFFICULTY_LEVELS.INSANE &&
+    selectedDifficulty !== DIFFICULTY_LEVELS.INSANE
+  ) {
+    setChallengeModePreference(false);
+  }
   updateDifficultyDisplay();
   // sessionStorage에 저장하여 게임에서 접근 가능
   sessionStorage.setItem("selectedDifficulty", selectedDifficulty);
@@ -387,6 +416,7 @@ if (challengeModeToggle && challengeModeOption) {
     const nextValue = !getChallengeModePreference();
     setChallengeModePreference(nextValue);
     syncChallengeModeToggleUI();
+    updateDifficultyDisplay();
   });
 
   challengeModeToggle.addEventListener("pointerenter", (event) => {
@@ -452,8 +482,8 @@ document.addEventListener("click", (event) => {
   }
 });
 
-function launchGameFromStart() {
-  if (startTitle.dataset.loading === "true") {
+function launchGameFromStart(force = false) {
+  if (!force && startTitle.dataset.loading === "true") {
     return;
   }
 
