@@ -1,5 +1,5 @@
 import rough from "roughjs";
-import paperTexture from "./img/paper-texture.webp";
+import paperTexture from "./assets/img/paper-texture.webp";
 import { createActionIconCanvas } from "./game/ui/uiIcons.js";
 import { initializeOrientationPrompt } from "./orientationPrompt.js";
 import { getChallengeModePreference, setChallengeModePreference } from "./game/challengeMode.js";

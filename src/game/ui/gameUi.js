@@ -1,5 +1,5 @@
 import rough from "roughjs";
-import paperTexture from "../../img/paper-texture.webp";
+import paperTexture from "../../assets/img/paper-texture.webp";
 import { createActionIconCanvas, createRoughStarCanvas } from "./uiIcons.js";
 import { getStageStarRating } from "../stageScoring.js";
 import {

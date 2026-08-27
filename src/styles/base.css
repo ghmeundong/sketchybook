@@ -44,7 +44,7 @@ html {
 
 @font-face {
   font-family: MyeongjoFont;
-  src: url("/font/sketchy-font/Sketchy-1jX4.ttf") format("truetype");
+  src: url("../assets/font/sketchy-font/Sketchy-1jX4.ttf") format("truetype");
   font-weight: 400;
   font-style: normal;
 }

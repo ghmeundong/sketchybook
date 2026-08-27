@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 
-const inputPath = "src/audio/Objects, Writing, Pencil On Paper, Stroke.wav";
-const outputPath = "src/audio/Pencil On Paper, Stroke Normalized.wav";
+const inputPath = "src/assets/sounds/Objects, Writing, Pencil On Paper, Stroke.wav";
+const outputPath = "src/assets/sounds/Pencil On Paper, Stroke Normalized.wav";
 const loopStart = 0.37;
 const loopEnd = 0.53;
 const windowSeconds = 0.005;
