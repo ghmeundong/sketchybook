@@ -360,7 +360,19 @@ if (settingsToggle && settingsPanel) {
   });
 }
 
+if (difficultyPrevBtn) {
+  difficultyPrevBtn.textContent = "";
+  difficultyPrevBtn.appendChild(createActionIconCanvas("prev", { w: 24, h: 24, strokeWidth: 2 }));
+}
+
+if (difficultyNextBtn) {
+  difficultyNextBtn.textContent = "";
+  difficultyNextBtn.appendChild(createActionIconCanvas("next", { w: 24, h: 24, strokeWidth: 2 }));
+}
+
 if (helpToggle && helpPanel) {
+  helpToggle.textContent = "";
+  helpToggle.appendChild(createActionIconCanvas("question", { w: 40, h: 40, strokeWidth: 2.2 }));
   helpToggle.addEventListener("click", () => {
     setSettingsPanelVisible(false);
     setHelpPanelVisible(helpPanel.hidden);

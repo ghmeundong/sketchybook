@@ -43,6 +43,7 @@ import {
   createDeviceSafePhysicsProfile,
   getPhysicsScaleProfile,
   setPhysicsScaleProfile,
+  isBodyTouchingSurface,
   attachBodyToBody,
 } from "./physics.js";
 import {
@@ -88,6 +89,8 @@ function setHelpPanelVisible(visible = true) {
 }
 
 if (helpToggle && helpPanel) {
+  helpToggle.textContent = "";
+  helpToggle.appendChild(createActionIconCanvas("question", { w: 40, h: 40, strokeWidth: 2.2 }));
   helpToggle.addEventListener("click", () => {
     setHelpPanelVisible(helpPanel.hidden);
   });
@@ -2044,6 +2047,9 @@ function launchBallFromInput(eventRepeat = false) {
   });
 
   if (!canLaunchBall) return;
+
+  const ball = gameObjects.find((obj) => obj instanceof Ball && obj.physicsBody);
+  if (!ball || !isBodyTouchingSurface(ball.physicsBody)) return;
 
   stageEventCount += 1;
   for (const obj of gameObjects) {
