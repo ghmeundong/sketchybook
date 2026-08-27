@@ -1,6 +1,8 @@
 const { app, BrowserWindow } = require("electron");
 const path = require("node:path");
 
+const WEB_APP_URL = "https://ghmeundong.github.io/sketchybook/";
+
 function createWindow() {
   const window = new BrowserWindow({
     width: 1280,
@@ -8,13 +10,18 @@ function createWindow() {
     minWidth: 960,
     minHeight: 600,
     backgroundColor: "#f5ebcf",
+    icon: path.join(__dirname, "..", "dist", "sketchybook.ico"),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
 
-  window.loadFile(path.join(__dirname, "..", "dist", "index.html"));
+  if (app.isPackaged) {
+    window.loadURL(WEB_APP_URL);
+  } else {
+    window.loadFile(path.join(__dirname, "..", "dist", "index.html"));
+  }
 }
 
 app.whenReady().then(() => {
