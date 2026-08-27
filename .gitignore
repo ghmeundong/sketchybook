@@ -1,4 +1,6 @@
 release/
+release-build/
+release-f11/
 # Logs
 logs
 *.log
