@@ -2,9 +2,9 @@
 
 > A hand-drawn style puzzle game - Draw lines to guide the ball and collect stars!
 
-## Version 1
+## Version 1.0.0
 
-Sketchybook V1 is complete through Stage 18. Future major design changes and stage expansion will be developed separately in Sketchybook2.
+Sketchybook V1.0.0 is complete through Stage 18. Future major design changes and stage expansion will be developed separately in Sketchybook2.
 
 ## 🎯 Game Concept
 
