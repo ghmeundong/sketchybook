@@ -17,6 +17,17 @@ function createWindow() {
     },
   });
 
+  const notifyFullscreenChange = (isFullscreen) => {
+    if (!window.webContents.isLoading()) {
+      void window.webContents.executeJavaScript(
+        `window.dispatchEvent(new CustomEvent("electron-fullscreen-change", { detail: { isFullscreen: ${isFullscreen} } }));`
+      );
+    }
+  };
+
+  window.on("enter-full-screen", () => notifyFullscreenChange(true));
+  window.on("leave-full-screen", () => notifyFullscreenChange(false));
+
   if (app.isPackaged) {
     window.loadURL(WEB_APP_URL);
   } else {
