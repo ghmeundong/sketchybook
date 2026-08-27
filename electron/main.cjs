@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("node:path");
 
 const WEB_APP_URL = "https://ghmeundong.github.io/sketchybook/";
@@ -11,22 +11,26 @@ function createWindow() {
     minHeight: 600,
     backgroundColor: "#f5ebcf",
     icon: path.join(__dirname, "..", "dist", "sketchybook.ico"),
+    fullscreenable: true,
     webPreferences: {
+      preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
 
   const notifyFullscreenChange = (isFullscreen) => {
-    if (!window.webContents.isLoading()) {
-      void window.webContents.executeJavaScript(
-        `window.dispatchEvent(new CustomEvent("electron-fullscreen-change", { detail: { isFullscreen: ${isFullscreen} } }));`
-      );
-    }
+    window.webContents.send("electron-fullscreen-change", isFullscreen);
   };
 
   window.on("enter-full-screen", () => notifyFullscreenChange(true));
   window.on("leave-full-screen", () => notifyFullscreenChange(false));
+  window.webContents.on("before-input-event", (event, input) => {
+    if (input.type === "keyDown" && input.key === "F11") {
+      event.preventDefault();
+      window.setFullScreen(!window.isFullScreen());
+    }
+  });
 
   if (app.isPackaged) {
     window.loadURL(WEB_APP_URL);
@@ -34,6 +38,13 @@ function createWindow() {
     window.loadFile(path.join(__dirname, "..", "dist", "index.html"));
   }
 }
+
+ipcMain.handle("set-fullscreen", (event, isFullscreen) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (!window || window.isDestroyed()) return false;
+  window.setFullScreen(Boolean(isFullscreen));
+  return window.isFullScreen();
+});
 
 app.whenReady().then(() => {
   createWindow();
