@@ -314,16 +314,7 @@ export function createGameLoop({
       gameState.ctx.textAlign = "center";
       gameState.ctx.textBaseline = "middle";
       const centerY = gameState.canvasHeight / 2;
-      gameState.ctx.fillText(
-        "Press F11 to enter fullscreen",
-        gameState.canvasWidth / 2,
-        centerY - fontSize * 0.8
-      );
-      gameState.ctx.fillText(
-        "to continue playing",
-        gameState.canvasWidth / 2,
-        centerY + fontSize * 0.2
-      );
+      gameState.ctx.fillText("Game paused", gameState.canvasWidth / 2, centerY);
       gameState.ctx.restore();
       return;
     }

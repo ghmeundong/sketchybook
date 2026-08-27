@@ -115,6 +115,13 @@ function getInitialDifficulty() {
     : DIFFICULTY_LEVELS.NORMAL;
 }
 
+let electronFullscreen = null;
+
+function isFullscreenActive() {
+  if (electronFullscreen !== null) return electronFullscreen;
+  return Boolean(document.fullscreenElement || window.innerHeight === screen.height);
+}
+
 let currentDifficulty = getInitialDifficulty();
 let difficultyRules = getDifficultyRules(currentDifficulty);
 
@@ -428,7 +435,7 @@ function setActivePage(page) {
 }
 
 async function tryEnterFullscreen() {
-  const isFullscreen = Boolean(document.fullscreenElement || window.innerHeight === screen.height);
+  const isFullscreen = isFullscreenActive();
   if (isFullscreen) {
     return;
   }
@@ -1276,7 +1283,7 @@ function getPoint(event) {
 
 function syncGamePlayState() {
   const isGameActive = playPage?.classList.contains("is-active");
-  const isFullscreen = Boolean(document.fullscreenElement || window.innerHeight === screen.height);
+  const isFullscreen = isFullscreenActive();
   const isPageVisible = !document.hidden;
   const shouldPauseForFocusLoss = !isWindowFocused || !document.hasFocus();
 
@@ -1497,7 +1504,7 @@ function drawPhysicsStroke(stroke) {
 
 function tick(timestamp = 0) {
   const isGameActive = playPage?.classList.contains("is-active");
-  const isFullscreen = Boolean(document.fullscreenElement || window.innerHeight === screen.height);
+  const isFullscreen = isFullscreenActive();
   const isPageVisible = !document.hidden;
   const shouldPauseForFocusLoss = !isWindowFocused || !document.hasFocus();
   const shouldRunSimulation =
@@ -1761,7 +1768,7 @@ function render() {
   }
 
   // Check if in fullscreen mode
-  const isFullscreen = document.fullscreenElement || window.innerHeight === screen.height;
+  const isFullscreen = isFullscreenActive();
 
   // If not fullscreen, show guidance message
   if (!isFullscreen) {
@@ -1774,8 +1781,7 @@ function render() {
     ctx.textBaseline = "middle";
 
     const centerY = canvasHeight / 2;
-    ctx.fillText("Press F11 to enter fullscreen", canvasWidth / 2, centerY - fontSize * 0.8);
-    ctx.fillText("to continue playing", canvasWidth / 2, centerY + fontSize * 0.2);
+    ctx.fillText("Game paused", canvasWidth / 2, centerY);
 
     ctx.restore();
     return;
@@ -1812,7 +1818,7 @@ function startDrawing(event) {
 }
 
 function continueDrawing(event) {
-  const isFullscreen = document.fullscreenElement || window.innerHeight === screen.height;
+  const isFullscreen = isFullscreenActive();
   if (!isFullscreen || stageCleared || !isDrawing || !lastPoint) {
     return;
   }
@@ -2049,6 +2055,10 @@ window.addEventListener("pointerleave", stopDrawing);
 
 window.addEventListener("resize", resizeCanvas);
 window.addEventListener("orientationchange", resizeCanvas);
+window.addEventListener("electron-fullscreen-change", (event) => {
+  electronFullscreen = Boolean(event.detail?.isFullscreen);
+  syncGamePlayState();
+});
 window.addEventListener("visibilitychange", () => {
   isWindowFocused = !document.hidden;
   syncGamePlayState();
