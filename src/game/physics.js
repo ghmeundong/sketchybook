@@ -48,6 +48,21 @@ export function getPhysicsScaleProfile() {
   return physicsScaleProfile;
 }
 
+export function isBodyTouchingSurface(body) {
+  if (!body || typeof body.getContactList !== "function") {
+    return false;
+  }
+
+  for (let contactEdge = body.getContactList(); contactEdge; contactEdge = contactEdge.next) {
+    const contact = contactEdge.contact;
+    if (contact && typeof contact.isTouching === "function" && contact.isTouching()) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function ensurePhysicsGround(floorY, options = {}) {
   if (options.skipGround) {
     return;
