@@ -439,6 +439,14 @@ async function tryEnterFullscreen() {
   if (isFullscreen) {
     return;
   }
+  if (window.electronAPI?.setFullscreen) {
+    try {
+      await window.electronAPI.setFullscreen(true);
+      return;
+    } catch (err) {
+      console.warn("Electron 전체화면 전환 실패:", err);
+    }
+  }
   if (document.documentElement.requestFullscreen) {
     try {
       await document.documentElement.requestFullscreen();
@@ -1804,7 +1812,11 @@ function render() {
 }
 
 function startDrawing(event) {
-  if (stageCleared || (challengeModeEnabled && challengeModeStrokeCount >= 1)) {
+  if (
+    !isFullscreenActive() ||
+    stageCleared ||
+    (challengeModeEnabled && challengeModeStrokeCount >= 1)
+  ) {
     return;
   }
   stageEventCount += 1;
@@ -2058,6 +2070,10 @@ window.addEventListener("orientationchange", resizeCanvas);
 window.addEventListener("electron-fullscreen-change", (event) => {
   electronFullscreen = Boolean(event.detail?.isFullscreen);
   syncGamePlayState();
+  window.requestAnimationFrame(() => {
+    resizeCanvas();
+    window.requestAnimationFrame(() => resizeCanvas());
+  });
 });
 window.addEventListener("visibilitychange", () => {
   isWindowFocused = !document.hidden;
