@@ -1,5 +1,6 @@
 import rough from "roughjs";
 import paperTexture from "./assets/img/paper-texture.webp";
+import challengeToggleSoundUrl from "./assets/sounds/Mechanical, Click, Heater Fan, Small, Thermostat, Click On Or Off.wav";
 import { createActionIconCanvas } from "./game/ui/uiIcons.js";
 import { initializeOrientationPrompt } from "./orientationPrompt.js";
 import { getChallengeModePreference, setChallengeModePreference } from "./game/challengeMode.js";
@@ -409,12 +410,18 @@ if (helpToggle && helpPanel) {
 }
 
 if (challengeModeToggle && challengeModeOption) {
+  const challengeToggleSound = new Audio(challengeToggleSoundUrl);
+  challengeToggleSound.preload = "auto";
+  challengeToggleSound.volume = 0.35;
+
   challengeModeToggle.addEventListener("click", () => {
     if (challengeModeToggle.disabled) {
       return;
     }
     const nextValue = !getChallengeModePreference();
     setChallengeModePreference(nextValue);
+    challengeToggleSound.currentTime = 0;
+    void challengeToggleSound.play().catch(() => {});
     syncChallengeModeToggleUI();
     updateDifficultyDisplay();
   });
