@@ -5,6 +5,21 @@ import rough from "roughjs";
 import { syncProgressToServerOnLogin, getIdToken } from "./auth.js";
 import { buildApiUrl } from "./services/api.js";
 import { createActionIconCanvas } from "./game/ui/uiIcons.js";
+import buttonSoundUrl from "./assets/sounds/Mechanical, Click, Fan, Handheld, Button Press.wav";
+
+const buttonSound = new Audio(buttonSoundUrl);
+buttonSound.preload = "auto";
+buttonSound.volume = 0.3;
+
+document.addEventListener("click", (event) => {
+  const button = event.target.closest?.("button");
+  if (!button || button.disabled || button.matches("[data-challenge-mode-toggle]")) {
+    return;
+  }
+
+  buttonSound.currentTime = 0;
+  void buttonSound.play().catch(() => {});
+});
 
 /* global google */
 window.addEventListener("load", () => {
