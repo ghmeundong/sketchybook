@@ -4,6 +4,7 @@ import "../style.css";
 import "../styles/game.css";
 import paperTexture from "../assets/img/paper-texture.webp";
 import dragSoundUrl from "../assets/sounds/Pencil On Paper, Stroke Normalized.wav";
+import stageClearSoundUrl from "../assets/sounds/conventional-postage-stamp.mp3";
 import { createCoordinateSystem } from "./coordinates.js";
 import { loadStage } from "./stageLoader.js";
 import { resolveCircleRadius, segmentIntersectsCircle, segmentIntersectsRect } from "./geometry.js";
@@ -63,6 +64,40 @@ import { syncProgressForMode } from "../auth.js";
 import { DIFFICULTY_LEVELS, DIFFICULTY_CONFIG, getDifficultyRules } from "./difficultyLevels.js";
 
 const board = document.querySelector("#game-board");
+const stageClearAudio = new Audio(stageClearSoundUrl);
+stageClearAudio.preload = "auto";
+stageClearAudio.volume = 0.42;
+stageClearAudio.load();
+
+function unlockStageClearSound() {
+  if (!stageClearAudio.paused) return;
+  const originalVolume = stageClearAudio.volume;
+  stageClearAudio.volume = 0;
+  const unlockPromise = stageClearAudio.play();
+  if (!unlockPromise) {
+    stageClearAudio.volume = originalVolume;
+    return;
+  }
+  unlockPromise
+    .then(() => {
+      stageClearAudio.pause();
+      stageClearAudio.currentTime = 0;
+      stageClearAudio.volume = originalVolume;
+    })
+    .catch(() => {
+      stageClearAudio.volume = originalVolume;
+    });
+}
+
+function playStageClearSound() {
+  stageClearAudio.pause();
+  stageClearAudio.currentTime = 0;
+  const playPromise = stageClearAudio.play();
+  playPromise?.catch((error) => {
+    console.warn("Stage clear sound playback failed:", error);
+  });
+}
+
 const canvas = document.querySelector("#game-canvas");
 const mobileLaunchButton = document.querySelector("[data-mobile-launch]");
 const drawLimitProgress = document.getElementById("draw-limit-progress");
@@ -1801,6 +1836,8 @@ function tick(timestamp = 0) {
     const remaining = gameObjects.filter((g) => g instanceof Star && !g.collected);
     if (remaining.length === 0 && !stageCleared) {
       stageCleared = true;
+      stopDrawingAudio();
+      playStageClearSound();
       const currentMode = currentDifficulty;
       syncProgressForMode(currentMode).catch((err) => {
         console.error("[Sync] 데이터 동기화 실패:", err);
@@ -2172,6 +2209,7 @@ function stopDrawing(event) {
 
 canvas?.addEventListener("pointerdown", startDrawing);
 canvas?.addEventListener("pointermove", continueDrawing);
+document.addEventListener("pointerdown", unlockStageClearSound, { once: true, passive: true });
 document.addEventListener(
   "pointerdown",
   () => {
