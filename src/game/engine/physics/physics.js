@@ -40,6 +40,19 @@ export function createDeviceSafePhysicsProfile({
   };
 }
 
+export function resolveLaunchMotionScale({
+  viewportDimension,
+  referenceDimension = 900,
+  scale = 1,
+}) {
+  const safeViewportDimension = Number.isFinite(viewportDimension)
+    ? viewportDimension
+    : referenceDimension;
+  const safeReferenceDimension = Number.isFinite(referenceDimension) ? referenceDimension : 900;
+  const dimensionRatio = safeViewportDimension / safeReferenceDimension;
+  return dimensionRatio * dimensionRatio * scale;
+}
+
 export function setPhysicsScaleProfile(profile) {
   physicsScaleProfile = profile;
   if (profile?.gravity) {

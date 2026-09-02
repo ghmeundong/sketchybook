@@ -3,6 +3,7 @@ import {
   createCircleBody,
   createDeviceSafePhysicsProfile,
   resetPhysicsWorld,
+  resolveLaunchMotionScale,
   setPhysicsScaleProfile,
 } from "../src/game/engine/physics/physics.js";
 
@@ -32,6 +33,23 @@ describe("createDeviceSafePhysicsProfile", () => {
     expect(desktopProfile.floorY).toBe(900 - 32 * desktopProfile.scale);
     expect(mobileProfile.impulseMultiplier).toBe(1.4 * mobileProfile.scale);
     expect(desktopProfile.impulseMultiplier).toBe(1.4 * desktopProfile.scale);
+  });
+
+  it("scales launch motion by width squared so larger screens stay proportionally punchier", () => {
+    const mobileLaunchScale = resolveLaunchMotionScale({
+      viewportDimension: 480,
+      referenceDimension: 900,
+      scale: 0.75,
+    });
+    const desktopLaunchScale = resolveLaunchMotionScale({
+      viewportDimension: 1600,
+      referenceDimension: 900,
+      scale: 1,
+    });
+
+    expect(mobileLaunchScale).toBeCloseTo((480 / 900) ** 2 * 0.75, 5);
+    expect(desktopLaunchScale).toBeCloseTo((1600 / 900) ** 2 * 1, 5);
+    expect(desktopLaunchScale).toBeGreaterThan(mobileLaunchScale);
   });
 
   it("keeps circle body size aligned with the intended radius", () => {
