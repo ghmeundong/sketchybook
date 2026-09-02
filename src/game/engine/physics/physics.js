@@ -25,8 +25,11 @@ export function createDeviceSafePhysicsProfile({
   const scale = Math.min(Math.max(Math.min(widthScale, heightScale), minScale), maxScale);
   const safeDpr = Math.max(1, Number.isFinite(dpr) ? dpr : 1);
 
+  const massScaleFactor = scale * scale;
+
   return {
     scale,
+    massScaleFactor,
     screenToWorld: 1 / scale,
     worldToScreen: scale,
     gravity: { x: 0, y: DEFAULT_GRAVITY_Y * scale },
