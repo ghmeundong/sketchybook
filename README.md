@@ -1,186 +1,92 @@
-# 🎮 Sketchybook
+# Sketchybook
 
-> A hand-drawn style puzzle game - Draw lines to guide the ball and collect stars!
+![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
+![Vite](https://img.shields.io/badge/Vite-8.1.0-646CFF?logo=vite)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES2024-F7DF1E?logo=javascript)
+![Stages](https://img.shields.io/badge/stages-18-8B5E3C)
+![Backend](https://img.shields.io/badge/backend-Cloudflare%20Workers-f38020)
 
-## Version 1.0.0
+A hand-drawn physics puzzle game where you draw a route, launch a ball, and solve each stage by adjusting the line and reaction timing.
 
-Sketchybook V1.0.0 is complete through Stage 18. Future major design changes and stage expansion will be developed separately in Sketchybook2.
+## Overview
 
-## 🎯 Game Concept
+Sketchybook is a stage-based puzzle game built around simple physics and player-drawn guidance. Each level asks the player to shape a path, launch the ball, and complete the objective while accounting for movement, collision, and environmental constraints.
 
-**Core Mechanic**: Draw lines on screen to guide a rolling ball through the path and collect all the stars in this casual puzzle game.
+## Gameplay
 
----
+- Draw a path to guide the ball
+- Launch the ball into motion
+- Collect stars and finish the stage objective
+- Retry when the route needs adjustment
+- Progress through increasing difficulty and stage complexity
 
-## 🛠️ Tech Stack
+## Features
 
-| Category | Technology |
-|----------|-----------|
-| **Frontend** | Vite, Vanilla JS, Rough.js (sketchy UI) |
-| **Physics Engine** | Planck.js (lightweight 2D simulation) |
-| **Backend** | Cloudflare Workers (serverless) |
-| **Deployment** | GitHub Pages (static site) |
-| **Testing** | Vitest |
-| **Linting** | ESLint, Prettier, Stylelint |
+- Hand-drawn paper-style presentation
+- Physics-driven ball movement and collision behavior
+- Stage progression with multiple difficulty levels
+- Challenge mode on higher difficulties
+- Responsive layout for desktop and mobile-friendly play
 
----
+## Controls
 
-## 🚀 Quick Start
+- Drag: draw a guide line
+- Click / tap: launch the ball
+- Space: launch the ball
+- R: retry the current stage
 
-### Requirements
-- Node.js 16+
-- npm or yarn
+## Difficulty system
 
-### Frontend Development
+- Easy: forgiving and beginner-friendly
+- Normal: balanced default experience
+- Hard: tighter constraints and reduced flexibility
+- Insane: more demanding puzzles with stricter rules
+
+Challenge mode can also be enabled on higher difficulties for extra constraints.
+
+## Quick start
+
+### Install dependencies
+
 ```bash
 npm install
-npm run dev
-# → Open http://localhost:5173
 ```
 
-### Backend Development
+### Start the frontend
+
+```bash
+npm run dev
+```
+
+### Start the backend
+
 ```bash
 cd backend
 npm install
 npm run dev
-# → Runs on http://localhost:8787
 ```
 
-### Run Both Simultaneously (Recommended)
+### Run both together
+
 ```bash
 npm run dev:full
-# Starts frontend + backend together
 ```
 
----
-
-## 📁 Project Structure
-
-```
-sketchybook/
-├── src/                    # Frontend source code
-│   ├── game/              # Game logic
-│   │   ├── physics.js     # Planck.js physics engine
-│   │   ├── gameLoop.js    # Rendering + simulation loop
-│   │   ├── coordinates.js # Coordinate system transformation
-│   │   ├── inputRules.js  # Input validation
-│   │   └── objects/       # Game objects (ball, platform, stars, etc.)
-│   ├── services/          # API services
-│   └── styles/            # CSS stylesheets
-├── backend/               # Cloudflare Workers
-│   ├── src/
-│   │   └── index.js       # Worker entry point
-│   └── wrangler.toml      # Workers configuration
-├── test/                  # Unit tests
-├── public/                # Static assets (fonts, images)
-└── docs/                  # Documentation
-```
-
----
-
-## 🧪 Testing
+### Build for production
 
 ```bash
-# Run once
-npm run test
-
-# Watch mode (during development)
-npm run test:watch
+npm run build
 ```
 
----
+## Documentation
 
-## 📋 Code Quality
+- [Architecture](docs/ARCHITECTURE.md)
+- [Deployment](docs/DEPLOYMENT.md)
+- [Development](docs/DEVELOPMENT.md)
+- [Objects](docs/OBJECTS.md)
+- [Difficulty system briefing](docs/DIFFICULTY_SYSTEM_BRIEFING.md)
+- [Todo](docs/todo.txt)
 
-### Linting & Formatting
-```bash
-# Check for issues
-npm run lint
+## License
 
-# Auto-fix issues
-npm run lint -- --fix
-```
-
-### Pre-commit Hooks
-Husky + lint-staged automatically format and lint your code before committing.
-
----
-
-## 🌐 Deployment
-
-### Frontend (GitHub Pages)
-```bash
-npm run build    # Generate dist/
-npm run deploy   # Deploy to GitHub Pages
-```
-
-### Backend (Cloudflare Workers)
-```bash
-cd backend
-npm run deploy   # Deploy to Workers
-```
-
-### API Testing (Browser Console)
-```javascript
-fetch('/api/health')
-  .then(r => r.json())
-  .then(j => console.log('API:', j))
-  .catch(e => console.error('API error:', e));
-```
-
----
-
-## 📚 Development Scripts
-
-```bash
-npm run dev              # Frontend dev server
-npm run dev:backend     # Backend dev server
-npm run dev:full        # Run both frontend & backend
-npm run build           # Build frontend
-npm run preview         # Preview build output
-npm run test            # Run tests
-npm run test:watch      # Watch mode testing
-npm run lint            # Run linter
-npm run format          # Format code
-npm run deploy          # Deploy to GitHub Pages
-```
-
----
-
-## 📖 Documentation
-
-- [**Architecture**](docs/ARCHITECTURE.md) - System structure overview
-- [**Deployment Guide**](docs/DEPLOYMENT.md) - How to deploy
-- [**Development Guide**](docs/DEVELOPMENT.md) - Dev environment setup
-- [**Game Objects**](docs/OBJECTS.md) - Game object documentation
-
----
-
-## 🎨 Design
-
-- **Sketchy UI**: Hand-drawn style using Rough.js for casual aesthetics
-- **Paper Texture**: Natural paper feel through background imagery
-- **Responsive**: Supports desktop, tablet, and mobile devices
-- **Logical Coordinate System**: 1600×900 base ensures consistent aspect ratio across all devices
-
----
-
-## 🐛 Known Issues & TODO
-
-- [View development progress](docs/todo.txt)
-
----
-
-## 📝 License
-
-MIT License - Free to use, modify, and distribute
-
----
-
-## 🤝 Contributing
-
-Bug reports and feature suggestions are always welcome!
-
----
-
-**Play the Game**: [🎮 Play Sketchybook](https://github.io/sketchybook/)
+MIT

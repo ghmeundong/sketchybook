@@ -10,6 +10,7 @@
     "dev:electron": "npm run build:electron && electron .",
     "build:electron": "vite build --mode electron",
     "prepare:icon": "node scripts/create-icon.mjs",
+    "normalize:audio": "node tools/normalize-drawing-audio.mjs",
     "build:exe": "npm run prepare:icon && npm run build:electron && electron-builder --win",
     "build": "vite build",
     "predeploy": "npm run build",

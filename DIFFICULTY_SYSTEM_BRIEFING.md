@@ -1,6 +1,7 @@
 # Difficulty System Implementation - Complete Briefing
 
 ## Project Overview
+
 Sketchybook physics puzzle game with 30 stages and comprehensive 4-tier difficulty level system (Easy, Normal, Hard, Insane).
 
 ---
@@ -8,7 +9,9 @@ Sketchybook physics puzzle game with 30 stages and comprehensive 4-tier difficul
 ## Implementation Summary
 
 ### 1. New Module Created
+
 **File: `src/game/difficultyLevels.js`** (NEW)
+
 - Central difficulty system module
 - Defines constants, configuration, and utility functions
 - **Key Features:**
@@ -21,26 +24,29 @@ Sketchybook physics puzzle game with 30 stages and comprehensive 4-tier difficul
 
 ### 2. Difficulty Configuration Details
 
-| Property | Easy | Normal | Hard | Insane |
-|----------|------|--------|------|--------|
-| **Floor** | ✓ Yes | ✓ Yes | ✗ No | ✗ No |
-| **Draw on Ball** | ✓ Yes | ✓ Yes | ✗ No | ✗ No |
-| **Challenge Mode** | ✗ No | ✗ No | ✓ Yes | ✓ Yes |
-| **Line Length Limit** | None | None | 1000px | 600px |
-| **Order** | 0 | 1 | 2 | 3 |
+| Property              | Easy  | Normal | Hard   | Insane |
+| --------------------- | ----- | ------ | ------ | ------ |
+| **Floor**             | ✓ Yes | ✓ Yes  | ✗ No   | ✗ No   |
+| **Draw on Ball**      | ✓ Yes | ✓ Yes  | ✗ No   | ✗ No   |
+| **Challenge Mode**    | ✗ No  | ✗ No   | ✓ Yes  | ✓ Yes  |
+| **Line Length Limit** | None  | None   | 1000px | 600px  |
+| **Order**             | 0     | 1      | 2      | 3      |
 
 ---
 
 ## Modified Files
 
 ### `index.html`
+
 **Location:** Root project file
 **Changes:**
+
 - Added `<div class="difficulty-selector" id="difficulty-selector">` between title and start button
 - Includes navigation buttons (`<`, `>`) and difficulty name display
 - **Lines affected:** Added before start button
 
 **HTML Structure:**
+
 ```html
 <div class="difficulty-selector" id="difficulty-selector">
   <button data-difficulty-prev">&lt;</button>
@@ -50,8 +56,10 @@ Sketchybook physics puzzle game with 30 stages and comprehensive 4-tier difficul
 ```
 
 ### `src/app.js`
+
 **Location:** Main page game initialization
 **Changes:**
+
 1. **Line ~20-25:** Added imports:
    - `DIFFICULTY_LEVELS`
    - `DIFFICULTY_CONFIG`
@@ -74,8 +82,10 @@ Sketchybook physics puzzle game with 30 stages and comprehensive 4-tier difficul
    - **After:** `window.location.href = "./game.html?difficulty=${selectedDifficulty}"`
 
 ### `src/game/main.js`
+
 **Location:** Game loop and stage management
 **Changes:**
+
 1. **Line ~30-35:** Added imports:
    - `DIFFICULTY_LEVELS`
    - `DIFFICULTY_CONFIG`
@@ -117,15 +127,19 @@ Sketchybook physics puzzle game with 30 stages and comprehensive 4-tier difficul
    - Hard: 1000px max, Insane: 600px max
 
 ### `src/game/stageLoader.js`
+
 **Location:** Stage loading logic
 **Changes:**
+
 - **Line ~XX:** Updated function signature:
   - `loadStage(canvas, board, stageNumberOverride, difficulty = "normal")`
 - Passes difficulty parameter through to stage creation pipeline
 
 ### `src/game/stages/stageTemplate.js`
+
 **Location:** Stage instance creation
 **Changes:**
+
 - **Line ~XX:** Updated function signature:
   - `createStageTemplate(definition = {}, canvas, board, difficulty = "normal")`
 - **Line ~YY:** Added import: `filterObjectsByDifficulty` from difficultyLevels.js
@@ -134,15 +148,19 @@ Sketchybook physics puzzle game with 30 stages and comprehensive 4-tier difficul
   - Only game objects valid for current difficulty are loaded
 
 ### `src/game/stages/registry.js`
+
 **Location:** Stage definitions factory
 **Changes:**
+
 - **Line ~XX:** Updated function signature:
   - `createStageFromDefinition(stageNumber, canvas, board, difficulty = "normal")`
 - Passes difficulty through entire pipeline
 
 ### `src/styles/screens.css`
+
 **Location:** UI styling
 **Changes:** Added difficulty selector styles (~25 lines)
+
 ```css
 .difficulty-selector {
   display: flex;
@@ -233,17 +251,20 @@ Sketchybook physics puzzle game with 30 stages and comprehensive 4-tier difficul
 ## Technical Details
 
 ### Physics Integration
+
 - Floor removal uses existing `skipGround` parameter
 - Applied to all object types: Circle, Box, Edge, ComplexObject, Rotor
 - Multiple application points ensure consistent behavior
 
 ### Stroke Validation
+
 1. Calculate `totalDist` (total length drawn)
 2. Check ball intersection (if `canDrawOnBall` is false)
 3. Check line length limit (if `maxLineLength` is set)
 4. Only create physics stroke if all checks pass
 
 ### Game Flow
+
 1. User selects difficulty on index.html
 2. Difficulty stored in sessionStorage
 3. User launches game (URL includes difficulty parameter)
@@ -259,6 +280,7 @@ Sketchybook physics puzzle game with 30 stages and comprehensive 4-tier difficul
 ## Testing Checklist
 
 ### Easy Mode
+
 - [ ] Floor visible in all stages
 - [ ] Can click on ball to launch
 - [ ] Can draw freely (no line length limit)
@@ -267,6 +289,7 @@ Sketchybook physics puzzle game with 30 stages and comprehensive 4-tier difficul
 - [ ] Difficulty selector shows "Easy"
 
 ### Normal Mode
+
 - [ ] Floor visible in all stages
 - [ ] Can click on ball to launch
 - [ ] Can draw freely (no line length limit)
@@ -276,6 +299,7 @@ Sketchybook physics puzzle game with 30 stages and comprehensive 4-tier difficul
 - [ ] Persists across page reload (via sessionStorage)
 
 ### Hard Mode
+
 - [ ] Floor hidden in all stages (no safety net)
 - [ ] **Cannot** click on ball or draw on ball
 - [ ] Line length limited to 1000px (test with long strokes)
@@ -284,6 +308,7 @@ Sketchybook physics puzzle game with 30 stages and comprehensive 4-tier difficul
 - [ ] Difficulty selector shows "Hard"
 
 ### Insane Mode
+
 - [ ] Floor hidden in all stages
 - [ ] **Cannot** draw on ball
 - [ ] Line length limited to 600px (stricter than Hard)
@@ -292,12 +317,14 @@ Sketchybook physics puzzle game with 30 stages and comprehensive 4-tier difficul
 - [ ] Difficulty selector shows "Insane"
 
 ### Navigation & Persistence
+
 - [ ] Navigation buttons cycle: Easy → Normal → Hard → Insane → Easy
 - [ ] Difficulty persists when launching game
 - [ ] Invalid URL parameter defaults to Normal
 - [ ] sessionStorage saves selection across page reloads
 
 ### Cross-Device Testing
+
 - [ ] Desktop: All features working
 - [ ] Tablet: Responsive sizing works
 - [ ] Mobile: Touch controls work, selector visible
@@ -307,18 +334,21 @@ Sketchybook physics puzzle game with 30 stages and comprehensive 4-tier difficul
 ## Code Quality
 
 ### Build Status
+
 - ✅ No errors
 - ✅ No warnings
 - ✅ 45 modules compiled successfully
 - ✅ Production-ready
 
 ### Dependencies
+
 - Vite build system unchanged
 - Planck.js physics engine unchanged
 - Rough.js sketchy rendering unchanged
 - No new external dependencies
 
 ### Performance
+
 - Minimal overhead (object filtering on stage load only)
 - No per-frame difficulty checks
 - Line length validation only on stroke completion

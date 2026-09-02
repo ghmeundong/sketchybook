@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Sketchybook main screen with a hand-drawn style start experience." />
+    <meta
+      name="description"
+      content="Sketchybook main screen with a hand-drawn style start experience."
+    />
     <meta name="theme-color" content="#f5ebcf" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -83,7 +86,9 @@
                   aria-expanded="false"
                   aria-controls="start-help-panel"
                   aria-label="How to play"
-                >?</button>
+                >
+                  ?
+                </button>
               </div>
               <div class="settings-panel" id="start-settings-panel" hidden>
                 <p class="settings-panel-title">Settings</p>
@@ -101,6 +106,30 @@
                   >
                     <span class="settings-toggle-switch-thumb"></span>
                   </button>
+                </div>
+                <div class="settings-volume-option">
+                  <div class="settings-volume-label">
+                    <span class="settings-volume-icon" data-audio-icon="music"></span>
+                    <strong class="settings-volume-name">Music</strong>
+                    <output data-audio-value="music">100%</output>
+                  </div>
+                  <div class="settings-volume-slider-wrap">
+                    <canvas class="settings-volume-track" data-audio-track="music" aria-hidden="true"></canvas>
+                    <canvas class="settings-volume-thumb" data-audio-thumb="music" aria-hidden="true"></canvas>
+                    <input class="settings-volume-slider" type="range" min="0" max="100" value="100" data-audio-volume="music" aria-label="Music volume" />
+                  </div>
+                </div>
+                <div class="settings-volume-option">
+                  <div class="settings-volume-label">
+                    <span class="settings-volume-icon" data-audio-icon="sfx"></span>
+                      <strong class="settings-volume-name">SFX</strong>
+                    <output data-audio-value="sfx">100%</output>
+                  </div>
+                  <div class="settings-volume-slider-wrap">
+                    <canvas class="settings-volume-track" data-audio-track="sfx" aria-hidden="true"></canvas>
+                    <canvas class="settings-volume-thumb" data-audio-thumb="sfx" aria-hidden="true"></canvas>
+                    <input class="settings-volume-slider" type="range" min="0" max="100" value="100" data-audio-volume="sfx" aria-label="Sound effects volume" />
+                  </div>
                 </div>
                 <button class="settings-panel-close" type="button" data-settings-close>
                   Close
@@ -164,7 +193,9 @@
                 aria-expanded="false"
                 aria-controls="selection-help-panel"
                 aria-label="How to play"
-              >?</button>
+              >
+                ?
+              </button>
               <div class="help-panel" id="selection-help-panel" hidden>
                 <p class="help-panel-title">How to play</p>
                 <p><strong>Click:</strong> Launch the ball</p>
@@ -175,35 +206,86 @@
             </div>
             <h1 class="brand-title selection-screen-title">SKETCHYBOOK</h1>
             <div class="selection-stage-shell">
-              <button class="selection-nav-btn selection-nav-btn--prev" type="button" data-stage-page="prev" aria-label="Show previous stages"></button>
+              <button
+                class="selection-nav-btn selection-nav-btn--prev"
+                type="button"
+                data-stage-page="prev"
+                aria-label="Show previous stages"
+              ></button>
               <div class="selection-grid" aria-label="Stage selection grid">
-                <button class="stage-card" type="button" data-stage="1" aria-label="Stage 1">Stage 1</button>
-                <button class="stage-card" type="button" data-stage="2" aria-label="Stage 2">Stage 2</button>
-                <button class="stage-card" type="button" data-stage="3" aria-label="Stage 3">Stage 3</button>
-                <button class="stage-card" type="button" data-stage="4" aria-label="Stage 4">Stage 4</button>
-                <button class="stage-card" type="button" data-stage="5" aria-label="Stage 5">Stage 5</button>
-                <button class="stage-card" type="button" data-stage="6" aria-label="Stage 6">Stage 6</button>
-                <button class="stage-card" type="button" data-stage="7" aria-label="Stage 7">Stage 7</button>
-                <button class="stage-card" type="button" data-stage="8" aria-label="Stage 8">Stage 8</button>
-                <button class="stage-card" type="button" data-stage="9" aria-label="Stage 9">Stage 9</button>
-                <button class="stage-card" type="button" data-stage="10" aria-label="Stage 10">Stage 10</button>
-                <button class="stage-card" type="button" data-stage="11" aria-label="Stage 11">Stage 11</button>
-                <button class="stage-card" type="button" data-stage="12" aria-label="Stage 12">Stage 12</button>
-                <button class="stage-card" type="button" data-stage="13" aria-label="Stage 13">Stage 13</button>
-                <button class="stage-card" type="button" data-stage="14" aria-label="Stage 14">Stage 14</button>
-                <button class="stage-card" type="button" data-stage="15" aria-label="Stage 15">Stage 15</button>
-                <button class="stage-card" type="button" data-stage="16" aria-label="Stage 16">Stage 16</button>
-                <button class="stage-card" type="button" data-stage="17" aria-label="Stage 17">Stage 17</button>
-                <button class="stage-card" type="button" data-stage="18" aria-label="Stage 18">Stage 18</button>
+                <button class="stage-card" type="button" data-stage="1" aria-label="Stage 1">
+                  Stage 1
+                </button>
+                <button class="stage-card" type="button" data-stage="2" aria-label="Stage 2">
+                  Stage 2
+                </button>
+                <button class="stage-card" type="button" data-stage="3" aria-label="Stage 3">
+                  Stage 3
+                </button>
+                <button class="stage-card" type="button" data-stage="4" aria-label="Stage 4">
+                  Stage 4
+                </button>
+                <button class="stage-card" type="button" data-stage="5" aria-label="Stage 5">
+                  Stage 5
+                </button>
+                <button class="stage-card" type="button" data-stage="6" aria-label="Stage 6">
+                  Stage 6
+                </button>
+                <button class="stage-card" type="button" data-stage="7" aria-label="Stage 7">
+                  Stage 7
+                </button>
+                <button class="stage-card" type="button" data-stage="8" aria-label="Stage 8">
+                  Stage 8
+                </button>
+                <button class="stage-card" type="button" data-stage="9" aria-label="Stage 9">
+                  Stage 9
+                </button>
+                <button class="stage-card" type="button" data-stage="10" aria-label="Stage 10">
+                  Stage 10
+                </button>
+                <button class="stage-card" type="button" data-stage="11" aria-label="Stage 11">
+                  Stage 11
+                </button>
+                <button class="stage-card" type="button" data-stage="12" aria-label="Stage 12">
+                  Stage 12
+                </button>
+                <button class="stage-card" type="button" data-stage="13" aria-label="Stage 13">
+                  Stage 13
+                </button>
+                <button class="stage-card" type="button" data-stage="14" aria-label="Stage 14">
+                  Stage 14
+                </button>
+                <button class="stage-card" type="button" data-stage="15" aria-label="Stage 15">
+                  Stage 15
+                </button>
+                <button class="stage-card" type="button" data-stage="16" aria-label="Stage 16">
+                  Stage 16
+                </button>
+                <button class="stage-card" type="button" data-stage="17" aria-label="Stage 17">
+                  Stage 17
+                </button>
+                <button class="stage-card" type="button" data-stage="18" aria-label="Stage 18">
+                  Stage 18
+                </button>
               </div>
-              <button class="selection-nav-btn selection-nav-btn--next" type="button" data-stage-page="next" aria-label="Show next stages"></button>
+              <button
+                class="selection-nav-btn selection-nav-btn--next"
+                type="button"
+                data-stage-page="next"
+                aria-label="Show next stages"
+              ></button>
             </div>
           </section>
         </div>
 
         <div class="page page-play">
           <div class="game-board" id="game-board">
-            <div class="draw-limit-progress" id="draw-limit-progress" aria-live="polite" aria-label="Draw limit progress">
+            <div
+              class="draw-limit-progress"
+              id="draw-limit-progress"
+              aria-live="polite"
+              aria-label="Draw limit progress"
+            >
               <canvas id="draw-limit-progress-track-canvas"></canvas>
               <canvas id="draw-limit-progress-fill-canvas"></canvas>
             </div>

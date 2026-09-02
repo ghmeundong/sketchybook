@@ -49,9 +49,31 @@ export function createRoughStarCanvas(stars = 0, { size = 24, gap = 6 } = {}) {
   return canvas;
 }
 
+export function createMuteSlashCanvas({ w = 34, h = 28, stroke = "#4f3b24" } = {}) {
+  const canvas = document.createElement("canvas");
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
+  canvas.style.position = "absolute";
+  canvas.style.inset = "0";
+  canvas.style.pointerEvents = "none";
+
+  const context = canvas.getContext("2d");
+  if (!context) return canvas;
+  context.setTransform(dpr, 0, 0, dpr, 0, 0);
+  rough.canvas(canvas).line(w * 0.08, h * 0.9, w * 0.92, h * 0.1, {
+    stroke,
+    strokeWidth: 3.2,
+    roughness: 1.4,
+  });
+  return canvas;
+}
+
 export function createActionIconCanvas(
   type,
-  { w = 64, h = 40, stroke = "#4f3b24", fill = "#4f3b24", strokeWidth = 3 } = {}
+  { w = 64, h = 40, stroke = "#4f3b24", fill = "#4f3b24", strokeWidth = 3, muted = false } = {}
 ) {
   const canvas = document.createElement("canvas");
   const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
@@ -88,32 +110,23 @@ export function createActionIconCanvas(
     rc.line(23, 21, 30, 14, lineOptions);
     rc.line(23, 19, 30, 26, lineOptions);
   } else if (type === "settings") {
-    rc.polygon(
-      [
-        [26, 18],
-        [26, 14],
-        [34, 14],
-        [34, 18],
-        [38, 18],
-        [38, 21],
-        [42, 21],
-        [42, 27],
-        [38, 27],
-        [38, 30],
-        [34, 30],
-        [34, 34],
-        [26, 34],
-        [26, 30],
-        [22, 30],
-        [22, 27],
-        [18, 27],
-        [18, 21],
-        [22, 21],
-        [22, 18],
-      ],
-      lineOptions
-    );
-    rc.ellipse(30, 24, 8, 8, lineOptions);
+    const centerX = w / 2;
+    const centerY = h / 2;
+    const gearPoints = [];
+    const innerRadius = Math.min(w, h) * 0.32;
+    const outerRadius = Math.min(w, h) * 0.43;
+    for (let tooth = 0; tooth < 8; tooth += 1) {
+      const toothCenter = (tooth * Math.PI) / 4 - Math.PI / 2;
+      const angles = [-0.22, -0.12, 0.12, 0.22];
+      const radii = [innerRadius, outerRadius, outerRadius, innerRadius];
+      for (let index = 0; index < angles.length; index += 1) {
+        const angle = toothCenter + angles[index];
+        const radius = radii[index];
+        gearPoints.push([centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius]);
+      }
+    }
+    rc.polygon(gearPoints, lineOptions);
+    rc.ellipse(centerX, centerY, Math.min(w, h) * 0.26, Math.min(w, h) * 0.26, lineOptions);
   } else if (type === "retry") {
     rc.line(22, 30, 42, 30, lineOptions);
     rc.line(42, 30, 42, 10, lineOptions);
@@ -148,6 +161,33 @@ export function createActionIconCanvas(
       ...lineOptions,
       fill: stroke,
       fillStyle: "solid",
+    });
+  } else if (type === "music") {
+    rc.ellipse(w * 0.28, h * 0.75, w * 0.24, h * 0.2, fillOptions);
+    rc.ellipse(w * 0.67, h * 0.62, w * 0.24, h * 0.2, fillOptions);
+    rc.line(w * 0.4, h * 0.7, w * 0.4, h * 0.24, lineOptions);
+    rc.line(w * 0.79, h * 0.57, w * 0.79, h * 0.13, lineOptions);
+    rc.line(w * 0.4, h * 0.24, w * 0.79, h * 0.13, lineOptions);
+  } else if (type === "sfx") {
+    rc.polygon(
+      [
+        [w * 0.18, h * 0.42],
+        [w * 0.36, h * 0.42],
+        [w * 0.58, h * 0.22],
+        [w * 0.58, h * 0.78],
+        [w * 0.36, h * 0.58],
+        [w * 0.18, h * 0.58],
+      ],
+      fillOptions
+    );
+    rc.arc(w * 0.55, h * 0.5, w * 0.42, h * 0.42, -Math.PI / 3, Math.PI / 3, false, lineOptions);
+    rc.arc(w * 0.58, h * 0.5, w * 0.7, h * 0.7, -Math.PI / 3, Math.PI / 3, false, lineOptions);
+  }
+
+  if (muted) {
+    rc.line(w * 0.08, h * 0.9, w * 0.92, h * 0.1, {
+      ...lineOptions,
+      strokeWidth: Math.max(strokeWidth, 3.2),
     });
   }
 
