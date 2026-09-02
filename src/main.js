@@ -1,11 +1,11 @@
 import "./style.css";
-import "./app.js";
+import "./app/app.js";
 import "./game/main.js";
 import rough from "roughjs";
-import { syncProgressToServerOnLogin, getIdToken } from "./auth.js";
+import { syncProgressToServerOnLogin, getIdToken } from "./services/auth.js";
 import { buildApiUrl } from "./services/api.js";
 import { createActionIconCanvas } from "./game/ui/uiIcons.js";
-import { getSfxVolume } from "./audioSettings.js";
+import { getSfxVolume } from "./app/audioSettings.js";
 import buttonSoundUrl from "./assets/sounds/Mechanical, Click, Fan, Handheld, Button Press.wav";
 import gameStartSoundUrl from "./assets/sounds/universfield-click-button-140881.mp3";
 

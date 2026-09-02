@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shouldDeferResize } from "../src/game/layoutSync.js";
+import { shouldDeferResize } from "../src/game/engine/systems/layoutSync.js";
 
 describe("shouldDeferResize", () => {
   it("defers resize when the board has not measured a real size yet", () => {

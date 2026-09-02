@@ -3,8 +3,8 @@ import {
   getStoredStageScores,
   setStoredStageProgress,
   setStoredStageScores,
-} from "./game/ui/stageProgress.js";
-import { buildApiUrl } from "./services/api.js";
+} from "../game/ui/stageProgress.js";
+import { buildApiUrl } from "./api.js";
 
 const AUTH_STORAGE_KEY = "sketchy_user";
 const PROGRESS_API_PATH = "/api/progress";

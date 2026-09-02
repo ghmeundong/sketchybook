@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shouldRevealStartPage } from "../src/startupState.js";
+import { shouldRevealStartPage } from "../src/app/startupState.js";
 
 describe("shouldRevealStartPage", () => {
   it("waits until the page and background are both ready", () => {

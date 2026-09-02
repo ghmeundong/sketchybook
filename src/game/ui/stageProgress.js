@@ -1,5 +1,5 @@
 import { createRoughStarCanvas } from "./uiIcons.js";
-import { getChallengeModePreference } from "../challengeMode.js";
+import { getChallengeModePreference } from "../engine/config/challengeMode.js";
 
 export const stageScoreStorageKey = "sketchybook-stage-scores";
 export const stageProgressStorageKey = "sketchybook-stage-progress";

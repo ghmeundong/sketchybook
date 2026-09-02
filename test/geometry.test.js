@@ -4,7 +4,7 @@ import {
   resolveCircleRadius,
   segmentIntersectsCircle,
   segmentIntersectsRect,
-} from "../src/game/geometry.js";
+} from "../src/game/engine/core/geometry.js";
 
 describe("getPolygonTextureLayout", () => {
   it("uses the polygon centroid as the texture anchor", () => {

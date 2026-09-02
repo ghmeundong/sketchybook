@@ -4,7 +4,7 @@ import {
   createDeviceSafePhysicsProfile,
   resetPhysicsWorld,
   setPhysicsScaleProfile,
-} from "../src/game/physics.js";
+} from "../src/game/engine/physics/physics.js";
 
 describe("createDeviceSafePhysicsProfile", () => {
   it("scales the physics world consistently for each viewport", () => {

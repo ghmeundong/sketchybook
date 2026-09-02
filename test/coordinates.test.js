@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createCoordinateSystem } from "../src/game/coordinates.js";
+import { createCoordinateSystem } from "../src/game/engine/core/coordinates.js";
 
 describe("createCoordinateSystem", () => {
   it("maps the logical board center to the viewport center", () => {
