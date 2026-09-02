@@ -1,5 +1,5 @@
 import rough from "roughjs";
-import paperTexture from "../../img/paper-texture.webp";
+import paperTexture from "../../assets/img/paper-texture.webp";
 import { createActionIconCanvas, createRoughStarCanvas } from "./uiIcons.js";
 import { getStageStarRating } from "../stageScoring.js";
 import {
@@ -148,12 +148,13 @@ export function showStageClearOverlay({
   stageNumber,
   difficulty,
   onAfterSave,
+  onScoreStarAppear,
 }) {
   if (!overlay || !message) return;
 
   const stars = getStageStarRating(stageClearState.stageMinEvents, stageClearState.stageEventCount);
   message.querySelector(".stage-clear-title").textContent = "Stage Cleared!";
-  renderStageScoreStars({ message, stars });
+  renderStageScoreStars({ message, stars, onStarAppear: onScoreStarAppear });
 
   if (stageNumber) {
     saveStageScore(stageNumber, stars, difficulty);
@@ -185,13 +186,17 @@ export function hideStageClearOverlay(overlay, canvas) {
   canvas?.style.setProperty("pointer-events", "auto");
 }
 
-export function renderStageScoreStars({ message, stars = 0 }) {
+export function renderStageScoreStars({ message, stars = 0, onStarAppear }) {
   if (!message) return;
 
   const scoreContainer = message.querySelector(".stage-clear-score");
   if (!scoreContainer) return;
 
   scoreContainer.innerHTML = "";
+  if (scoreContainer._starRevealTimers) {
+    scoreContainer._starRevealTimers.forEach((timer) => clearTimeout(timer));
+  }
+  scoreContainer._starRevealTimers = [];
   const safeStars = Math.max(0, Math.min(3, Number.isFinite(stars) ? Math.round(stars) : 0));
   if (!safeStars) {
     scoreContainer.style.display = "none";
@@ -213,7 +218,23 @@ export function renderStageScoreStars({ message, stars = 0 }) {
   const label = document.createElement("span");
   label.textContent = "Score:";
   scoreContainer.appendChild(label);
-  scoreContainer.appendChild(createRoughStarCanvas(safeStars, { size: 16, gap: 4 }));
+
+  const starsContainer = document.createElement("span");
+  starsContainer.className = "stage-clear-score-stars";
+  starsContainer.style.display = "inline-flex";
+  starsContainer.style.gap = "4px";
+  scoreContainer.appendChild(starsContainer);
+
+  for (let index = 0; index < safeStars; index += 1) {
+    const timer = window.setTimeout(
+      () => {
+        starsContainer.appendChild(createRoughStarCanvas(1, { size: 16 }));
+        if (typeof onStarAppear === "function") onStarAppear(index);
+      },
+      180 + index * 260
+    );
+    scoreContainer._starRevealTimers.push(timer);
+  }
 }
 
 export function createGameButton({ board, className, label, iconType, position, onClick }) {

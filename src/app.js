@@ -1,7 +1,11 @@
 import rough from "roughjs";
-import paperTexture from "./img/paper-texture.webp";
-import { createActionIconCanvas } from "./game/ui/uiIcons.js";
+import paperTexture from "./assets/img/paper-texture.webp";
+import challengeToggleSoundUrl from "./assets/sounds/Mechanical, Click, Heater Fan, Small, Thermostat, Click On Or Off.wav";
+import gameStartSoundUrl from "./assets/sounds/universfield-click-button-140881.mp3";
+import { createActionIconCanvas, createMuteSlashCanvas } from "./game/ui/uiIcons.js";
+import { getAudioSettings, setAudioSettings } from "./audioSettings.js";
 import { initializeOrientationPrompt } from "./orientationPrompt.js";
+import { shouldRevealStartPage } from "./startupState.js";
 import { getChallengeModePreference, setChallengeModePreference } from "./game/challengeMode.js";
 import {
   DIFFICULTY_LEVELS,
@@ -27,10 +31,19 @@ const difficultyNameDisplay = document.getElementById("difficulty-name");
 const difficultyDescription = document.getElementById("difficulty-description");
 const body = document.body;
 const pageLoader = document.getElementById("page-loader");
+const gameStartSound = new Audio(gameStartSoundUrl);
+gameStartSound.preload = "auto";
+gameStartSound.volume = getAudioSettings().sfx;
+window.addEventListener("sketchybook:audio-settings-change", (event) => {
+  const sfxVolume = event.detail?.sfx;
+  if (Number.isFinite(sfxVolume)) gameStartSound.volume = sfxVolume;
+});
 
 const initialTitle = titleText?.textContent?.trim() || "SKETCHYBOOK";
 let backgroundLoaded = false;
 let pageLoadComplete = false;
+let fallbackTriggered = false;
+let startupFallbackTimer = null;
 
 function getStoredSelectedDifficulty() {
   const rawValue = sessionStorage.getItem("selectedDifficulty");
@@ -76,7 +89,7 @@ function revealStartPage() {
 }
 
 function maybeRevealStartPage() {
-  if (backgroundLoaded && pageLoadComplete) {
+  if (shouldRevealStartPage({ backgroundLoaded, pageLoadComplete, fallbackTriggered })) {
     revealStartPage();
   }
 }
@@ -228,6 +241,8 @@ function createInsaneStartWarningModal() {
   confirmBtn.className = "insane-warning-button is-primary";
   confirmBtn.textContent = "Continue";
   confirmBtn.addEventListener("click", async () => {
+    gameStartSound.currentTime = 0;
+    void gameStartSound.play().catch(() => {});
     modal.remove();
     await launchGameFromStart(true);
   });
@@ -312,29 +327,22 @@ function changeDifficulty(newDifficulty) {
 }
 
 function lockLandscapeOrientation() {
-  try {
-    // Screen Orientation API로 landscape 잠금
-    if (screen?.orientation?.lock && typeof screen.orientation.lock === "function") {
-      screen.orientation.lock("landscape").catch(() => {
-        // Silently ignore
-      });
+  const attemptLock = () => {
+    try {
+      if (!screen?.orientation || typeof screen.orientation.lock !== "function") {
+        return;
+      }
 
-      // Orientation 변경 시 계속 landscape 유지
-      window.addEventListener("orientationchange", () => {
-        try {
-          if (screen?.orientation?.lock && typeof screen.orientation.lock === "function") {
-            screen.orientation.lock("landscape").catch(() => {
-              // Silently ignore
-            });
-          }
-        } catch (e) {
-          // Silently ignore
-        }
+      screen.orientation.lock("landscape").catch(() => {
+        // iOS/Safari often rejects orientation locking; do not block the app.
       });
+    } catch {
+      // Ignore unsupported or blocked orientation locks.
     }
-  } catch (e) {
-    // Silently ignore any errors
-  }
+  };
+
+  attemptLock();
+  window.addEventListener("orientationchange", attemptLock, { passive: true });
 }
 
 function prepareInitialState() {
@@ -345,6 +353,17 @@ function prepareInitialState() {
     startTitle.dataset.loading = "false";
   }
   showStartButton(false);
+}
+
+function triggerStartupFallback() {
+  if (fallbackTriggered) return;
+  fallbackTriggered = true;
+  if (startupFallbackTimer) {
+    clearTimeout(startupFallbackTimer);
+    startupFallbackTimer = null;
+  }
+  setLoaderText("Loading Sketchybook…");
+  maybeRevealStartPage();
 }
 
 prepareInitialState();
@@ -370,6 +389,10 @@ bgImage.onerror = () => {
   maybeRevealStartPage();
 };
 
+startupFallbackTimer = window.setTimeout(() => {
+  triggerStartupFallback();
+}, 4000);
+
 if (document.readyState === "complete") {
   pageLoadComplete = true;
   maybeRevealStartPage();
@@ -388,6 +411,138 @@ if (settingsToggle && settingsPanel) {
     setSettingsPanelVisible(settingsPanel.hidden);
   });
 }
+
+const audioSettings = getAudioSettings();
+const previousAudioVolumes = {
+  music: audioSettings.music > 0 ? audioSettings.music : 1,
+  sfx: audioSettings.sfx > 0 ? audioSettings.sfx : 1,
+};
+const audioVolumeControls = document.querySelectorAll("[data-audio-volume]");
+audioVolumeControls.forEach((control) => {
+  const type = control.dataset.audioVolume;
+  const value = audioSettings[type];
+  if (Number.isFinite(value)) {
+    control.value = String(Math.round(value * 100));
+  }
+  const icon = document.querySelector(`[data-audio-icon="${type}"]`);
+  const renderMuteSlash = (isMuted) => {
+    if (!icon) return;
+    const existingSlash = icon.querySelector(".settings-volume-mute-slash");
+    if (isMuted && !existingSlash) {
+      const slash = createMuteSlashCanvas();
+      slash.className = "settings-volume-mute-slash";
+      icon.appendChild(slash);
+    } else if (!isMuted && existingSlash) {
+      existingSlash.remove();
+    }
+  };
+  if (icon) icon.replaceChildren(createActionIconCanvas(type, { w: 34, h: 28, strokeWidth: 2 }));
+  renderMuteSlash(value === 0);
+  if (icon) {
+    icon.setAttribute("role", "button");
+    icon.setAttribute("tabindex", "0");
+    icon.setAttribute("aria-label", `${type} mute toggle`);
+    const toggleMute = () => {
+      const currentValue = getAudioSettings()[type];
+      const nextValue = currentValue > 0 ? 0 : Math.max(0.01, previousAudioVolumes[type] || 1);
+      if (currentValue > 0) previousAudioVolumes[type] = currentValue;
+      control.value = String(Math.round(nextValue * 100));
+      const nextSettings = setAudioSettings({ [type]: nextValue });
+      if (output) output.value = `${Math.round(nextSettings[type] * 100)}%`;
+      updateAudioThumb();
+      renderMuteSlash(nextSettings[type] === 0);
+    };
+    icon.addEventListener("click", toggleMute);
+    icon.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggleMute();
+      }
+    });
+  }
+  const output = document.querySelector(`[data-audio-value="${type}"]`);
+  if (output) output.value = `${Math.round(value * 100)}%`;
+
+  const trackCanvas = document.querySelector(`[data-audio-track="${type}"]`);
+  const thumbCanvas = document.querySelector(`[data-audio-thumb="${type}"]`);
+  const renderAudioTrack = () => {
+    if (!trackCanvas) return;
+    const sliderWidth = trackCanvas.parentElement?.clientWidth || 240;
+    const trackWidth = Math.max(1, sliderWidth - 18);
+    const trackHeight = 20;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    trackCanvas.width = trackWidth * dpr;
+    trackCanvas.height = trackHeight * dpr;
+    trackCanvas.style.width = `${trackWidth}px`;
+    trackCanvas.style.height = `${trackHeight}px`;
+    trackCanvas.style.left = "9px";
+    const trackContext = trackCanvas.getContext("2d");
+    if (trackContext) {
+      trackContext.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const trackRough = rough.canvas(trackCanvas);
+      const trackInset = 7;
+      trackRough.line(trackInset, 9, trackWidth - trackInset, 9, {
+        stroke: "#4f3b24",
+        strokeWidth: 2,
+        roughness: 1.4,
+      });
+      trackRough.line(trackInset, 11, trackWidth - trackInset, 11, {
+        stroke: "#4f3b24",
+        strokeWidth: 1,
+        roughness: 1.4,
+      });
+    }
+  };
+
+  const updateAudioThumb = () => {
+    if (!thumbCanvas) return;
+    const sliderWidth = thumbCanvas.parentElement?.clientWidth || 240;
+    const thumbSize = 18;
+    const ratio = Number(control.value) / 100;
+    const thumbCenter = 9 + ratio * (sliderWidth - 18);
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    thumbCanvas.width = thumbSize * dpr;
+    thumbCanvas.height = thumbSize * dpr;
+    thumbCanvas.style.width = `${thumbSize}px`;
+    thumbCanvas.style.height = `${thumbSize}px`;
+    thumbCanvas.style.left = `${thumbCenter - thumbSize / 2}px`;
+    const thumbContext = thumbCanvas.getContext("2d");
+    if (!thumbContext) return;
+    thumbContext.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const thumbRough = rough.canvas(thumbCanvas);
+    thumbRough.ellipse(9, 9, 13, 13, {
+      stroke: "#4f3b24",
+      strokeWidth: 2,
+      fill: "#f5ebcf",
+      fillStyle: "solid",
+      roughness: 1.4,
+    });
+  };
+  const refreshAudioControl = () => {
+    renderAudioTrack();
+    updateAudioThumb();
+  };
+  refreshAudioControl();
+  if (trackCanvas?.parentElement && typeof ResizeObserver !== "undefined") {
+    const audioControlObserver = new ResizeObserver(refreshAudioControl);
+    audioControlObserver.observe(trackCanvas.parentElement);
+  }
+
+  control.addEventListener("input", () => {
+    const nextValue = Number(control.value) / 100;
+    if (nextValue > 0) previousAudioVolumes[type] = nextValue;
+    const nextSettings = setAudioSettings({ [type]: nextValue });
+    if (output) output.value = `${Math.round(nextSettings[type] * 100)}%`;
+    updateAudioThumb();
+    renderMuteSlash(nextSettings[type] === 0);
+  });
+
+  if (type === "sfx") {
+    control.addEventListener("change", () => {
+      window.dispatchEvent(new CustomEvent("sketchybook:sfx-volume-committed"));
+    });
+  }
+});
 
 if (difficultyPrevBtn) {
   difficultyPrevBtn.textContent = "";
@@ -409,12 +564,22 @@ if (helpToggle && helpPanel) {
 }
 
 if (challengeModeToggle && challengeModeOption) {
+  const challengeToggleSound = new Audio(challengeToggleSoundUrl);
+  challengeToggleSound.preload = "auto";
+  challengeToggleSound.volume = getAudioSettings().sfx;
+  window.addEventListener("sketchybook:audio-settings-change", (event) => {
+    const sfxVolume = event.detail?.sfx;
+    if (Number.isFinite(sfxVolume)) challengeToggleSound.volume = sfxVolume;
+  });
+
   challengeModeToggle.addEventListener("click", () => {
     if (challengeModeToggle.disabled) {
       return;
     }
     const nextValue = !getChallengeModePreference();
     setChallengeModePreference(nextValue);
+    challengeToggleSound.currentTime = 0;
+    void challengeToggleSound.play().catch(() => {});
     syncChallengeModeToggleUI();
     updateDifficultyDisplay();
   });
@@ -489,6 +654,8 @@ function launchGameFromStart(force = false) {
 
   startTitle.dataset.loading = "true";
   showStartButton(false);
+  gameStartSound.currentTime = 0;
+  void gameStartSound.play().catch(() => {});
   window.dispatchEvent(
     new CustomEvent("sketchybook:start-game", {
       detail: { difficulty: selectedDifficulty },

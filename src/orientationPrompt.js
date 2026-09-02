@@ -6,6 +6,14 @@ export function isMobileDevice() {
   return hasTouch && isSmallScreen;
 }
 
+export function isIOSDevice() {
+  const ua = navigator.userAgent || "";
+  return (
+    /iPhone|iPad|iPod/i.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
 function isFullscreen() {
   return Boolean(
     document.fullscreenElement ||
@@ -14,19 +22,29 @@ function isFullscreen() {
   );
 }
 
+function getSafeLandscapeLockPromise() {
+  if (!screen?.orientation || typeof screen.orientation.lock !== "function") {
+    return Promise.resolve();
+  }
+
+  try {
+    return Promise.resolve(screen.orientation.lock("landscape")).catch(() => undefined);
+  } catch {
+    return Promise.resolve();
+  }
+}
+
 function requestLandscapeMode() {
-  const fullscreenRequest =
-    document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
+  const element = document.documentElement;
+  const fullscreenRequest = element?.requestFullscreen || element?.webkitRequestFullscreen;
 
   const fullscreenPromise = fullscreenRequest
-    ? fullscreenRequest.call(document.documentElement)
+    ? Promise.resolve()
+        .then(() => fullscreenRequest.call(element))
+        .catch(() => undefined)
     : Promise.resolve();
-  const orientationPromise =
-    screen?.orientation?.lock && typeof screen.orientation.lock === "function"
-      ? screen.orientation.lock("landscape")
-      : Promise.resolve();
 
-  return Promise.allSettled([fullscreenPromise, orientationPromise]);
+  return Promise.allSettled([fullscreenPromise, getSafeLandscapeLockPromise()]);
 }
 
 function createPrompt() {
@@ -80,10 +98,12 @@ export function initializeOrientationPrompt() {
   promptInstance = createPrompt();
 
   const updatePromptVisibility = () => {
-    document.documentElement.classList.toggle(
-      "has-orientation-prompt",
-      isMobileDevice() && !isFullscreen()
-    );
+    const shouldShowPrompt =
+      isMobileDevice() &&
+      !isFullscreen() &&
+      (window.innerWidth <= window.innerHeight || isIOSDevice());
+
+    document.documentElement.classList.toggle("has-orientation-prompt", shouldShowPrompt);
   };
 
   updatePromptVisibility();

@@ -2,8 +2,12 @@ import planck from "planck";
 import rough from "roughjs";
 import "../style.css";
 import "../styles/game.css";
-import paperTexture from "../img/paper-texture.webp";
-import dragSoundUrl from "../audio/Objects, Writing, Marker Writing Sound, Drag.wav";
+import paperTexture from "../assets/img/paper-texture.webp";
+import backgroundMusicUrl from "../assets/audio/Brain-Teaser-2.ogg";
+import dragSoundUrl from "../assets/sounds/Pencil On Paper, Stroke Normalized.wav";
+import stageClearSoundUrl from "../assets/sounds/conventional-postage-stamp.mp3";
+import starCollectSoundUrl from "../assets/sounds/liecio-achive-sound-132273.mp3";
+import scoreStarSoundUrl from "../assets/sounds/driken5482-retro-coin-4-236671.mp3";
 import { createCoordinateSystem } from "./coordinates.js";
 import { loadStage } from "./stageLoader.js";
 import { resolveCircleRadius, segmentIntersectsCircle, segmentIntersectsRect } from "./geometry.js";
@@ -60,9 +64,216 @@ import {
   TextLabel,
 } from "./objects/index.js";
 import { syncProgressForMode } from "../auth.js";
+import { getMusicVolume, getSfxVolume } from "../audioSettings.js";
 import { DIFFICULTY_LEVELS, DIFFICULTY_CONFIG, getDifficultyRules } from "./difficultyLevels.js";
 
 const board = document.querySelector("#game-board");
+const backgroundMusic = new Audio(backgroundMusicUrl);
+const BACKGROUND_MUSIC_VOLUME = 1;
+const BACKGROUND_MUSIC_FADE_IN_DURATION = 450;
+const BACKGROUND_MUSIC_FADE_OUT_DURATION = 1800;
+backgroundMusic.loop = true;
+backgroundMusic.preload = "auto";
+backgroundMusic.volume = BACKGROUND_MUSIC_VOLUME * getMusicVolume();
+backgroundMusic.muted = true;
+let backgroundMusicFadeFrame = null;
+let backgroundMusicFadeTarget = null;
+let backgroundMusicTransitionId = 0;
+let backgroundMusicPlaybackRequestId = 0;
+let activeAudioPage = null;
+let backgroundMusicEntryCheckTimer = null;
+let gamePageFirstRenderVerified = false;
+let backgroundMusicRetryTimer = null;
+
+function requestBackgroundMusicPlayback(force = false) {
+  if (backgroundMusic.volume <= 0 && !force) {
+    return;
+  }
+
+  const playbackRequestId = ++backgroundMusicPlaybackRequestId;
+  backgroundMusic.muted = false;
+  const playPromise = backgroundMusic.play();
+  playPromise
+    ?.then(() => {
+      if (playbackRequestId !== backgroundMusicPlaybackRequestId) {
+        backgroundMusic.pause();
+        return;
+      }
+      backgroundMusic.muted = false;
+      if (backgroundMusicRetryTimer) {
+        clearTimeout(backgroundMusicRetryTimer);
+        backgroundMusicRetryTimer = null;
+      }
+    })
+    .catch(() => {
+      if (playbackRequestId !== backgroundMusicPlaybackRequestId) return;
+      const retryDelay = 600;
+      if (backgroundMusicRetryTimer) {
+        clearTimeout(backgroundMusicRetryTimer);
+      }
+      backgroundMusicRetryTimer = window.setTimeout(() => {
+        backgroundMusicRetryTimer = null;
+        if (getMusicVolume() > 0) {
+          requestBackgroundMusicPlayback(true);
+        }
+      }, retryDelay);
+    });
+}
+
+requestBackgroundMusicPlayback(true);
+
+function fadeBackgroundMusic(targetVolume, duration) {
+  const nextVolume = Math.max(0, Math.min(BACKGROUND_MUSIC_VOLUME, targetVolume));
+  if (
+    Math.abs(backgroundMusic.volume - nextVolume) < 0.001 &&
+    (nextVolume === 0 ? backgroundMusic.paused : !backgroundMusic.paused)
+  ) {
+    return;
+  }
+  const startVolume = backgroundMusic.volume;
+  if (backgroundMusicFadeFrame) cancelAnimationFrame(backgroundMusicFadeFrame);
+  const transitionId = ++backgroundMusicTransitionId;
+  backgroundMusicFadeTarget = nextVolume;
+
+  if (nextVolume > 0 && backgroundMusic.paused) {
+    requestBackgroundMusicPlayback();
+  }
+
+  const startTime = performance.now();
+  const updateVolume = (timestamp) => {
+    if (transitionId !== backgroundMusicTransitionId) return;
+    const progress = Math.min(1, (timestamp - startTime) / duration);
+    backgroundMusic.volume = startVolume + (nextVolume - startVolume) * progress;
+    if (progress < 1) {
+      backgroundMusicFadeFrame = requestAnimationFrame(updateVolume);
+      return;
+    }
+
+    backgroundMusicFadeFrame = null;
+    backgroundMusicFadeTarget = null;
+    if (nextVolume === 0) {
+      backgroundMusic.pause();
+      backgroundMusic.currentTime = 0;
+    }
+  };
+
+  backgroundMusicFadeFrame = requestAnimationFrame(updateVolume);
+}
+
+function syncBackgroundMusicForPage(page) {
+  const isGamePage = page === playPage;
+  if (isGamePage) {
+    if (backgroundMusicFadeFrame) cancelAnimationFrame(backgroundMusicFadeFrame);
+    backgroundMusicFadeFrame = null;
+    backgroundMusicTransitionId += 1;
+    backgroundMusicPlaybackRequestId += 1;
+    backgroundMusicFadeTarget = null;
+    fadeBackgroundMusic(0, BACKGROUND_MUSIC_FADE_OUT_DURATION);
+    return;
+  }
+  if (!isGamePage) {
+    backgroundMusic.muted = false;
+    requestBackgroundMusicPlayback();
+  }
+  fadeBackgroundMusic(
+    isGamePage ? 0 : BACKGROUND_MUSIC_VOLUME * getMusicVolume(),
+    isGamePage ? BACKGROUND_MUSIC_FADE_OUT_DURATION : BACKGROUND_MUSIC_FADE_IN_DURATION
+  );
+}
+
+function unlockBackgroundMusic() {
+  if (getMusicVolume() <= 0) {
+    backgroundMusic.pause();
+    return;
+  }
+
+  backgroundMusic.muted = false;
+  requestBackgroundMusicPlayback(true);
+
+  if (!playPage?.classList.contains("is-active")) {
+    fadeBackgroundMusic(
+      BACKGROUND_MUSIC_VOLUME * getMusicVolume(),
+      BACKGROUND_MUSIC_FADE_IN_DURATION
+    );
+  }
+}
+
+const stageClearAudio = new Audio(stageClearSoundUrl);
+stageClearAudio.preload = "auto";
+stageClearAudio.volume = getSfxVolume();
+stageClearAudio.load();
+const starCollectAudio = new Audio(starCollectSoundUrl);
+starCollectAudio.preload = "auto";
+starCollectAudio.volume = getSfxVolume();
+starCollectAudio.load();
+
+window.addEventListener("sketchybook:audio-settings-change", (event) => {
+  const settings = event.detail || {};
+  if (Number.isFinite(settings.sfx)) {
+    stageClearAudio.volume = settings.sfx;
+    starCollectAudio.volume = settings.sfx;
+  }
+  const isGamePage = playPage?.classList.contains("is-active");
+  if (!isGamePage && Number.isFinite(settings.music)) {
+    if (backgroundMusicFadeFrame) cancelAnimationFrame(backgroundMusicFadeFrame);
+    backgroundMusicFadeFrame = null;
+    backgroundMusicTransitionId += 1;
+    backgroundMusicFadeTarget = null;
+    backgroundMusic.volume = settings.music;
+    backgroundMusic.muted = false;
+    if (settings.music > 0) {
+      requestBackgroundMusicPlayback();
+    } else {
+      backgroundMusic.pause();
+    }
+  }
+});
+
+function unlockStageClearSound() {
+  if (!stageClearAudio.paused) return;
+  const originalVolume = stageClearAudio.volume;
+  stageClearAudio.volume = 0;
+  const unlockPromise = stageClearAudio.play();
+  if (!unlockPromise) {
+    stageClearAudio.volume = originalVolume;
+    return;
+  }
+  unlockPromise
+    .then(() => {
+      stageClearAudio.pause();
+      stageClearAudio.currentTime = 0;
+      stageClearAudio.volume = originalVolume;
+    })
+    .catch(() => {
+      stageClearAudio.volume = originalVolume;
+    });
+}
+
+function playStageClearSound() {
+  const audio = new Audio(stageClearSoundUrl);
+  audio.preload = "auto";
+  audio.volume = getSfxVolume();
+  const playPromise = audio.play();
+  playPromise?.catch((error) => {
+    console.warn("Stage clear sound playback failed:", error);
+  });
+}
+
+function playStarCollectSound() {
+  const audio = new Audio(starCollectSoundUrl);
+  audio.preload = "auto";
+  audio.volume = getSfxVolume();
+  audio.currentTime = 0.11;
+  void audio.play().catch(() => {});
+}
+
+function playScoreStarSound() {
+  const audio = new Audio(scoreStarSoundUrl);
+  audio.preload = "auto";
+  audio.volume = getSfxVolume();
+  void audio.play().catch(() => {});
+}
+
 const canvas = document.querySelector("#game-canvas");
 const mobileLaunchButton = document.querySelector("[data-mobile-launch]");
 const drawLimitProgress = document.getElementById("draw-limit-progress");
@@ -337,34 +548,31 @@ if (backHomeButton) {
 refreshStageSelectionButtons();
 
 function lockLandscapeOrientation() {
-  try {
-    // Screen Orientation API로 landscape 잠금
-    if (screen?.orientation?.lock && typeof screen.orientation.lock === "function") {
-      screen.orientation.lock("landscape").catch(() => {
-        // Silently ignore
-      });
+  const attemptLock = () => {
+    try {
+      if (!screen?.orientation || typeof screen.orientation.lock !== "function") {
+        return;
+      }
 
-      // Orientation 변경 시 계속 landscape 유지
-      window.addEventListener("orientationchange", () => {
-        try {
-          if (screen?.orientation?.lock && typeof screen.orientation.lock === "function") {
-            screen.orientation.lock("landscape").catch(() => {
-              // Silently ignore
-            });
-          }
-        } catch (e) {
-          // Silently ignore
-        }
+      screen.orientation.lock("landscape").catch(() => {
+        // iOS/Safari often rejects orientation locking; do not block the app.
       });
+    } catch {
+      // Ignore unsupported or blocked orientation locks.
     }
-  } catch (e) {
-    // Silently ignore any errors
-  }
+  };
+
+  attemptLock();
+  window.addEventListener("orientationchange", attemptLock, { passive: true });
 }
 
 lockLandscapeOrientation();
 
 function resetStageState() {
+  if (stageClearOverlayTimer) {
+    clearTimeout(stageClearOverlayTimer);
+    stageClearOverlayTimer = null;
+  }
   if (animationFrameId) {
     cancelAnimationFrame(animationFrameId);
     animationFrameId = null;
@@ -421,6 +629,19 @@ function setActivePage(page) {
     if (!item) return;
     item.classList.toggle("is-active", item === page);
   });
+  if (page === playPage) {
+    gamePageFirstRenderVerified = false;
+    if (backgroundMusicEntryCheckTimer) clearTimeout(backgroundMusicEntryCheckTimer);
+    backgroundMusicEntryCheckTimer = window.setTimeout(() => {
+      backgroundMusicEntryCheckTimer = null;
+      if (activeAudioPage === playPage) syncBackgroundMusicForPage(playPage);
+    }, BACKGROUND_MUSIC_FADE_IN_DURATION);
+  } else if (backgroundMusicEntryCheckTimer) {
+    clearTimeout(backgroundMusicEntryCheckTimer);
+    backgroundMusicEntryCheckTimer = null;
+  }
+  activeAudioPage = page;
+  syncBackgroundMusicForPage(page);
   if (page === selectionPage) {
     resetStageState();
     updateStageUrl();
@@ -520,6 +741,7 @@ function showStageClearOverlay(message = "Stage Cleared!") {
     onAfterSave: () => {
       refreshStageSelectionButtons();
     },
+    onScoreStarAppear: playScoreStarSound,
   });
 }
 
@@ -610,8 +832,8 @@ async function startStage(stageNumber) {
     return;
   }
   currentStageNumber = stageNumber;
-  await tryEnterFullscreen();
   setActivePage(playPage);
+  await tryEnterFullscreen();
   updateStageUrl(stageNumber);
   await initializeStage(stageNumber);
   resizeCanvas();
@@ -656,6 +878,7 @@ let currentStroke = null;
 let physicsStrokes = [];
 let currentStage = null;
 let animationFrameId = null;
+let stageClearOverlayTimer = null;
 let lastPhysicsTime = 0;
 let canvasWidth = 0;
 let canvasHeight = 0;
@@ -675,78 +898,102 @@ let stageMinEvents = 0;
 let isWindowFocused = true;
 let totalDrawnLength = 0;
 const drawingAudio = new Audio(dragSoundUrl);
-const DRAWING_AUDIO_START_END = 0.18;
-const DRAWING_AUDIO_LOOP_START = 0.18;
-const DRAWING_AUDIO_LOOP_END = 0.86;
-let drawingAudioStartTimer = null;
-let drawingAudioLoopHandler = null;
-let drawingAudioEndTimer = null;
+const DRAWING_AUDIO_LOOP_START = 0.37;
+const DRAWING_AUDIO_LOOP_END = 0.53;
+const DRAWING_AUDIO_IDLE_DELAY = 80;
+const DRAWING_AUDIO_START_VOLUME = 0.12;
+const DRAWING_AUDIO_SPEED_DEAD_ZONE = 35;
+const DRAWING_AUDIO_MIN_VOLUME = 0.12;
+const DRAWING_AUDIO_MAX_VOLUME = 0.72;
+const DRAWING_AUDIO_SPEED_RANGE = 700;
+let drawingAudioLoopTimer = null;
+let drawingAudioIdleTimer = null;
+let drawingAudioMotionActive = false;
+let drawingAudioBaseVolume = 0;
 let lastDrawingAudioPoint = null;
 let lastDrawingAudioTime = 0;
+
+window.addEventListener("sketchybook:audio-settings-change", (event) => {
+  const sfxVolume = event.detail?.sfx;
+  if (Number.isFinite(sfxVolume) && drawingAudioMotionActive) {
+    drawingAudio.volume = drawingAudioBaseVolume * sfxVolume;
+  }
+});
 
 drawingAudio.preload = "auto";
 drawingAudio.volume = 0;
 
+function getDrawingAudioDuration() {
+  return Number.isFinite(drawingAudio.duration) ? drawingAudio.duration : 1.1;
+}
+
 function getDrawingAudioTime(fraction) {
-  const duration = Number.isFinite(drawingAudio.duration) ? drawingAudio.duration : 1.1;
-  return duration * fraction;
+  return getDrawingAudioDuration() * fraction;
 }
 
 function setDrawingAudioVolume(speed = 0) {
-  const speedVolume = Math.min(0.78, Math.max(0.1, 0.1 + speed / 900));
-  drawingAudio.volume = speedVolume;
+  if (speed <= DRAWING_AUDIO_SPEED_DEAD_ZONE) {
+    drawingAudioBaseVolume = 0;
+    drawingAudio.volume = 0;
+    return;
+  }
+
+  const normalizedSpeed = Math.min(
+    1,
+    (speed - DRAWING_AUDIO_SPEED_DEAD_ZONE) / DRAWING_AUDIO_SPEED_RANGE
+  );
+  const speedVolume =
+    DRAWING_AUDIO_MIN_VOLUME +
+    (DRAWING_AUDIO_MAX_VOLUME - DRAWING_AUDIO_MIN_VOLUME) * normalizedSpeed ** 1.1;
+  drawingAudioBaseVolume = speedVolume;
+  drawingAudio.volume = speedVolume * getSfxVolume();
+}
+
+function scheduleDrawingAudioIdleStop() {
+  if (drawingAudioIdleTimer) clearTimeout(drawingAudioIdleTimer);
+  drawingAudioIdleTimer = window.setTimeout(() => {
+    drawingAudioMotionActive = false;
+    drawingAudio.pause();
+    drawingAudio.volume = 0;
+    drawingAudioIdleTimer = null;
+  }, DRAWING_AUDIO_IDLE_DELAY);
 }
 
 function stopDrawingAudio() {
-  if (drawingAudioStartTimer) clearTimeout(drawingAudioStartTimer);
-  if (drawingAudioEndTimer) clearTimeout(drawingAudioEndTimer);
-  if (drawingAudioLoopHandler)
-    drawingAudio.removeEventListener("timeupdate", drawingAudioLoopHandler);
-  drawingAudioStartTimer = null;
-  drawingAudioEndTimer = null;
-  drawingAudioLoopHandler = null;
+  if (drawingAudioLoopTimer) clearInterval(drawingAudioLoopTimer);
+  if (drawingAudioIdleTimer) clearTimeout(drawingAudioIdleTimer);
+  drawingAudioLoopTimer = null;
+  drawingAudioIdleTimer = null;
+  drawingAudioMotionActive = false;
   drawingAudio.pause();
   drawingAudio.currentTime = 0;
   drawingAudio.volume = 0;
+  drawingAudioBaseVolume = 0;
   lastDrawingAudioPoint = null;
   lastDrawingAudioTime = 0;
 }
 
 function startDrawingAudio() {
   stopDrawingAudio();
-  drawingAudio.currentTime = 0;
-  setDrawingAudioVolume(0);
+  drawingAudioMotionActive = true;
+  drawingAudioBaseVolume = DRAWING_AUDIO_START_VOLUME;
+  drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_START);
+  drawingAudio.volume = DRAWING_AUDIO_START_VOLUME * getSfxVolume();
   void drawingAudio.play().catch(() => {});
-
-  drawingAudioStartTimer = window.setTimeout(
-    () => {
+  drawingAudioLoopTimer = window.setInterval(() => {
+    if (!drawingAudioMotionActive) return;
+    if (drawingAudio.paused) {
       drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_START);
-      drawingAudioLoopHandler = () => {
-        if (drawingAudio.currentTime >= getDrawingAudioTime(DRAWING_AUDIO_LOOP_END)) {
-          drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_START);
-        }
-      };
-      drawingAudio.addEventListener("timeupdate", drawingAudioLoopHandler);
-      drawingAudioStartTimer = null;
-    },
-    getDrawingAudioTime(DRAWING_AUDIO_START_END) * 1000
-  );
+      void drawingAudio.play().catch(() => {});
+    }
+    if (drawingAudio.currentTime >= getDrawingAudioTime(DRAWING_AUDIO_LOOP_END)) {
+      drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_START);
+    }
+  }, 10);
 }
 
 function finishDrawingAudio() {
-  if (drawingAudioStartTimer) clearTimeout(drawingAudioStartTimer);
-  if (drawingAudioLoopHandler)
-    drawingAudio.removeEventListener("timeupdate", drawingAudioLoopHandler);
-  drawingAudioStartTimer = null;
-  drawingAudioLoopHandler = null;
-  drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_END);
-  setDrawingAudioVolume(0);
-  void drawingAudio.play().catch(() => {});
-  const duration = Number.isFinite(drawingAudio.duration) ? drawingAudio.duration : 1.1;
-  drawingAudioEndTimer = window.setTimeout(
-    stopDrawingAudio,
-    Math.max(80, (1 - DRAWING_AUDIO_LOOP_END) * duration * 1000)
-  );
+  stopDrawingAudio();
 }
 
 function updateDrawingAudio(event) {
@@ -754,14 +1001,27 @@ function updateDrawingAudio(event) {
   const now = performance.now();
   if (lastDrawingAudioPoint && lastDrawingAudioTime) {
     const elapsed = Math.max(1, now - lastDrawingAudioTime);
-    const speed =
-      (Math.hypot(point.x - lastDrawingAudioPoint.x, point.y - lastDrawingAudioPoint.y) / elapsed) *
-      1000;
+    const distance = Math.hypot(
+      point.x - lastDrawingAudioPoint.x,
+      point.y - lastDrawingAudioPoint.y
+    );
+    const speed = (distance / elapsed) * 1000;
     setDrawingAudioVolume(speed);
   }
+  drawingAudioMotionActive = true;
+  scheduleDrawingAudioIdleStop();
   lastDrawingAudioPoint = point;
   lastDrawingAudioTime = now;
 }
+
+function playDrawingAudioTail() {
+  drawingAudio.pause();
+  drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_END);
+  drawingAudio.volume = getSfxVolume();
+  void drawingAudio.play().catch(() => {});
+}
+
+window.addEventListener("sketchybook:sfx-volume-committed", playDrawingAudioTail);
 
 // Game objects (balls, stars, etc.) that stages can declare.
 let gameObjects = [];
@@ -1614,6 +1874,7 @@ function tick(timestamp = 0) {
   if (!shouldRunSimulation) {
     if (shouldRenderGuidanceMessage({ isGameActive, isFullscreen, isPageVisible })) {
       render();
+      verifyGamePageMusicAfterFirstRender(isGameActive);
     }
     animationFrameId = window.requestAnimationFrame(tick);
     return;
@@ -1769,6 +2030,7 @@ function tick(timestamp = 0) {
         const d = Math.hypot(bx - sx, by - sy);
         if (d <= br + sr) {
           star.collected = true;
+          playStarCollectSound();
           console.debug("star collected", star, "by", ball);
           // optional: remove from gameObjects array later
           break;
@@ -1780,11 +2042,16 @@ function tick(timestamp = 0) {
     const remaining = gameObjects.filter((g) => g instanceof Star && !g.collected);
     if (remaining.length === 0 && !stageCleared) {
       stageCleared = true;
+      stopDrawingAudio();
       const currentMode = currentDifficulty;
       syncProgressForMode(currentMode).catch((err) => {
         console.error("[Sync] 데이터 동기화 실패:", err);
       });
-      showStageClearOverlay("Stage Cleared!");
+      stageClearOverlayTimer = window.setTimeout(() => {
+        stageClearOverlayTimer = null;
+        playStageClearSound();
+        showStageClearOverlay("Stage Cleared!");
+      }, 750);
       if (currentStage && typeof currentStage.onClear === "function") {
         try {
           currentStage.onClear();
@@ -1796,6 +2063,7 @@ function tick(timestamp = 0) {
     }
   }
   render();
+  verifyGamePageMusicAfterFirstRender(isGameActive);
   // Continue animation loop
   animationFrameId = window.requestAnimationFrame(tick);
 }
@@ -1900,6 +2168,12 @@ function render() {
   }
 }
 
+function verifyGamePageMusicAfterFirstRender(isGameActive) {
+  if (!isGameActive || gamePageFirstRenderVerified) return;
+  syncBackgroundMusicForPage(playPage);
+  gamePageFirstRenderVerified = true;
+}
+
 function startDrawing(event) {
   if (
     !isFullscreenActive() ||
@@ -1912,6 +2186,7 @@ function startDrawing(event) {
   isDrawing = true;
   lastPoint = getPoint(event);
   startDrawingAudio();
+  scheduleDrawingAudioIdleStop();
   lastDrawingAudioPoint = lastPoint;
   lastDrawingAudioTime = performance.now();
   currentStroke = [];
@@ -2048,7 +2323,6 @@ function stopDrawing(event) {
       currentStroke = null;
       return;
     }
-    challengeModeStrokeCount += 1; // 오직 챌린지 모드일 때만 카운트를 올림
   }
 
   const intersectsCancelObject = gameObjects.some((obj) => {
@@ -2134,6 +2408,9 @@ function stopDrawing(event) {
     // matches exactly what the player saw during drawing.
     createStrokeTexture(strokeBody, previewCanvas);
     physicsStrokes.push(strokeBody);
+    if (challengeModeEnabled) {
+      challengeModeStrokeCount += 1;
+    }
     totalDrawnLength += getLogicalStrokeDistance(currentStroke);
     updateDrawLimitProgressUI();
   } else if (!shouldCreateStroke && currentStroke) {
@@ -2150,6 +2427,8 @@ function stopDrawing(event) {
 
 canvas?.addEventListener("pointerdown", startDrawing);
 canvas?.addEventListener("pointermove", continueDrawing);
+document.addEventListener("pointerdown", unlockBackgroundMusic, { passive: true });
+document.addEventListener("pointerdown", unlockStageClearSound, { once: true, passive: true });
 document.addEventListener(
   "pointerdown",
   () => {
@@ -2157,6 +2436,16 @@ document.addEventListener(
   },
   { passive: true }
 );
+document.addEventListener(
+  "keydown",
+  () => {
+    unlockBackgroundMusic();
+  },
+  { passive: true }
+);
+window.addEventListener("focus", () => {
+  unlockBackgroundMusic();
+});
 window.addEventListener("pointerup", stopDrawing);
 window.addEventListener("pointerleave", stopDrawing);
 
