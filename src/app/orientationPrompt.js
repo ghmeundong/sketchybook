@@ -22,19 +22,31 @@ function isFullscreen() {
   );
 }
 
-function getSafeLandscapeLockPromise() {
+export function getSafeLandscapeLockPromise() {
   if (!screen?.orientation || typeof screen.orientation.lock !== "function") {
     return Promise.resolve();
   }
 
-  try {
-    return Promise.resolve(screen.orientation.lock("landscape")).catch(() => undefined);
-  } catch {
-    return Promise.resolve();
-  }
+  const candidates = ["landscape-primary", "landscape", "landscape-secondary"];
+
+  const tryLock = async (index) => {
+    if (index >= candidates.length) {
+      return undefined;
+    }
+
+    const orientationMode = candidates[index];
+
+    try {
+      return await screen.orientation.lock(orientationMode);
+    } catch {
+      return tryLock(index + 1);
+    }
+  };
+
+  return Promise.resolve().then(() => tryLock(0));
 }
 
-function requestLandscapeMode() {
+export function requestLandscapeMode() {
   const element = document.documentElement;
   const fullscreenRequest = element?.requestFullscreen || element?.webkitRequestFullscreen;
 
