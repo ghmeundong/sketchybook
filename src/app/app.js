@@ -1,22 +1,22 @@
 import rough from "roughjs";
-import paperTexture from "./assets/img/paper-texture.webp";
-import challengeToggleSoundUrl from "./assets/sounds/Mechanical, Click, Heater Fan, Small, Thermostat, Click On Or Off.wav";
-import gameStartSoundUrl from "./assets/sounds/universfield-click-button-140881.mp3";
-import { createActionIconCanvas, createMuteSlashCanvas } from "./game/ui/uiIcons.js";
-import { getAudioSettings, setAudioSettings } from "./app/audioSettings.js";
-import { initializeOrientationPrompt } from "./app/orientationPrompt.js";
-import { shouldRevealStartPage } from "./app/startupState.js";
+import paperTexture from "../assets/img/paper-texture.webp";
+import challengeToggleSoundUrl from "../assets/sounds/Mechanical, Click, Heater Fan, Small, Thermostat, Click On Or Off.wav";
+import gameStartSoundUrl from "../assets/sounds/universfield-click-button-140881.mp3";
+import { createActionIconCanvas, createMuteSlashCanvas } from "../game/ui/uiIcons.js";
+import { getAudioSettings, setAudioSettings } from "./audioSettings.js";
+import { initializeOrientationPrompt } from "./orientationPrompt.js";
+import { shouldRevealStartPage } from "./startupState.js";
 import {
   getChallengeModePreference,
   setChallengeModePreference,
-} from "./game/engine/config/challengeMode.js";
+} from "../game/engine/config/challengeMode.js";
 import {
   DIFFICULTY_LEVELS,
   DIFFICULTY_CONFIG,
   getDifficultyList,
   getNextDifficulty,
   getPreviousDifficulty,
-} from "./game/engine/config/difficultyLevels.js";
+} from "../game/engine/config/difficultyLevels.js";
 
 const startTitle = document.querySelector("[data-start-button]");
 const titleText = document.querySelector(".brand-title");

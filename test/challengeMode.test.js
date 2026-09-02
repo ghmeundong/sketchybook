@@ -3,7 +3,7 @@ import {
   CHALLENGE_MODE_STORAGE_KEY,
   getChallengeModePreference,
   setChallengeModePreference,
-} from "../src/game/challengeMode.js";
+} from "../src/game/engine/config/challengeMode.js";
 
 function createStorage(initialValue = null) {
   const store = new Map();

@@ -1,5 +1,5 @@
 import rough from "roughjs";
-import { resolveCircleRadius } from "../geometry.js";
+import { resolveCircleRadius } from "../engine/core/geometry.js";
 
 export class Ball {
   constructor(opts = {}) {

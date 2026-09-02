@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rescalePoint, rescalePoints } from "../src/game/resizeState.js";
+import { rescalePoint, rescalePoints } from "../src/game/engine/systems/resizeState.js";
 
 describe("rescalePoint", () => {
   it("keeps a point anchored to the same relative position when the viewport changes", () => {

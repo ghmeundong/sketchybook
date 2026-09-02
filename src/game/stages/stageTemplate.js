@@ -1,11 +1,11 @@
-import { createCoordinateSystem } from "../coordinates.js";
+import { createCoordinateSystem } from "../engine/core/coordinates.js";
 import {
   createStrokeBody,
   initializeStrokeBody,
   updateStrokeBody,
   stepPhysicsWorld,
-} from "../physics.js";
-import { filterObjectsByDifficulty } from "../difficultyLevels.js";
+} from "../engine/physics/physics.js";
+import { filterObjectsByDifficulty } from "../engine/config/difficultyLevels.js";
 
 export function createStageTemplate(definition = {}, canvas, board, difficulty = "normal") {
   const coordinateSystem = createCoordinateSystem({

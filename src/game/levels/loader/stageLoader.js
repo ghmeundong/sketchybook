@@ -1,4 +1,4 @@
-import { createStageFromDefinition } from "./stages/registry.js";
+import { createStageFromDefinition } from "../../stages/registry.js";
 
 export async function loadStage(canvas, board, stageNumberOverride, difficulty = "normal") {
   const params = new URLSearchParams(window.location.search);
@@ -11,8 +11,8 @@ export async function loadStage(canvas, board, stageNumberOverride, difficulty =
     return builtStage;
   }
 
-  const stageModules = import.meta.glob("./stages/stage*.js", { eager: true });
-  const stagePath = `./stages/stage${stageNumber}.js`;
+  const stageModules = import.meta.glob("../../stages/stage*.js", { eager: true });
+  const stagePath = `../../stages/stage${stageNumber}.js`;
   const module = stageModules[stagePath];
 
   if (!module) {

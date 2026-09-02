@@ -8,25 +8,32 @@ import dragSoundUrl from "../assets/sounds/Pencil On Paper, Stroke Normalized.wa
 import stageClearSoundUrl from "../assets/sounds/conventional-postage-stamp.mp3";
 import starCollectSoundUrl from "../assets/sounds/liecio-achive-sound-132273.mp3";
 import scoreStarSoundUrl from "../assets/sounds/driken5482-retro-coin-4-236671.mp3";
-import { createCoordinateSystem } from "./coordinates.js";
-import { loadStage } from "./stageLoader.js";
-import { resolveCircleRadius, segmentIntersectsCircle, segmentIntersectsRect } from "./geometry.js";
-import { getStagePageIndexForStage } from "./stagePages.js";
-import { rescalePoint, rescalePoints } from "./resizeState.js";
-import { shouldDeferResize } from "./layoutSync.js";
+import { createCoordinateSystem } from "./engine/core/coordinates.js";
+import { loadStage } from "./levels/loader/stageLoader.js";
+import {
+  resolveCircleRadius,
+  segmentIntersectsCircle,
+  segmentIntersectsRect,
+} from "./engine/core/geometry.js";
+import { getStagePageIndexForStage } from "./levels/pages/stagePages.js";
+import { rescalePoint, rescalePoints } from "./engine/systems/resizeState.js";
+import { shouldDeferResize } from "./engine/systems/layoutSync.js";
 import { createActionIconCanvas } from "./ui/uiIcons.js";
 import {
   createStageClearOverlay as createStageClearOverlayUI,
   showStageClearOverlay as showStageClearOverlayUI,
   hideStageClearOverlay as hideStageClearOverlayUI,
 } from "./ui/gameUi.js";
-import { getChallengeModePreference, setChallengeModePreference } from "./challengeMode.js";
+import {
+  getChallengeModePreference,
+  setChallengeModePreference,
+} from "./engine/config/challengeMode.js";
 import {
   shouldAdvancePhysics,
   shouldHandleSpacebarAction,
   shouldRenderGuidanceMessage,
-} from "./inputRules.js";
-import { shouldRebuildPhysicsWorld } from "./physicsState.js";
+} from "./engine/config/inputRules.js";
+import { shouldRebuildPhysicsWorld } from "./engine/physics/physicsState.js";
 import {
   getStoredStageProgress,
   renderStageSelectionButtons as renderStageSelectionButtonsUI,
@@ -50,7 +57,7 @@ import {
   setPhysicsScaleProfile,
   isBodyTouchingSurface,
   attachBodyToBody,
-} from "./physics.js";
+} from "./engine/physics/physics.js";
 import {
   CircleObject,
   Ball,
@@ -63,9 +70,13 @@ import {
   Rotor,
   TextLabel,
 } from "./objects/index.js";
-import { syncProgressForMode } from "../auth.js";
-import { getMusicVolume, getSfxVolume } from "../audioSettings.js";
-import { DIFFICULTY_LEVELS, DIFFICULTY_CONFIG, getDifficultyRules } from "./difficultyLevels.js";
+import { syncProgressForMode } from "../services/auth.js";
+import { getMusicVolume, getSfxVolume } from "../app/audioSettings.js";
+import {
+  DIFFICULTY_LEVELS,
+  DIFFICULTY_CONFIG,
+  getDifficultyRules,
+} from "./engine/config/difficultyLevels.js";
 
 const board = document.querySelector("#game-board");
 const backgroundMusic = new Audio(backgroundMusicUrl);

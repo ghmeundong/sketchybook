@@ -1,6 +1,6 @@
 import rough from "roughjs";
-import { resolveCircleRadius, resolveRenderablePosition } from "../geometry.js";
-import { createCircleBody, createRotorBody } from "../physics.js";
+import { resolveCircleRadius, resolveRenderablePosition } from "../engine/core/geometry.js";
+import { createCircleBody, createRotorBody } from "../engine/physics/physics.js";
 
 export class Rotor {
   constructor({

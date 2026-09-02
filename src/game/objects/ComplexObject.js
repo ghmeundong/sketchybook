@@ -1,6 +1,6 @@
 import rough from "roughjs";
-import { getPolygonTextureLayout, getCanvasVisualAnchor } from "../geometry.js";
-import { createPolygonBody, createEdgeBody } from "../physics.js";
+import { getPolygonTextureLayout, getCanvasVisualAnchor } from "../engine/core/geometry.js";
+import { createPolygonBody, createEdgeBody } from "../engine/physics/physics.js";
 
 export class ComplexObject {
   constructor({ points = [], closed = false, isStatic = true } = {}) {

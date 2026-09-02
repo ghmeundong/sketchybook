@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shouldRebuildPhysicsWorld } from "../src/game/physicsState.js";
+import { shouldRebuildPhysicsWorld } from "../src/game/engine/physics/physicsState.js";
 
 describe("shouldRebuildPhysicsWorld", () => {
   it("avoids rebuilding the physics world after simulation has already started", () => {

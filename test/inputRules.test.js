@@ -4,7 +4,7 @@ import {
   shouldAllowBallLaunch,
   shouldHandleSpacebarAction,
   shouldRenderGuidanceMessage,
-} from "../src/game/inputRules.js";
+} from "../src/game/engine/config/inputRules.js";
 
 describe("shouldAllowBallLaunch", () => {
   it("blocks ball launches after challenge mode has already consumed its stroke", () => {

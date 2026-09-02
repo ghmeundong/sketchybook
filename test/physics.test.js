@@ -9,7 +9,7 @@ import {
   updateStrokeBody,
   resetPhysicsWorld,
   stepPhysicsWorld,
-} from "../src/game/physics.js";
+} from "../src/game/engine/physics/physics.js";
 
 describe("createCircleBody", () => {
   beforeEach(() => {
