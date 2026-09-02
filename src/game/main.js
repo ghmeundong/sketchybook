@@ -372,12 +372,16 @@ function getBallImpulseValues() {
   const viewportDimension =
     canvasHeight > 0 ? Math.min(canvasWidth, canvasHeight) : referenceDimension;
   const dimensionScale = viewportDimension / referenceDimension;
+  // 화면 크기 증가로 인한 질량/관성 느낌은 제곱으로 보정되지만,
+  // 실제 공의 이동 속도는 길이 스케일을 따라야 하므로 최종 속도는 선형 보정으로 유지한다.
   const massScale = dimensionScale * dimensionScale;
+  const effectiveMassScale = profile?.massScaleFactor ?? massScale;
   const physicsScale = profile?.scale ?? Math.min(1, Math.max(0.5, dimensionScale));
-  const scale = Math.min(1.25, Math.max(0.15, massScale * physicsScale));
+  const motionScale = Math.min(1.25, Math.max(0.15, Math.sqrt(effectiveMassScale) * physicsScale));
+
   return {
-    linear: 99999 * scale,
-    angular: 99999 * scale,
+    linear: 99999 * motionScale,
+    angular: 99999 * motionScale,
   };
 }
 
