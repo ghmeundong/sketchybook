@@ -336,9 +336,21 @@ function lockLandscapeOrientation() {
         return;
       }
 
-      screen.orientation.lock("landscape").catch(() => {
-        // iOS/Safari often rejects orientation locking; do not block the app.
-      });
+      const candidates = ["landscape-primary", "landscape", "landscape-secondary"];
+      let index = 0;
+
+      const tryNext = () => {
+        if (index >= candidates.length) return;
+
+        const orientationMode = candidates[index];
+        index += 1;
+
+        screen.orientation.lock(orientationMode).catch(() => {
+          tryNext();
+        });
+      };
+
+      tryNext();
     } catch {
       // Ignore unsupported or blocked orientation locks.
     }
