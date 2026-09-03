@@ -6,29 +6,29 @@
 }
 
 .game-shell {
-  width: min(100%, 72rem);
+  width: min(100%, 90rem);
   display: flex;
   flex-direction: column;
-  gap: clamp(0.7rem, 1.3vw, 1rem);
+  gap: clamp(0.7rem, 1.6vw, 1.5rem);
 }
 
 .game-hud {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--hud-padding) clamp(0.8rem, 1.5vw, 1.2rem);
+  padding: clamp(0.7rem, 1.4vw, 1.25rem) clamp(0.8rem, 2vw, 1.8rem);
   border: 1px solid rgb(79 59 36 / 20%);
   background: rgb(255 248 232 / 55%);
   backdrop-filter: blur(2px);
 }
 
 .game-stage-label {
-  font-size: clamp(1rem, 2.2vw, 1.6rem);
+  font-size: clamp(1rem, 2vw, 2rem);
   font-weight: 700;
 }
 
 .game-coordinate-label {
-  font-size: clamp(0.8rem, 1.3vw, 0.95rem);
+  font-size: clamp(0.8rem, 1.15vw, 1.15rem);
   opacity: 0.8;
 }
 
@@ -54,7 +54,7 @@
   top: 0.55rem;
   left: 50%;
   transform: translateX(-50%);
-  width: min(56%, 26rem);
+  width: min(56%, 34rem);
   z-index: 70;
   opacity: 0;
   transition: opacity 150ms ease;
@@ -176,7 +176,7 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -60%) scale(0.92);
-  width: min(90%, 28rem);
+  width: min(90%, 34rem);
   display: grid;
   place-items: center;
   opacity: 0;
@@ -244,7 +244,7 @@
 
 .stage-clear-title {
   margin: 0 0 0.75rem;
-  font-size: clamp(1.55rem, 3vw, 2.25rem);
+  font-size: clamp(1.55rem, 3vw, 2.5rem);
   font-weight: 800;
   color: var(--ink);
   position: relative;

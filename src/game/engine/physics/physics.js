@@ -237,16 +237,43 @@ export function createStrokeBody(points) {
     return null;
   }
 
-  const maxPoints = 40;
-  const sampleStep = Math.max(1, Math.floor(points.length / maxPoints));
-  const sampledPoints = points.filter((_, index) => index % sampleStep === 0);
+  const sampleSpacing = 1.5;
+  const sampledPoints = [points[0]];
+  let distanceSinceSample = 0;
+
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const point = points[index];
+    let segmentStart = previous;
+    let segmentLength = Math.hypot(point.x - previous.x, point.y - previous.y);
+
+    while (segmentLength > 0 && distanceSinceSample + segmentLength >= sampleSpacing) {
+      const distanceToSample = sampleSpacing - distanceSinceSample;
+      const ratio = distanceToSample / segmentLength;
+      const samplePoint = {
+        x: segmentStart.x + (point.x - segmentStart.x) * ratio,
+        y: segmentStart.y + (point.y - segmentStart.y) * ratio,
+      };
+      sampledPoints.push(samplePoint);
+      segmentStart = samplePoint;
+      segmentLength -= distanceToSample;
+      distanceSinceSample = 0;
+    }
+
+    distanceSinceSample += segmentLength;
+  }
+
+  const lastPoint = points[points.length - 1];
+  if (sampledPoints[sampledPoints.length - 1] !== lastPoint) {
+    sampledPoints.push(lastPoint);
+  }
 
   if (sampledPoints.length < 2) {
     return null;
   }
 
-  const centerX = sampledPoints.reduce((sum, point) => sum + point.x, 0) / sampledPoints.length;
-  const centerY = sampledPoints.reduce((sum, point) => sum + point.y, 0) / sampledPoints.length;
+  const centerX = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+  const centerY = points.reduce((sum, point) => sum + point.y, 0) / points.length;
 
   const nodes = sampledPoints.map((point) => ({
     x: point.x,
