@@ -1,3 +1,5 @@
+import { INK, FONT_DISPLAY } from "../../theme.js";
+
 export class TextLabel {
   constructor(opts = {}) {
     const { x, y, text, fontSize, color, fontFamily } = opts || {};
@@ -5,8 +7,8 @@ export class TextLabel {
     this.ny = typeof y === "number" ? y : 0.2;
     this.text = text || "";
     this.fontSize = typeof fontSize === "number" ? fontSize : 0.04;
-    this.color = typeof color === "string" ? color : "#4f3b24";
-    this.fontFamily = typeof fontFamily === "string" ? fontFamily : "MyeongjoFont, serif";
+    this.color = typeof color === "string" ? color : INK;
+    this.fontFamily = typeof fontFamily === "string" ? fontFamily : FONT_DISPLAY;
     this.texture = null;
     this.textureOffset = null;
     this._lastCanvasSize = null;

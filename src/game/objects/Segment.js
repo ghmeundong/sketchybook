@@ -1,4 +1,5 @@
 import rough from "roughjs";
+import { INK } from "../../theme.js";
 
 export class Segment {
   constructor({ x1 = 0.2, y1 = 0.6, x2 = 0.8, y2 = 0.6 } = {}) {
@@ -36,7 +37,7 @@ export class Segment {
     const y2 = p2.y - minY + padding;
 
     offRough.line(x1, y1, x2, y2, {
-      stroke: "#4f3b24",
+      stroke: INK,
       strokeWidth: 3,
       roughness: 3.0,
       bowing: 1,
@@ -44,7 +45,7 @@ export class Segment {
 
     // Add a second, slightly offset hand-drawn line for extra sketchy texture.
     offRough.line(x1 + 1.5, y1 - 1.0, x2 + 1.5, y2 - 1.0, {
-      stroke: "#4f3b24",
+      stroke: INK,
       strokeWidth: 2,
       roughness: 2.6,
       opacity: 0.8,

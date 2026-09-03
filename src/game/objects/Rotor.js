@@ -1,6 +1,7 @@
 import rough from "roughjs";
 import { resolveCircleRadius, resolveRenderablePosition } from "../engine/core/geometry.js";
 import { createCircleBody, createRotorBody } from "../engine/physics/physics.js";
+import { INK } from "../../theme.js";
 
 export class Rotor {
   constructor({
@@ -79,7 +80,7 @@ export class Rotor {
       const cx = size / 2;
       const cy = size / 2;
       offRough.circle(cx, cy, diameter, {
-        stroke: "#4f3b24",
+        stroke: INK,
         strokeWidth: 3,
         fill: "none",
         roughness: 1.4,
@@ -159,7 +160,7 @@ export class Rotor {
         b.x - minX + padding,
         b.y - minY + padding,
         {
-          stroke: "#4f3b24",
+          stroke: INK,
           strokeWidth: 3,
           roughness: 2.6,
         }
@@ -174,7 +175,7 @@ export class Rotor {
         b.x - minX + padding,
         b.y - minY + padding,
         {
-          stroke: "#4f3b24",
+          stroke: INK,
           strokeWidth: 3,
           roughness: 2.6,
         }

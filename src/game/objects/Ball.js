@@ -1,5 +1,6 @@
 import rough from "roughjs";
 import { resolveCircleRadius } from "../engine/core/geometry.js";
+import { INK } from "../../theme.js";
 
 export class Ball {
   constructor(opts = {}) {
@@ -32,7 +33,7 @@ export class Ball {
     const cy = size / 2;
 
     offRough.circle(cx, cy, diameter, {
-      stroke: "#4f3b24",
+      stroke: INK,
       strokeWidth: 2,
       fill: "#2f3e6f",
       fillStyle: "hachure",

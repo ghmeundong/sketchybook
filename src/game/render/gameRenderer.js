@@ -2,6 +2,7 @@ import rough from "roughjs";
 import { state } from "../engine/core/gameState.js";
 import { isFullscreenActive } from "../engine/core/fullscreen.js";
 import { getPhysicsScaleProfile } from "../engine/physics/physics.js";
+import { INK, FONT_DISPLAY } from "../../theme.js";
 
 export function getRenderDpr() {
   return Math.min(2, Math.max(1, window.devicePixelRatio || 1));
@@ -18,7 +19,7 @@ export function drawStroke(start, end, width = 8, options = {}) {
     return;
   }
 
-  const targetColor = options.color || "#4f3b24";
+  const targetColor = options.color || INK;
   const alpha = options.alpha ?? 0.15;
   const scaledWidth = Math.max(1.5, width * 0.55 * (getStrokeWidth() / 8));
   const dx = end.x - start.x;
@@ -166,7 +167,7 @@ export function createStrokeTexture(stroke, previewSource) {
 
   for (let i = 0; i < offsetPoints.length - 1; i += 1) {
     drawStroke(offsetPoints[i], offsetPoints[i + 1], 8, {
-      color: "#4f3b24",
+      color: INK,
       alpha: 0.15,
       roughness: 2.0,
       targetCanvas: offscreen,
@@ -303,8 +304,8 @@ export function render() {
     ctx.save();
 
     const fontSize = Math.max(24, Math.round(canvasHeight * 0.08));
-    ctx.font = `bold ${fontSize}px MyeongjoFont, serif`;
-    ctx.fillStyle = "#4f3b24";
+    ctx.font = `bold ${fontSize}px ${FONT_DISPLAY}`;
+    ctx.fillStyle = INK;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 

@@ -1,5 +1,6 @@
 import { createRoughStarCanvas } from "./uiIcons.js";
 import { getChallengeModePreference } from "../engine/config/challengeMode.js";
+import { INK, FONT_DISPLAY } from "../../theme.js";
 
 export const stageScoreStorageKey = "sketchybook-stage-scores";
 export const stageProgressStorageKey = "sketchybook-stage-progress";
@@ -201,8 +202,8 @@ export function renderStageScoreBadge(card, stageNumber, mode) {
   badge.style.marginTop = "0.45rem";
   badge.style.fontSize = "0.95rem";
   badge.style.fontWeight = "700";
-  badge.style.color = "#4f3b24";
-  badge.style.fontFamily = "MyeongjoFont, serif";
+  badge.style.color = INK;
+  badge.style.fontFamily = FONT_DISPLAY;
 
   badge.appendChild(createRoughStarCanvas(score, { size: 14, gap: 3 }));
 }
