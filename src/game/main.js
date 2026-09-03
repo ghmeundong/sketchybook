@@ -1,4 +1,3 @@
-import planck from "planck";
 import rough from "roughjs";
 import "../style.css";
 import "../styles/game.css";
@@ -16,8 +15,10 @@ import {
   segmentIntersectsRect,
 } from "./engine/core/geometry.js";
 import { getStagePageIndexForStage } from "./levels/pages/stagePages.js";
-import { rescalePoint, rescalePoints } from "./engine/systems/resizeState.js";
+import { rescalePoint } from "./engine/systems/resizeState.js";
 import { shouldDeferResize } from "./engine/systems/layoutSync.js";
+import { remapGameObjects } from "./render/canvasObjectResize.js";
+import { processBallObjectInteractions } from "./systems/gameObjectInteractions.js";
 import { createActionIconCanvas } from "./ui/uiIcons.js";
 import {
   createStageClearOverlay as createStageClearOverlayUI,
@@ -62,17 +63,21 @@ import {
 import {
   CircleObject,
   Ball,
-  Star,
   Platform,
-  Portal,
   StripedRectObject,
   Segment,
   ComplexObject,
   Rotor,
-  TextLabel,
 } from "./objects/index.js";
 import { syncProgressForMode } from "../services/auth.js";
 import { getMusicVolume, getSfxVolume } from "../app/audioSettings.js";
+import {
+  exceedsLineLengthLimit,
+  getLogicalStrokeDistance,
+  getStrokeDistance,
+} from "./input/drawingPolicy.js";
+import { createDrawingAudioController } from "./audio/drawingAudio.js";
+import { createGameObjects } from "./stages/gameObjectFactory.js";
 import {
   DIFFICULTY_LEVELS,
   DIFFICULTY_CONFIG,
@@ -913,167 +918,14 @@ let stageEventCount = 0;
 let stageMinEvents = 0;
 let isWindowFocused = true;
 let totalDrawnLength = 0;
-const drawingAudio = new Audio(dragSoundUrl);
-const DRAWING_AUDIO_LOOP_START = 0.37;
-const DRAWING_AUDIO_LOOP_END = 0.53;
-const DRAWING_AUDIO_IDLE_DELAY = 80;
-const DRAWING_AUDIO_START_VOLUME = 0.12;
-const DRAWING_AUDIO_SPEED_DEAD_ZONE = 35;
-const DRAWING_AUDIO_MIN_VOLUME = 0.12;
-const DRAWING_AUDIO_MAX_VOLUME = 0.72;
-const DRAWING_AUDIO_SPEED_RANGE = 700;
-let drawingAudioLoopTimer = null;
-let drawingAudioIdleTimer = null;
-let drawingAudioMotionActive = false;
-let drawingAudioBaseVolume = 0;
-let lastDrawingAudioPoint = null;
-let lastDrawingAudioTime = 0;
-
-window.addEventListener("sketchybook:audio-settings-change", (event) => {
-  const sfxVolume = event.detail?.sfx;
-  if (Number.isFinite(sfxVolume) && drawingAudioMotionActive) {
-    drawingAudio.volume = drawingAudioBaseVolume * sfxVolume;
-  }
+const drawingAudio = createDrawingAudioController({
+  audioUrl: dragSoundUrl,
+  getSfxVolume,
 });
-
-drawingAudio.preload = "auto";
-drawingAudio.volume = 0;
-
-function getDrawingAudioDuration() {
-  return Number.isFinite(drawingAudio.duration) ? drawingAudio.duration : 1.1;
-}
-
-function getDrawingAudioTime(fraction) {
-  return getDrawingAudioDuration() * fraction;
-}
-
-function setDrawingAudioVolume(speed = 0) {
-  if (speed <= DRAWING_AUDIO_SPEED_DEAD_ZONE) {
-    drawingAudioBaseVolume = 0;
-    drawingAudio.volume = 0;
-    return;
-  }
-
-  const normalizedSpeed = Math.min(
-    1,
-    (speed - DRAWING_AUDIO_SPEED_DEAD_ZONE) / DRAWING_AUDIO_SPEED_RANGE
-  );
-  const speedVolume =
-    DRAWING_AUDIO_MIN_VOLUME +
-    (DRAWING_AUDIO_MAX_VOLUME - DRAWING_AUDIO_MIN_VOLUME) * normalizedSpeed ** 1.1;
-  drawingAudioBaseVolume = speedVolume;
-  drawingAudio.volume = speedVolume * getSfxVolume();
-}
-
-function scheduleDrawingAudioIdleStop() {
-  if (drawingAudioIdleTimer) clearTimeout(drawingAudioIdleTimer);
-  drawingAudioIdleTimer = window.setTimeout(() => {
-    drawingAudioMotionActive = false;
-    drawingAudio.pause();
-    drawingAudio.volume = 0;
-    drawingAudioIdleTimer = null;
-  }, DRAWING_AUDIO_IDLE_DELAY);
-}
-
-function stopDrawingAudio() {
-  if (drawingAudioLoopTimer) clearInterval(drawingAudioLoopTimer);
-  if (drawingAudioIdleTimer) clearTimeout(drawingAudioIdleTimer);
-  drawingAudioLoopTimer = null;
-  drawingAudioIdleTimer = null;
-  drawingAudioMotionActive = false;
-  drawingAudio.pause();
-  drawingAudio.currentTime = 0;
-  drawingAudio.volume = 0;
-  drawingAudioBaseVolume = 0;
-  lastDrawingAudioPoint = null;
-  lastDrawingAudioTime = 0;
-}
-
-function startDrawingAudio() {
-  stopDrawingAudio();
-  drawingAudioMotionActive = true;
-  drawingAudioBaseVolume = DRAWING_AUDIO_START_VOLUME;
-  drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_START);
-  drawingAudio.volume = DRAWING_AUDIO_START_VOLUME * getSfxVolume();
-  void drawingAudio.play().catch(() => {});
-  drawingAudioLoopTimer = window.setInterval(() => {
-    if (!drawingAudioMotionActive) return;
-    if (drawingAudio.paused) {
-      drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_START);
-      void drawingAudio.play().catch(() => {});
-    }
-    if (drawingAudio.currentTime >= getDrawingAudioTime(DRAWING_AUDIO_LOOP_END)) {
-      drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_START);
-    }
-  }, 10);
-}
-
-function finishDrawingAudio() {
-  stopDrawingAudio();
-}
-
-function updateDrawingAudio(event) {
-  const point = getPoint(event);
-  const now = performance.now();
-  if (lastDrawingAudioPoint && lastDrawingAudioTime) {
-    const elapsed = Math.max(1, now - lastDrawingAudioTime);
-    const distance = Math.hypot(
-      point.x - lastDrawingAudioPoint.x,
-      point.y - lastDrawingAudioPoint.y
-    );
-    const speed = (distance / elapsed) * 1000;
-    setDrawingAudioVolume(speed);
-  }
-  drawingAudioMotionActive = true;
-  scheduleDrawingAudioIdleStop();
-  lastDrawingAudioPoint = point;
-  lastDrawingAudioTime = now;
-}
-
-function playDrawingAudioTail() {
-  drawingAudio.pause();
-  drawingAudio.currentTime = getDrawingAudioTime(DRAWING_AUDIO_LOOP_END);
-  drawingAudio.volume = getSfxVolume();
-  void drawingAudio.play().catch(() => {});
-}
-
-window.addEventListener("sketchybook:sfx-volume-committed", playDrawingAudioTail);
 
 // Game objects (balls, stars, etc.) that stages can declare.
 let gameObjects = [];
 let currentStageNumber = 1;
-
-function getStrokeDistance(points) {
-  if (!Array.isArray(points) || points.length < 2) {
-    return 0;
-  }
-
-  let distance = 0;
-  for (let i = 1; i < points.length; i += 1) {
-    const prev = points[i - 1];
-    const next = points[i];
-    distance += Math.hypot(next.x - prev.x, next.y - prev.y);
-  }
-  return distance;
-}
-
-function getLogicalStrokeDistance(points) {
-  if (!Array.isArray(points) || points.length < 2) {
-    return 0;
-  }
-
-  if (!coordinateSystem) {
-    return getStrokeDistance(points);
-  }
-
-  let distance = 0;
-  for (let i = 1; i < points.length; i += 1) {
-    const previous = coordinateSystem.toLogicalPoint(points[i - 1]);
-    const current = coordinateSystem.toLogicalPoint(points[i]);
-    distance += Math.hypot(current.x - previous.x, current.y - previous.y);
-  }
-  return distance;
-}
 
 function getLineLengthLimit() {
   const limit = difficultyRules?.maxLineLength ?? null;
@@ -1285,107 +1137,13 @@ function resizeCanvas() {
     (previousCanvasWidth !== canvasWidth || previousCanvasHeight !== canvasHeight);
 
   if (needsLayoutRemap && gameObjects.length) {
-    for (const obj of gameObjects) {
-      if (obj instanceof Ball || obj instanceof CircleObject || obj instanceof Star) {
-        const previousX = obj.screenX ?? (obj.nx != null ? obj.nx * previousCanvasWidth : null);
-        const previousY = obj.screenY ?? (obj.ny != null ? obj.ny * previousCanvasHeight : null);
-        if (previousX != null && previousY != null) {
-          const remapped = rescalePoint(
-            { x: previousX, y: previousY },
-            previousCanvasWidth,
-            previousCanvasHeight,
-            canvasWidth,
-            canvasHeight
-          );
-          obj.screenX = remapped.x;
-          obj.screenY = remapped.y;
-          obj.nx = remapped.x / canvasWidth;
-          obj.ny = remapped.y / canvasHeight;
-        }
-      }
-
-      if (obj instanceof Platform) {
-        const previousX = obj.screenX ?? (obj.nx != null ? obj.nx * previousCanvasWidth : null);
-        const previousY = obj.screenY ?? (obj.ny != null ? obj.ny * previousCanvasHeight : null);
-        if (previousX != null && previousY != null) {
-          const remapped = rescalePoint(
-            { x: previousX, y: previousY },
-            previousCanvasWidth,
-            previousCanvasHeight,
-            canvasWidth,
-            canvasHeight
-          );
-          obj.screenX = remapped.x;
-          obj.screenY = remapped.y;
-          obj.nx = remapped.x / canvasWidth;
-          obj.ny = remapped.y / canvasHeight;
-        }
-      }
-
-      if (obj instanceof Segment) {
-        const remappedPoints = rescalePoints(
-          [
-            { x: obj.x1 * previousCanvasWidth, y: obj.y1 * previousCanvasHeight },
-            { x: obj.x2 * previousCanvasWidth, y: obj.y2 * previousCanvasHeight },
-          ],
-          previousCanvasWidth,
-          previousCanvasHeight,
-          canvasWidth,
-          canvasHeight
-        );
-        obj.x1 = remappedPoints[0].x / canvasWidth;
-        obj.y1 = remappedPoints[0].y / canvasHeight;
-        obj.x2 = remappedPoints[1].x / canvasWidth;
-        obj.y2 = remappedPoints[1].y / canvasHeight;
-        obj.texture = null;
-        obj.textureOffset = null;
-        obj._lastCanvasSize = null;
-      }
-
-      if (obj instanceof ComplexObject) {
-        if (Array.isArray(obj.normalizedPoints) && obj.normalizedPoints.length) {
-          const remappedPoints = rescalePoints(
-            obj.normalizedPoints.map((point) => ({
-              x: point.x * previousCanvasWidth,
-              y: point.y * previousCanvasHeight,
-            })),
-            previousCanvasWidth,
-            previousCanvasHeight,
-            canvasWidth,
-            canvasHeight
-          );
-          obj.normalizedPoints = remappedPoints.map((point) => ({
-            x: point.x / canvasWidth,
-            y: point.y / canvasHeight,
-          }));
-        }
-        obj.texture = null;
-        obj.textureOffset = null;
-        obj.textureAnchor = null;
-        obj._lastCanvasSize = null;
-      }
-
-      if (obj instanceof Rotor) {
-        if (obj.screenX != null && obj.screenY != null) {
-          const remapped = rescalePoint(
-            { x: obj.screenX, y: obj.screenY },
-            previousCanvasWidth,
-            previousCanvasHeight,
-            canvasWidth,
-            canvasHeight
-          );
-          obj.screenX = remapped.x;
-          obj.screenY = remapped.y;
-        }
-        obj.cx = obj.screenX != null ? obj.screenX / canvasWidth : obj.cx;
-        obj.cy = obj.screenY != null ? obj.screenY / canvasHeight : obj.cy;
-        obj.axisX = obj.axisX != null ? obj.axisX : obj.cx;
-        obj.axisY = obj.axisY != null ? obj.axisY : obj.cy;
-        obj.texture = null;
-        obj.textureOffset = null;
-        obj._lastCanvasSize = null;
-      }
-    }
+    remapGameObjects(
+      gameObjects,
+      previousCanvasWidth,
+      previousCanvasHeight,
+      canvasWidth,
+      canvasHeight
+    );
   }
 
   if (needsLayoutRemap && currentStroke?.length) {
@@ -1545,101 +1303,7 @@ async function initializeStage(stageNumberOverride) {
   stageEventCount = 0;
   stageMinEvents = Number.isFinite(currentStage?.minEvents) ? currentStage.minEvents : 0;
   hideStageClearOverlay();
-  if (Array.isArray(currentStage?.objects)) {
-    for (const obj of currentStage.objects) {
-      if (obj.type === "circle") {
-        gameObjects.push(
-          new CircleObject({
-            x: obj.x,
-            y: obj.y,
-            radius: obj.radius,
-            isStatic: obj.isStatic === true,
-          })
-        );
-      } else if (obj.type === "ball") {
-        gameObjects.push(new Ball({ x: obj.x, y: obj.y, radius: obj.radius }));
-      } else if (obj.type === "star") {
-        gameObjects.push(new Star({ x: obj.x, y: obj.y, radius: obj.radius }));
-      } else if (obj.type === "platform") {
-        gameObjects.push(
-          new Platform({
-            x: obj.x,
-            y: obj.y,
-            width: obj.width,
-            height: obj.height,
-          })
-        );
-      } else if (obj.type === "stripedRect") {
-        gameObjects.push(
-          new StripedRectObject({
-            x: obj.x,
-            y: obj.y,
-            width: obj.width,
-            height: obj.height,
-          })
-        );
-      } else if (obj.type === "portal") {
-        gameObjects.push(
-          new Portal({
-            x: obj.x,
-            y: obj.y,
-            width: obj.width,
-            height: obj.height,
-            color: obj.color,
-            portalId: obj.portalId,
-          })
-        );
-      } else if (obj.type === "segment") {
-        gameObjects.push(
-          new Segment({
-            x1: obj.x1,
-            y1: obj.y1,
-            x2: obj.x2,
-            y2: obj.y2,
-          })
-        );
-      } else if (obj.type === "poly" || obj.type === "complex") {
-        // points provided as normalized coordinates [{x,y}, ...]
-        gameObjects.push(
-          new ComplexObject({
-            points: obj.points || [],
-            closed: !!obj.closed,
-            isStatic: obj.isStatic !== false,
-          })
-        );
-      } else if (obj.type === "rotor") {
-        const spinMode = obj.spinMode === "auto" ? "auto" : "free";
-        gameObjects.push(
-          new Rotor({
-            points: obj.points || [],
-            closed: obj.closed !== false,
-            x: obj.x,
-            y: obj.y,
-            radius: obj.radius,
-            pointCount: obj.pointCount,
-            axisX: obj.axisX,
-            axisY: obj.axisY,
-            spinMode,
-            motorSpeed: obj.motorSpeed,
-            maxMotorTorque: obj.maxMotorTorque,
-            isStatic: obj.isStatic === true,
-          })
-        );
-      } else if (obj.type === "text") {
-        gameObjects.push(
-          new TextLabel({
-            x: obj.x,
-            y: obj.y,
-            text: obj.text,
-            fontSize: obj.fontSize,
-            color: obj.color,
-            fontFamily: obj.fontFamily,
-          })
-        );
-      }
-      // future: handle other types (star, obstacle, etc.)
-    }
-  }
+  gameObjects = createGameObjects(currentStage?.objects);
 
   createGameExitButton();
   createGameRetryButton();
@@ -1975,108 +1639,37 @@ function tick(timestamp = 0) {
     }
   }
 
-  // Check collisions between balls and stars (simple circle overlap)
-  if (gameObjects && gameObjects.length) {
-    const balls = gameObjects.filter((g) => g instanceof Ball);
-    const portals = gameObjects.filter((g) => g instanceof Portal);
+  const { allStarsCollected } = processBallObjectInteractions({
+    gameObjects,
+    canvasWidth,
+    canvasHeight,
+    onStarCollected: (star, ball) => {
+      playStarCollectSound();
+      console.debug("star collected", star, "by", ball);
+    },
+  });
 
-    for (const ball of balls) {
-      if (ball.physicsBody) {
-        const bx = ball.screenX != null ? ball.screenX : ball.nx * canvasWidth;
-        const by = ball.screenY != null ? ball.screenY : ball.ny * canvasHeight;
-        const br =
-          ball.physicalRadius ??
-          (ball.radius > 1 ? ball.radius : ball.radius * Math.min(canvasWidth, canvasHeight));
-
-        for (const portal of portals) {
-          if (ball._portalCooldownPortalId === portal.portalId) {
-            continue;
-          }
-
-          const px = portal.screenX != null ? portal.screenX : portal.nx * canvasWidth;
-          const py = portal.screenY != null ? portal.screenY : portal.ny * canvasHeight;
-          const pw = portal.width > 1 ? portal.width : portal.width * canvasWidth;
-          const ph = portal.height > 1 ? portal.height : portal.height * canvasHeight;
-          const rx = pw / 2 + br;
-          const ry = ph / 2 + br;
-          const dx = bx - px;
-          const dy = by - py;
-          if (rx > 0 && ry > 0 && (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) <= 1) {
-            const target = portals.find((other) => other.portalId !== portal.portalId);
-            if (target && ball.physicsBody) {
-              const velocity = ball.physicsBody.getLinearVelocity();
-              const angularVelocity =
-                typeof ball.physicsBody.getAngularVelocity === "function"
-                  ? ball.physicsBody.getAngularVelocity()
-                  : 0;
-              const targetX = target.screenX != null ? target.screenX : target.nx * canvasWidth;
-              const targetY = target.screenY != null ? target.screenY : target.ny * canvasHeight;
-              try {
-                ball.physicsBody.setTransform(
-                  planck.Vec2(targetX, targetY),
-                  ball.physicsBody.getAngle()
-                );
-                ball.physicsBody.setLinearVelocity(velocity);
-                if (typeof ball.physicsBody.setAngularVelocity === "function") {
-                  ball.physicsBody.setAngularVelocity(angularVelocity);
-                }
-                ball._portalCooldownPortalId = target.portalId;
-              } catch (e) {
-                console.warn("portal teleport failed:", e);
-              }
-            }
-            break;
-          }
-        }
+  // If all stars collected, signal stage clear
+  if (allStarsCollected && !stageCleared) {
+    stageCleared = true;
+    drawingAudio.stop();
+    const currentMode = currentDifficulty;
+    syncProgressForMode(currentMode).catch((err) => {
+      console.error("[Sync] 데이터 동기화 실패:", err);
+    });
+    stageClearOverlayTimer = window.setTimeout(() => {
+      stageClearOverlayTimer = null;
+      playStageClearSound();
+      showStageClearOverlay("Stage Cleared!");
+    }, 750);
+    if (currentStage && typeof currentStage.onClear === "function") {
+      try {
+        currentStage.onClear();
+      } catch (e) {
+        console.warn("currentStage.onClear failed:", e);
       }
     }
-
-    const stars = gameObjects.filter((g) => g instanceof Star && !g.collected);
-    for (const star of stars) {
-      for (const ball of balls) {
-        const bx = ball.screenX != null ? ball.screenX : ball.nx * canvasWidth;
-        const by = ball.screenY != null ? ball.screenY : ball.ny * canvasHeight;
-        const br =
-          ball.physicalRadius ??
-          (ball.radius > 1 ? ball.radius : ball.radius * Math.min(canvasWidth, canvasHeight));
-        const sx = star.screenX != null ? star.screenX : star.nx * canvasWidth;
-        const sy = star.screenY != null ? star.screenY : star.ny * canvasHeight;
-        const sr =
-          star.radius > 1 ? star.radius : star.radius * Math.min(canvasWidth, canvasHeight);
-        const d = Math.hypot(bx - sx, by - sy);
-        if (d <= br + sr) {
-          star.collected = true;
-          playStarCollectSound();
-          console.debug("star collected", star, "by", ball);
-          // optional: remove from gameObjects array later
-          break;
-        }
-      }
-    }
-
-    // If all stars collected, signal stage clear
-    const remaining = gameObjects.filter((g) => g instanceof Star && !g.collected);
-    if (remaining.length === 0 && !stageCleared) {
-      stageCleared = true;
-      stopDrawingAudio();
-      const currentMode = currentDifficulty;
-      syncProgressForMode(currentMode).catch((err) => {
-        console.error("[Sync] 데이터 동기화 실패:", err);
-      });
-      stageClearOverlayTimer = window.setTimeout(() => {
-        stageClearOverlayTimer = null;
-        playStageClearSound();
-        showStageClearOverlay("Stage Cleared!");
-      }, 750);
-      if (currentStage && typeof currentStage.onClear === "function") {
-        try {
-          currentStage.onClear();
-        } catch (e) {
-          console.warn("currentStage.onClear failed:", e);
-        }
-      }
-      window.dispatchEvent(new CustomEvent("stageClear", { detail: { stage: currentStage } }));
-    }
+    window.dispatchEvent(new CustomEvent("stageClear", { detail: { stage: currentStage } }));
   }
   render();
   verifyGamePageMusicAfterFirstRender(isGameActive);
@@ -2201,10 +1794,7 @@ function startDrawing(event) {
   stageEventCount += 1;
   isDrawing = true;
   lastPoint = getPoint(event);
-  startDrawingAudio();
-  scheduleDrawingAudioIdleStop();
-  lastDrawingAudioPoint = lastPoint;
-  lastDrawingAudioTime = performance.now();
+  drawingAudio.start(lastPoint);
   currentStroke = [];
   // reset preview cache for a new stroke
   if (previewCtx) previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -2219,11 +1809,11 @@ function continueDrawing(event) {
   }
 
   const currentPoint = getPoint(event);
-  updateDrawingAudio(event);
+  drawingAudio.update(getPoint(event));
   currentStroke.push(currentPoint);
   lastPoint = currentPoint;
   updateDrawLimitProgressUI({
-    previewLength: totalDrawnLength + getLogicalStrokeDistance(currentStroke),
+    previewLength: totalDrawnLength + getLogicalStrokeDistance(currentStroke, coordinateSystem),
   });
   // mark preview cache dirty so it'll be re-generated once per change
   currentStrokePreviewDirty = true;
@@ -2234,7 +1824,7 @@ function stopDrawing(event) {
     return;
   }
 
-  finishDrawingAudio();
+  drawingAudio.stop();
 
   if (stageCleared) {
     isDrawing = false;
@@ -2284,10 +1874,17 @@ function stopDrawing(event) {
   // If the user drew a very short stroke (tiny jitter), treat it as a click.
   const CLICK_DISTANCE_THRESHOLD = 6; // pixels
   const totalDist = getStrokeDistance(currentStroke);
-  const logicalTotalDist = getLogicalStrokeDistance(currentStroke);
+  const logicalTotalDist = getLogicalStrokeDistance(currentStroke, coordinateSystem);
 
   const lineLengthLimit = getLineLengthLimit();
-  if (lineLengthLimit !== null) {
+  if (
+    exceedsLineLengthLimit({
+      totalDrawnLength,
+      stroke: currentStroke,
+      lineLengthLimit,
+      coordinateSystem,
+    })
+  ) {
     const nextTotalDrawnLength = totalDrawnLength + logicalTotalDist;
     if (nextTotalDrawnLength > lineLengthLimit) {
       console.debug(
@@ -2428,7 +2025,7 @@ function stopDrawing(event) {
     if (challengeModeEnabled) {
       challengeModeStrokeCount += 1;
     }
-    totalDrawnLength += getLogicalStrokeDistance(currentStroke);
+    totalDrawnLength += getLogicalStrokeDistance(currentStroke, coordinateSystem);
     updateDrawLimitProgressUI();
   } else if (!shouldCreateStroke && currentStroke) {
     // 선이 취소됐을 때 (공이나 striped rect와 만났을 때) 진행 바 리셋
