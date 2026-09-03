@@ -3,6 +3,8 @@
   --hud-padding: clamp(0.7rem, 1.3vw, 1rem);
   --stage-size: clamp(5.2rem, 15vw, 8.8rem);
   --body-font-size: clamp(15px, 1.1vw + 0.8rem, 18px);
+  --screen-corner-inset: clamp(0.8rem, 2vw, 1.2rem);
+  --screen-corner-padding: 0.5rem;
 
   /* Shared color palette */
   --ink: #4f3b24;
@@ -23,6 +25,8 @@
     --hud-padding: clamp(0.3rem, 0.6vw, 0.5rem);
     --stage-size: clamp(3.5rem, 12vw, 5rem);
     --body-font-size: clamp(12px, 1vw, 14px);
+    --screen-corner-inset: clamp(0.4rem, 1.2vw, 0.7rem);
+    --screen-corner-padding: 0.25rem;
   }
 }
 
