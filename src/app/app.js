@@ -6,6 +6,8 @@ import { createActionIconCanvas, createMuteSlashCanvas } from "../game/ui/uiIcon
 import { getAudioSettings, setAudioSettings } from "./audioSettings.js";
 import { initializeOrientationPrompt } from "./orientationPrompt.js";
 import { shouldRevealStartPage } from "./startupState.js";
+import { INK, PAPER } from "../theme.js";
+import { drawRoughFrameRect } from "../game/ui/roughFrame.js";
 import {
   getChallengeModePreference,
   setChallengeModePreference,
@@ -137,13 +139,10 @@ function createChallengeModeTooltip() {
   svg.style.pointerEvents = "none";
 
   const rc = rough.svg(svg);
-  const roughFrame = rc.rectangle(8, 8, 202, 66, {
-    stroke: "#4f3b24",
+  const roughFrame = drawRoughFrameRect(rc, 8, 8, 202, 66, {
     strokeWidth: 2,
     roughness: 2,
-    bowing: 1.2,
     fill: "rgba(250, 244, 216, 0.96)",
-    fillStyle: "solid",
   });
   svg.appendChild(roughFrame);
 
@@ -497,12 +496,12 @@ audioVolumeControls.forEach((control) => {
       const trackRough = rough.canvas(trackCanvas);
       const trackInset = 7;
       trackRough.line(trackInset, 9, trackWidth - trackInset, 9, {
-        stroke: "#4f3b24",
+        stroke: INK,
         strokeWidth: 2,
         roughness: 1.4,
       });
       trackRough.line(trackInset, 11, trackWidth - trackInset, 11, {
-        stroke: "#4f3b24",
+        stroke: INK,
         strokeWidth: 1,
         roughness: 1.4,
       });
@@ -526,9 +525,9 @@ audioVolumeControls.forEach((control) => {
     thumbContext.setTransform(dpr, 0, 0, dpr, 0, 0);
     const thumbRough = rough.canvas(thumbCanvas);
     thumbRough.ellipse(9, 9, 13, 13, {
-      stroke: "#4f3b24",
+      stroke: INK,
       strokeWidth: 2,
-      fill: "#f5ebcf",
+      fill: PAPER,
       fillStyle: "solid",
       roughness: 1.4,
     });

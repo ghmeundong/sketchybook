@@ -1,6 +1,7 @@
 import rough from "roughjs";
 import { getPolygonTextureLayout, getCanvasVisualAnchor } from "../engine/core/geometry.js";
 import { createPolygonBody, createEdgeBody } from "../engine/physics/physics.js";
+import { INK } from "../../theme.js";
 
 export class ComplexObject {
   constructor({ points = [], closed = false, isStatic = true } = {}) {
@@ -40,7 +41,7 @@ export class ComplexObject {
 
     if (this.closed && pts.length > 2) {
       offRough.polygon(normalizedPts, {
-        stroke: "#4f3b24",
+        stroke: INK,
         strokeWidth: 3,
         roughness: 2.6,
         fill: "#fff6eb",
@@ -52,7 +53,7 @@ export class ComplexObject {
       const a = normalizedPts[i];
       const b = normalizedPts[i + 1];
       offRough.line(a.x, a.y, b.x, b.y, {
-        stroke: "#4f3b24",
+        stroke: INK,
         strokeWidth: 3,
         roughness: 2.6,
       });
@@ -61,7 +62,7 @@ export class ComplexObject {
       const a = normalizedPts[pts.length - 1];
       const b = normalizedPts[0];
       offRough.line(a.x, a.y, b.x, b.y, {
-        stroke: "#4f3b24",
+        stroke: INK,
         strokeWidth: 3,
         roughness: 2.6,
       });

@@ -1,4 +1,5 @@
 import rough from "roughjs";
+import { INK } from "../../theme.js";
 
 export class Platform {
   constructor(opts = {}) {
@@ -30,7 +31,7 @@ export class Platform {
     const x = padding;
     const y = padding;
     offRough.rectangle(x, y, w, h, {
-      stroke: "#4f3b24",
+      stroke: INK,
       strokeWidth: 2,
       fill: "transparent",
       fillStyle: "solid",

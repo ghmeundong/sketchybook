@@ -1,4 +1,5 @@
 import rough from "roughjs";
+import { INK } from "../../theme.js";
 
 export function createRoughStarCanvas(stars = 0, { size = 24, gap = 6 } = {}) {
   const safeStars = Math.max(0, Math.min(3, Number.isFinite(stars) ? Math.round(stars) : 0));
@@ -49,7 +50,7 @@ export function createRoughStarCanvas(stars = 0, { size = 24, gap = 6 } = {}) {
   return canvas;
 }
 
-export function createMuteSlashCanvas({ w = 34, h = 28, stroke = "#4f3b24" } = {}) {
+export function createMuteSlashCanvas({ w = 34, h = 28, stroke = INK } = {}) {
   const canvas = document.createElement("canvas");
   const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
   canvas.width = w * dpr;
@@ -73,7 +74,7 @@ export function createMuteSlashCanvas({ w = 34, h = 28, stroke = "#4f3b24" } = {
 
 export function createActionIconCanvas(
   type,
-  { w = 64, h = 40, stroke = "#4f3b24", fill = "#4f3b24", strokeWidth = 3, muted = false } = {}
+  { w = 64, h = 40, stroke = INK, fill = INK, strokeWidth = 3, muted = false } = {}
 ) {
   const canvas = document.createElement("canvas");
   const dpr = Math.min(window.devicePixelRatio || 1, 1.5);

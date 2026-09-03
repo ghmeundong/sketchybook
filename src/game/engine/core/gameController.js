@@ -46,6 +46,7 @@ import {
   updateStageSelectionPage,
   refreshStageSelectionButtons,
 } from "../../ui/selectionScreen.js";
+import { INK } from "../../../theme.js";
 
 state.currentDifficulty = getInitialDifficulty();
 state.difficultyRules = getDifficultyRules(state.currentDifficulty);
@@ -149,7 +150,7 @@ export function updateDrawLimitProgressUI({ previewLength = state.totalDrawnLeng
 
     rcTrack.rectangle(padding, trackY, trackW, trackH, {
       fill: "rgba(79, 59, 36, 0.08)",
-      stroke: "#4f3b24",
+      stroke: INK,
       strokeWidth: 1.2,
       roughness: 1.8,
       bowing: 1.2,
@@ -173,7 +174,7 @@ export function updateDrawLimitProgressUI({ previewLength = state.totalDrawnLeng
   if (fillW > 0) {
     rcFill.rectangle(padding, trackY, fillW, trackH, {
       fill: "rgba(160, 110, 55, 0.72)",
-      stroke: "#4f3b24",
+      stroke: INK,
       strokeWidth: 1,
       roughness: 2.2,
       bowing: 1.4,

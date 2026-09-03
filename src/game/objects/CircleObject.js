@@ -1,4 +1,5 @@
 import rough from "roughjs";
+import { INK } from "../../theme.js";
 
 export class CircleObject {
   constructor(opts = {}) {
@@ -36,9 +37,9 @@ export class CircleObject {
     const cx = size / 2;
     const cy = size / 2;
     offRough.circle(cx, cy, diameter, {
-      stroke: "#4f3b24",
+      stroke: INK,
       strokeWidth: 2.2,
-      fill: "#4f3b24",
+      fill: INK,
       fillStyle: "hachure",
       roughness: 1.3,
     });

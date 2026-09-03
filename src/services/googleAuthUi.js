@@ -2,6 +2,8 @@ import rough from "roughjs";
 import { syncProgressToServerOnLogin } from "./auth.js";
 import { buildApiUrl } from "./api.js";
 import { createActionIconCanvas } from "../game/ui/uiIcons.js";
+import { drawRoughFrameRect } from "../game/ui/roughFrame.js";
+import { INK, DANGER } from "../theme.js";
 
 /* global google */
 
@@ -18,11 +20,11 @@ function renderAuthStatus(message, isError = false) {
     status.style.marginTop = "0.6rem";
     status.style.fontSize = "0.9rem";
     status.style.lineHeight = "1.3";
-    status.style.color = isError ? "#c0392b" : "#4f3b24";
+    status.style.color = isError ? DANGER : INK;
     container.appendChild(status);
   }
   status.textContent = message;
-  status.style.color = isError ? "#c0392b" : "#4f3b24";
+  status.style.color = isError ? DANGER : INK;
 }
 
 function showSignedIn(user) {
@@ -58,7 +60,7 @@ function showSignedIn(user) {
   label.textContent = user.name || user.email || "Signed in";
   label.style.fontSize = "0.82rem";
   label.style.lineHeight = "1.2";
-  label.style.color = "#4f3b24";
+  label.style.color = INK;
 
   info.appendChild(signOutBtn);
   info.appendChild(label);
@@ -127,13 +129,13 @@ function drawRoughBorderAround(buttonEl, svgEl) {
 
     const rc = rough.svg(svgEl);
     const padding = 6;
-    const rectEl = rc.rectangle(padding / 2, padding / 2, width - padding, height - padding, {
-      stroke: "#4f3b24",
-      strokeWidth: 1.6,
-      roughness: 1.6,
-      bowing: 1.2,
-      fill: "transparent",
-    });
+    const rectEl = drawRoughFrameRect(
+      rc,
+      padding / 2,
+      padding / 2,
+      width - padding,
+      height - padding
+    );
     svgEl.appendChild(rectEl);
     // Position svg to wrap the button
     svgEl.style.width = `${rect.width + 12}px`;

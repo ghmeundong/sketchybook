@@ -7,6 +7,8 @@ import {
   renderStageSelectionButtons,
   renderStageScoreBadge,
 } from "./stageProgress.js";
+import { INK, FONT_DISPLAY } from "../../theme.js";
+import { drawRoughFrameRect } from "./roughFrame.js";
 
 export function createStageClearOverlay({
   board,
@@ -55,12 +57,10 @@ export function createStageClearOverlay({
   frameCanvas.style.zIndex = "0";
 
   const rc = rough.canvas(frameCanvas);
-  rc.rectangle(12, 12, frameCanvas.width - 24, frameCanvas.height - 24, {
-    stroke: "#4f3b24",
+  drawRoughFrameRect(rc, 12, 12, frameCanvas.width - 24, frameCanvas.height - 24, {
     strokeWidth: 3.2,
     roughness: 1.7,
     bowing: 1.6,
-    fill: "transparent",
   });
 
   overlay.appendChild(frameCanvas);
@@ -87,12 +87,9 @@ export function createStageClearOverlay({
     svg.style.width = "100%";
     svg.style.height = "100%";
     const rcBtn = rough.svg(svg);
-    rcBtn.rectangle(4, 4, 92, 32, {
-      stroke: "#4f3b24",
+    drawRoughFrameRect(rcBtn, 4, 4, 92, 32, {
       strokeWidth: 1.8,
       roughness: 1.5,
-      bowing: 1.2,
-      fill: "transparent",
     });
     btn.appendChild(svg);
   };
@@ -208,9 +205,9 @@ export function renderStageScoreStars({ message, stars = 0, onStarAppear }) {
   scoreContainer.style.alignItems = "center";
   scoreContainer.style.gap = "0.45rem";
   scoreContainer.style.marginTop = "0.7rem";
-  scoreContainer.style.fontFamily = "MyeongjoFont, serif";
+  scoreContainer.style.fontFamily = FONT_DISPLAY;
   scoreContainer.style.fontSize = "1.05rem";
-  scoreContainer.style.color = "#4f3b24";
+  scoreContainer.style.color = INK;
   scoreContainer.style.fontWeight = "800";
   scoreContainer.style.letterSpacing = "0.04em";
   scoreContainer.style.textShadow = "0 1px 0 rgba(255,255,255,0.4)";

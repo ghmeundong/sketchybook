@@ -12,6 +12,7 @@ import {
   setActivePage,
   startStage,
 } from "../engine/core/gameController.js";
+import { drawRoughFrameRect } from "./roughFrame.js";
 
 function setHelpPanelVisible(visible = true) {
   if (!dom.helpPanel || !dom.helpToggle) return;
@@ -32,13 +33,9 @@ function drawRoughFrame(card) {
   svg.style.overflow = "visible";
 
   const rc = rough.svg(svg);
-  const shape = rc.rectangle(8, 8, 84, 84, {
-    stroke: "#4f3b24",
+  const shape = drawRoughFrameRect(rc, 8, 8, 84, 84, {
     strokeWidth: 1.3,
-    roughness: 1.6,
-    bowing: 1.2,
     fill: undefined,
-    fillStyle: "solid",
   });
 
   svg.appendChild(shape);
