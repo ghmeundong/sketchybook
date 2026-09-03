@@ -2284,10 +2284,11 @@ function stopDrawing(event) {
   // If the user drew a very short stroke (tiny jitter), treat it as a click.
   const CLICK_DISTANCE_THRESHOLD = 6; // pixels
   const totalDist = getStrokeDistance(currentStroke);
+  const logicalTotalDist = getLogicalStrokeDistance(currentStroke);
 
   const lineLengthLimit = getLineLengthLimit();
   if (lineLengthLimit !== null) {
-    const nextTotalDrawnLength = totalDrawnLength + totalDist;
+    const nextTotalDrawnLength = totalDrawnLength + logicalTotalDist;
     if (nextTotalDrawnLength > lineLengthLimit) {
       console.debug(
         `Total draw length too long (${Math.round(nextTotalDrawnLength)}px > ${Math.round(lineLengthLimit)}px), rejecting stroke`
