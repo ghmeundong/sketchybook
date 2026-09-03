@@ -7,7 +7,7 @@ import { getAudioSettings, setAudioSettings } from "./audioSettings.js";
 import { initializeOrientationPrompt } from "./orientationPrompt.js";
 import { shouldRevealStartPage } from "./startupState.js";
 import { INK, PAPER } from "../theme.js";
-import { drawRoughFrameRect } from "../game/ui/roughFrame.js";
+import { attachRoughFrame, drawRoughFrameRect, refreshRoughFrame } from "../game/ui/roughFrame.js";
 import {
   getChallengeModePreference,
   setChallengeModePreference,
@@ -39,6 +39,11 @@ const pageLoader = document.getElementById("page-loader");
 const gameStartSound = new Audio(gameStartSoundUrl);
 gameStartSound.preload = "auto";
 gameStartSound.volume = getAudioSettings().sfx;
+const settingsOverlay = document.createElement("div");
+settingsOverlay.className = "settings-overlay";
+settingsOverlay.hidden = true;
+settingsOverlay.setAttribute("aria-hidden", "true");
+document.body.appendChild(settingsOverlay);
 window.addEventListener("sketchybook:audio-settings-change", (event) => {
   const sfxVolume = event.detail?.sfx;
   if (Number.isFinite(sfxVolume)) gameStartSound.volume = sfxVolume;
@@ -102,14 +107,28 @@ function maybeRevealStartPage() {
 function setSettingsPanelVisible(visible = true) {
   if (!settingsPanel || !settingsToggle) return;
   settingsPanel.hidden = !visible;
+  settingsPanel.classList.toggle("is-overlay", visible);
+  settingsOverlay.hidden = !visible;
+  settingsOverlay.setAttribute("aria-hidden", String(!visible));
+  document.body.classList.toggle("settings-is-open", visible);
   settingsToggle.setAttribute("aria-expanded", String(visible));
 }
 
 function setHelpPanelVisible(visible = true) {
   if (!helpPanel || !helpToggle) return;
   helpPanel.hidden = !visible;
+  if (visible) {
+    window.requestAnimationFrame(() => refreshRoughFrame(helpPanel));
+  }
   helpToggle.setAttribute("aria-expanded", String(visible));
 }
+
+attachRoughFrame(helpPanel, {
+  inset: 0,
+  outside: 5,
+  strokeWidth: 1.8,
+  roughness: 1.8,
+});
 
 function syncChallengeModeToggleUI() {
   if (!challengeModeToggle) return;
@@ -258,6 +277,21 @@ function createInsaneStartWarningModal() {
   card.appendChild(actions);
   modal.appendChild(card);
   document.body.appendChild(modal);
+
+  attachRoughFrame(card, {
+    inset: 0,
+    outside: 7,
+    strokeWidth: 2.2,
+    roughness: 1.8,
+  });
+  card.querySelectorAll(".insane-warning-button").forEach((button) => {
+    attachRoughFrame(button, {
+      inset: 0,
+      outside: 3,
+      strokeWidth: 1.5,
+      roughness: 1.6,
+    });
+  });
 
   return modal;
 }
@@ -646,6 +680,10 @@ if (settingsClose && settingsPanel) {
     setSettingsPanelVisible(false);
   });
 }
+
+settingsOverlay.addEventListener("click", () => {
+  setSettingsPanelVisible(false);
+});
 
 document.addEventListener("click", (event) => {
   const target = event.target;
