@@ -38,7 +38,7 @@ npm run normalize:audio
 
 The generator currently assumes a 16-bit PCM WAV. It evaluates the selected loop window in 5 ms RMS windows, calculates the average RMS as the target, and applies interpolated per-window gain to the selected audio range. Gain is clamped between `0.7` and `1.5` to avoid excessive amplification or attenuation. The rest of the source file is copied unchanged.
 
-The selected loop window is `0.37` to `0.53` of the source duration. The same normalized-time window is used by `src/game/main.js` during gameplay. Keep these values synchronized when changing the loop selection.
+The selected loop window is `0.37` to `0.53` of the source duration. The same normalized-time window is used by `src/game/audio/drawingAudioInstance.js` during gameplay. Keep these values synchronized when changing the loop selection.
 
 At runtime, the game uses one `Audio` instance:
 
@@ -57,14 +57,14 @@ npm run build:electron
 
 ## Audio Settings and Feedback
 
-Music and SFX levels are managed by `src/audioSettings.js` and persisted in browser storage:
+Music and SFX levels are managed by `src/app/audioSettings.js` and persisted in browser storage:
 
 - Music controls the looping `Brain-Teaser-2.ogg` background track.
 - SFX controls UI clicks, drawing audio, star collection, the stage-clear stamp, and score-star coin sounds.
 - Slider input updates volume immediately.
 - The Music and SFX icons toggle mute; clicking again restores the last non-zero volume.
 
-Stage feedback timing is owned by `src/game/main.js`:
+Stage feedback timing is owned by `src/game/engine/core/gameController.js` and `src/game/audio/gameAudio.js`:
 
 - Star collection plays `liecio-achive-sound-132273.mp3` immediately.
 - The clear overlay and stamp sound appear after the configured `750 ms` delay.
