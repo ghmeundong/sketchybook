@@ -330,12 +330,12 @@
    corner-positioning styles must live behind a separate opt-in class. */
 .game-hud-corner-btn {
   position: absolute;
-  top: 1rem;
+  top: var(--screen-corner-inset);
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem;
+  padding: var(--screen-corner-padding);
   background: transparent;
   border: none;
   cursor: pointer;

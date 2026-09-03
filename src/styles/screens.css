@@ -582,10 +582,10 @@ body.settings-is-open .start-screen-actions {
 
 .selection-exit-btn {
   position: absolute;
-  top: clamp(0.8rem, 2vw, 1.2rem);
-  left: clamp(0.8rem, 2vw, 1.2rem);
+  top: var(--screen-corner-inset);
+  left: var(--screen-corner-inset);
   z-index: 3;
-  padding: 0.4rem;
+  padding: var(--screen-corner-padding);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -954,9 +954,9 @@ body.settings-is-open .start-screen-actions {
   }
 
   .selection-exit-btn {
-    top: clamp(0.4rem, 1.2vw, 0.7rem);
-    left: clamp(0.4rem, 1.2vw, 0.7rem);
-    padding: 0.25rem;
+    top: var(--screen-corner-inset);
+    left: var(--screen-corner-inset);
+    padding: var(--screen-corner-padding);
   }
 
   /* Mobile landscape specific grid */
