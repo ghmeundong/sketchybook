@@ -15,6 +15,7 @@ export const state = {
   // stage lifecycle
   currentStage: null,
   currentStageNumber: 1,
+  isPlayground: false,
   stageCleared: false,
   stageHasSimulated: false,
   stageEventCount: 0,
@@ -41,6 +42,8 @@ export const state = {
   currentStroke: null,
   physicsStrokes: [],
   gameObjects: [],
+  playgroundUndoStack: [],
+  playgroundRedoStack: [],
   lastPhysicsTime: 0,
   totalDrawnLength: 0,
   drawLimitProgressTrackDrawn: false,

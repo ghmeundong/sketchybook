@@ -46,6 +46,10 @@ import {
   updateStageSelectionPage,
   refreshStageSelectionButtons,
 } from "../../ui/selectionScreen.js";
+import {
+  initPlaygroundHistoryButtons,
+  removePlaygroundHistoryButtons,
+} from "../../ui/playgroundHistory.js";
 import { INK } from "../../../theme.js";
 
 state.currentDifficulty = getInitialDifficulty();
@@ -221,6 +225,8 @@ export function resetStageState() {
   resetPhysicsWorld();
   state.gameObjects = [];
   state.physicsStrokes = [];
+  state.playgroundUndoStack = [];
+  state.playgroundRedoStack = [];
   state.currentStroke = null;
   state.isDrawing = false;
   state.lastPoint = null;
@@ -247,6 +253,7 @@ export function resetStageState() {
   hideStageClearOverlay();
   hideGameRetryButton();
   hideGameExitButton();
+  removePlaygroundHistoryButtons();
 }
 
 export function updateStageUrl(stageNumber = null) {
@@ -388,7 +395,10 @@ export function createGameExitButton() {
   gameExitButton.appendChild(createActionIconCanvas("exit", { w: 60, h: 48, strokeWidth: 2.5 }));
   gameExitButton.addEventListener("click", async () => {
     hideStageClearOverlay();
-    setActivePage(dom.selectionPage);
+    setActivePage(state.isPlayground ? dom.startPage : dom.selectionPage);
+    if (state.isPlayground) {
+      window.dispatchEvent(new Event("sketchybook:show-start"));
+    }
     if (state.animationFrameId) cancelAnimationFrame(state.animationFrameId);
   });
 
@@ -407,8 +417,12 @@ export function createGameRetryButton() {
   gameRetryButton.appendChild(createActionIconCanvas("retry", { w: 60, h: 48, strokeWidth: 2.5 }));
   gameRetryButton.addEventListener("click", async () => {
     hideStageClearOverlay();
-    await initializeStage(state.currentStageNumber);
-    resizeCanvas();
+    if (state.isPlayground) {
+      await startPlayground();
+    } else {
+      await initializeStage(state.currentStageNumber);
+      resizeCanvas();
+    }
   });
 
   dom.board.appendChild(gameRetryButton);
@@ -440,12 +454,37 @@ export async function startStage(stageNumber) {
     return;
   }
   state.currentStageNumber = stageNumber;
+  state.isPlayground = false;
   setActivePage(dom.playPage);
   await tryEnterFullscreen();
   updateStageUrl(stageNumber);
   await initializeStage(stageNumber);
   resizeCanvas();
 }
+
+export async function startPlayground() {
+  state.isPlayground = true;
+  state.currentDifficulty = DIFFICULTY_LEVELS.EASY;
+  state.difficultyRules = getDifficultyRules(DIFFICULTY_LEVELS.EASY);
+  state.currentStageNumber = 1;
+  setActivePage(dom.playPage);
+  await tryEnterFullscreen();
+  updateStageUrl();
+  resetStageState();
+  state.currentStage = null;
+  state.gameObjects = [];
+  state.physicsStrokes = [];
+  createStageClearOverlay();
+  createGameExitButton();
+  createGameRetryButton();
+  initPlaygroundHistoryButtons();
+  updateDrawLimitProgressUI();
+  resizeCanvas();
+}
+
+window.addEventListener("sketchybook:start-playground", () => {
+  void startPlayground();
+});
 
 window.addEventListener("sketchybook:start-game", async (event) => {
   const requestedDifficulty = event.detail?.difficulty;
