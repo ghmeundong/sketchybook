@@ -102,7 +102,7 @@
     inset 0 -3px 0 rgb(17 26 58 / 26%),
     2px 3px 0 rgb(44 32 20 / 24%);
   color: rgb(255 248 232 / 94%);
-  font-family: MyeongjoFont, serif;
+  font-family: var(--font-display);
   font-size: clamp(1rem, 3vw, 1.35rem);
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -246,7 +246,7 @@
   margin: 0 0 0.75rem;
   font-size: clamp(1.55rem, 3vw, 2.25rem);
   font-weight: 800;
-  color: #4f3b24;
+  color: var(--ink);
   position: relative;
   z-index: 1;
 }
@@ -255,7 +255,7 @@
   margin: 0;
   font-size: clamp(1rem, 2vw, 1.2rem);
   line-height: 1.5;
-  color: #4f3b24;
+  color: var(--ink);
 }
 
 .stage-clear-actions {
@@ -275,7 +275,7 @@
   border: none;
   padding: var(--pad-y) var(--pad-x);
   font-weight: 700;
-  color: #4f3b24;
+  color: var(--ink);
   position: relative;
   cursor: pointer;
   display: inline-flex;
@@ -316,42 +316,54 @@
   width: clamp(1rem, 2.2vw, 1.5rem);
   height: clamp(1rem, 2.2vw, 1.5rem);
   border-radius: 999px;
-  background: #4f3b24;
+  background: var(--ink);
 }
 
 .game-goal {
   width: clamp(1.1rem, 2.4vw, 1.75rem);
   height: clamp(1.1rem, 2.4vw, 1.75rem);
-  border: 2px solid #4f3b24;
+  border: 2px solid var(--ink);
   border-radius: 50%;
 }
 
-.game-exit-btn {
-  opacity: 0.7;
-  transition: opacity 150ms ease;
+/* .settings-toggle also reuses .game-exit-btn for its icon look, so the
+   corner-positioning styles must live behind a separate opt-in class. */
+.game-hud-corner-btn {
+  position: absolute;
+  top: 1rem;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
 }
 
-.game-exit-btn:hover,
-.game-exit-btn:focus {
-  opacity: 1;
-  outline: none;
+.game-exit-btn.game-hud-corner-btn {
+  left: 1rem;
 }
 
-.game-exit-btn:active {
-  opacity: 0.85;
+.game-retry-btn.game-hud-corner-btn {
+  right: 1rem;
 }
 
+.game-exit-btn,
 .game-retry-btn {
   opacity: 0.7;
   transition: opacity 150ms ease;
 }
 
+.game-exit-btn:hover,
+.game-exit-btn:focus,
 .game-retry-btn:hover,
 .game-retry-btn:focus {
   opacity: 1;
   outline: none;
 }
 
+.game-exit-btn:active,
 .game-retry-btn:active {
   opacity: 0.85;
 }

@@ -47,7 +47,7 @@
 .settings-panel-close {
   border: none;
   background: transparent;
-  color: #4f3b24;
+  color: var(--ink);
   padding: 0.4rem;
   border-radius: 0;
   font: inherit;
@@ -83,8 +83,8 @@
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: #4f3b24;
-  font-family: MyeongjoFont, serif;
+  color: var(--ink);
+  font-family: var(--font-display);
   font-size: 1.1rem;
   font-weight: 800;
   line-height: 1;
@@ -123,9 +123,9 @@
   justify-content: center;
   cursor: pointer;
   background: transparent;
-  color: #4f3b24;
+  color: var(--ink);
   border: none;
-  font-family: MyeongjoFont, serif;
+  font-family: var(--font-display);
   font-weight: 700;
   font-size: 0.95rem;
   text-transform: uppercase;
@@ -181,7 +181,7 @@
   gap: 0.35rem;
   width: min(16rem, 75vw);
   padding: 0.75rem 0.9rem;
-  color: #4f3b24;
+  color: var(--ink);
   background: rgb(250 244 216 / 94%);
   border: 1px solid rgb(79 59 36 / 38%);
   box-shadow: 2px 3px 0 rgb(79 59 36 / 12%);
@@ -205,7 +205,7 @@
 
 .help-panel-title {
   margin-bottom: 0.2rem !important;
-  font-family: MyeongjoFont, serif;
+  font-family: var(--font-display);
   font-size: 0.95rem !important;
   font-weight: 800;
   text-align: center !important;
@@ -226,13 +226,13 @@
   margin: 0;
   font-size: 0.95rem;
   font-weight: 800;
-  color: #4f3b24;
+  color: var(--ink);
 }
 
 .settings-panel-text {
   margin: 0;
   font-size: 0.9rem;
-  color: #6d5940;
+  color: var(--ink-soft);
 }
 
 .settings-option {
@@ -250,7 +250,7 @@
   align-items: stretch;
   gap: 0.25rem;
   width: 100%;
-  color: #4f3b24;
+  color: var(--ink);
 }
 
 .settings-volume-label {
@@ -389,8 +389,8 @@
   width: 100%;
   height: 100%;
   padding: 0.6rem 0.75rem;
-  color: #4f3b24;
-  font-family: MyeongjoFont, serif;
+  color: var(--ink);
+  font-family: var(--font-display);
   font-size: 0.72rem;
   font-weight: 700;
   line-height: 1.2;
@@ -413,7 +413,7 @@
   width: min(38rem, calc(100vw - 2rem));
   padding: 1.4rem 1.2rem 1rem;
   background: rgb(250 244 216 / 96%);
-  border: 2px solid #4f3b24;
+  border: 2px solid var(--ink);
   box-shadow: 0 10px 28px rgb(79 59 36 / 16%);
   transform: rotate(-0.6deg);
 }
@@ -441,8 +441,8 @@
   position: relative;
   z-index: 1;
   margin: 0 0 0.9rem;
-  color: #4f3b24;
-  font-family: MyeongjoFont, serif;
+  color: var(--ink);
+  font-family: var(--font-display);
   font-size: clamp(1.4rem, 2vw, 2rem);
   font-weight: 900;
 }
@@ -452,8 +452,8 @@
   position: relative;
   z-index: 1;
   margin: 0 0 0.9rem;
-  color: #4f3b24;
-  font-family: MyeongjoFont, serif;
+  color: var(--ink);
+  font-family: var(--font-display);
   font-size: 0.92rem;
   line-height: 1.6;
   text-align: center;
@@ -475,10 +475,10 @@
 
 .insane-warning-button {
   padding: 0.7rem 1.15rem;
-  border: 2px solid #4f3b24;
+  border: 2px solid var(--ink);
   background: transparent;
-  color: #4f3b24;
-  font-family: MyeongjoFont, serif;
+  color: var(--ink);
+  font-family: var(--font-display);
   font-size: 0.8rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -500,8 +500,8 @@
 }
 
 .insane-warning-button.is-primary {
-  background: #4f3b24;
-  color: #fff8e8;
+  background: var(--ink);
+  color: var(--paper-bright);
 }
 
 .settings-option-text {
@@ -509,14 +509,14 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 0.15rem;
-  color: #4f3b24;
+  color: var(--ink);
   font-size: 0.9rem;
   line-height: 1.25;
   text-align: right;
 }
 
 .challenge-mode-constraints {
-  color: #c0392b;
+  color: var(--danger);
 }
 
 .settings-toggle-switch {
@@ -532,7 +532,7 @@
 }
 
 .settings-toggle-switch[aria-pressed="true"] {
-  background: #4f3b24;
+  background: var(--ink);
 }
 
 .settings-toggle-switch-thumb {
@@ -542,7 +542,7 @@
   width: 1.01rem;
   height: 1.01rem;
   border-radius: 50%;
-  background: #fff8e8;
+  background: var(--paper-bright);
   box-shadow: 0 1px 3px rgb(79 59 36 / 18%);
   transition: transform 150ms ease;
 }
@@ -607,7 +607,7 @@
   height: clamp(2.4rem, 4vw, 3rem);
   border: none;
   background: transparent;
-  color: #4f3b24;
+  color: var(--ink);
   cursor: pointer;
   padding: 0;
   transition:
@@ -648,7 +648,7 @@
   padding: 0;
   font-size: clamp(1rem, 2.6vw, 1.6rem);
   font-weight: 700;
-  color: #4f3b24;
+  color: var(--ink);
 }
 
 .stage-card:hover {
@@ -672,11 +672,11 @@
 @keyframes golden-glow {
   0%,
   100% {
-    filter: drop-shadow(0 0 2px #d4af37) drop-shadow(0 0 6px rgb(212 175 55 / 40%));
+    filter: drop-shadow(0 0 2px var(--gold)) drop-shadow(0 0 6px rgb(212 175 55 / 40%));
   }
 
   50% {
-    filter: drop-shadow(0 0 6px #d4af37) drop-shadow(0 0 12px rgb(212 175 55 / 80%));
+    filter: drop-shadow(0 0 6px var(--gold)) drop-shadow(0 0 12px rgb(212 175 55 / 80%));
   }
 }
 
@@ -695,7 +695,7 @@
 .stage-card.is-challenge-cleared svg rect,
 .stage-card.is-challenge-cleared svg line,
 .stage-card.is-challenge-cleared svg path {
-  stroke: #d4af37 !important;
+  stroke: var(--gold) !important;
   fill: none !important;
   fill-opacity: 0 !important;
   stroke-linecap: round;
@@ -711,10 +711,10 @@
   align-items: center;
   justify-content: center;
   gap: 0.2rem;
-  font-family: MyeongjoFont, serif;
+  font-family: var(--font-display);
   font-size: 0.95rem;
   font-weight: 700;
-  color: #4f3b24;
+  color: var(--ink);
   pointer-events: none;
 }
 
@@ -742,7 +742,7 @@
   justify-content: center;
   background: transparent;
   border: none;
-  color: #4f3b24;
+  color: var(--ink);
   padding: 0;
   width: 1.5rem;
   height: 1.5rem;
@@ -766,7 +766,7 @@
 .difficulty-name {
   font-size: clamp(16px, 1.1vw, 20px);
   font-weight: 600;
-  color: #4f3b24;
+  color: var(--ink);
   flex: 0 0 5rem;
   width: 5rem;
   min-width: 5rem;
@@ -800,7 +800,7 @@
 .game-title {
   position: relative;
   display: inline-block;
-  color: #4f3b24;
+  color: var(--ink);
   line-height: 1;
   z-index: 0;
   text-shadow: 0 1px 0 rgb(255 255 255 / 25%);

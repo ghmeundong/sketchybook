@@ -3,6 +3,17 @@
   --hud-padding: clamp(0.7rem, 1.3vw, 1rem);
   --stage-size: clamp(5.2rem, 15vw, 8.8rem);
   --body-font-size: clamp(15px, 1.1vw + 0.8rem, 18px);
+
+  /* Shared color palette */
+  --ink: #4f3b24;
+  --ink-strong: #3c2f1f;
+  --ink-soft: #6d5940;
+  --paper: #f5ebcf;
+  --paper-card: #f7ebc8;
+  --paper-bright: #fff8e8;
+  --gold: #d4af37;
+  --danger: #c0392b;
+  --font-display: myeongjofont, serif;
 }
 
 /* Mobile landscape optimization */
@@ -53,9 +64,9 @@ html {
 body {
   min-height: 100dvh;
   font-size: 1rem;
-  font-family: MyeongjoFont, serif;
-  color: #3c2f1f;
-  background-color: #f5ebcf;
+  font-family: var(--font-display);
+  color: var(--ink-strong);
+  background-color: var(--paper);
   position: relative;
   isolation: isolate;
 }
@@ -72,7 +83,7 @@ h5,
 h6,
 span,
 div {
-  font-family: MyeongjoFont, serif;
+  font-family: var(--font-display);
 }
 
 body::before {

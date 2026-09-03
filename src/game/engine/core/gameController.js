@@ -380,20 +380,9 @@ export function createGameExitButton() {
   if (!dom.board || state.gameExitButton) return;
 
   const gameExitButton = document.createElement("button");
-  gameExitButton.className = "game-exit-btn";
+  gameExitButton.className = "game-exit-btn game-hud-corner-btn";
   gameExitButton.setAttribute("type", "button");
   gameExitButton.setAttribute("aria-label", "Exit to stage selection");
-  gameExitButton.style.position = "absolute";
-  gameExitButton.style.top = "1rem";
-  gameExitButton.style.left = "1rem";
-  gameExitButton.style.zIndex = "100";
-  gameExitButton.style.background = "transparent";
-  gameExitButton.style.border = "none";
-  gameExitButton.style.cursor = "pointer";
-  gameExitButton.style.padding = "0.5rem";
-  gameExitButton.style.display = "flex";
-  gameExitButton.style.alignItems = "center";
-  gameExitButton.style.justifyContent = "center";
 
   gameExitButton.appendChild(createActionIconCanvas("exit", { w: 60, h: 48, strokeWidth: 2.5 }));
   gameExitButton.addEventListener("click", async () => {
@@ -410,20 +399,9 @@ export function createGameRetryButton() {
   if (!dom.board || state.gameRetryButton) return;
 
   const gameRetryButton = document.createElement("button");
-  gameRetryButton.className = "game-retry-btn";
+  gameRetryButton.className = "game-retry-btn game-hud-corner-btn";
   gameRetryButton.setAttribute("type", "button");
   gameRetryButton.setAttribute("aria-label", "Retry current stage");
-  gameRetryButton.style.position = "absolute";
-  gameRetryButton.style.top = "1rem";
-  gameRetryButton.style.right = "1rem";
-  gameRetryButton.style.zIndex = "100";
-  gameRetryButton.style.background = "transparent";
-  gameRetryButton.style.border = "none";
-  gameRetryButton.style.cursor = "pointer";
-  gameRetryButton.style.padding = "0.5rem";
-  gameRetryButton.style.display = "flex";
-  gameRetryButton.style.alignItems = "center";
-  gameRetryButton.style.justifyContent = "center";
 
   gameRetryButton.appendChild(createActionIconCanvas("retry", { w: 60, h: 48, strokeWidth: 2.5 }));
   gameRetryButton.addEventListener("click", async () => {
