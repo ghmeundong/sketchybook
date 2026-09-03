@@ -7,13 +7,16 @@ The application separates frontend and backend responsibilities:
 - `backend/`: optional serverless backend, deployable with Cloudflare Workers
 - `docs/`: documentation and setup guides
 
+For the frontend folder-by-folder breakdown and rules for where new code should live, see
+[CODE_STRUCTURE.md](CODE_STRUCTURE.md).
+
 ## Audio
 
 Audio is split into background music, interface feedback, and drawing audio:
 
-- `src/audioSettings.js` stores Music and SFX levels in `localStorage` and broadcasts changes.
-- `src/game/main.js` owns looping background music, page-transition fades, stage feedback sounds, and drawing audio.
-- `src/main.js` owns generic button and stage-selection feedback sounds.
+- `src/app/audioSettings.js` stores Music and SFX levels in `localStorage` and broadcasts changes.
+- `src/game/audio/gameAudio.js` owns looping background music, page-transition fades, and stage feedback sounds; `src/game/audio/drawingAudioInstance.js` owns drawing audio.
+- `src/app/uiSounds.js` owns generic button and stage-selection feedback sounds.
 - `src/assets/audio/` contains background music; `src/assets/sounds/` contains UI and gameplay sounds.
 
 Background music loops on the start and selection pages, fades out when gameplay begins, and fades back in when gameplay ends. Playback requests are guarded with transition and page checks so rapid stage changes cannot revive music during gameplay.

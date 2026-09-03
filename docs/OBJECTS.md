@@ -195,7 +195,7 @@ Defaults summary
 
 Notes
 
-- The rendering system will generate a rough, hand-drawn texture for all of these objects when the stage loads (see `src/game/main.js`).
+- The rendering system will generate a rough, hand-drawn texture for all of these objects when the stage loads (see `src/game/render/gameRenderer.js`).
 - Physics bodies are created after canvas sizing; the coordinate conversion uses canvas pixel dimensions so normalized coordinates work across resolutions.
 - If you need a single rigid polygon collision body (instead of per-edge fixtures), add a `polygon` helper in `src/game/physics.js` and reference it from stage code.
 
