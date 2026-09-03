@@ -37,6 +37,30 @@
   z-index: 2;
 }
 
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgb(38 29 20 / 42%);
+  backdrop-filter: blur(3px);
+  opacity: 1;
+  transition: opacity 160ms ease;
+}
+
+.settings-overlay[hidden] {
+  display: block;
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.settings-is-open {
+  overflow: hidden;
+}
+
+body.settings-is-open .start-screen-actions {
+  z-index: 902;
+}
+
 .start-screen-tools {
   display: flex;
   align-items: center;
@@ -174,7 +198,13 @@
   display: none;
 }
 
+.settings-panel.is-overlay {
+  position: relative;
+  z-index: 901;
+}
+
 .help-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -183,8 +213,6 @@
   padding: 0.75rem 0.9rem;
   color: var(--ink);
   background: rgb(250 244 216 / 94%);
-  border: 1px solid rgb(79 59 36 / 38%);
-  box-shadow: 2px 3px 0 rgb(79 59 36 / 12%);
   transform: rotate(-1deg);
 }
 
@@ -193,6 +221,8 @@
 }
 
 .help-panel p {
+  position: relative;
+  z-index: 1;
   margin: 0;
   font-size: 0.78rem;
   line-height: 1.35;
@@ -204,6 +234,8 @@
 }
 
 .help-panel-title {
+  position: relative;
+  z-index: 1;
   margin-bottom: 0.2rem !important;
   font-family: var(--font-display);
   font-size: 0.95rem !important;
@@ -413,17 +445,12 @@
   width: min(38rem, calc(100vw - 2rem));
   padding: 1.4rem 1.2rem 1rem;
   background: rgb(250 244 216 / 96%);
-  border: 2px solid var(--ink);
   box-shadow: 0 10px 28px rgb(79 59 36 / 16%);
   transform: rotate(-0.6deg);
 }
 
 .insane-warning-card::before {
-  content: "";
-  position: absolute;
-  inset: 0.5rem;
-  border: 1.5px solid rgb(79 59 36 / 30%);
-  pointer-events: none;
+  display: none;
 }
 
 .insane-warning-eyebrow {
@@ -475,7 +502,9 @@
 
 .insane-warning-button {
   padding: 0.7rem 1.15rem;
-  border: 2px solid var(--ink);
+  position: relative;
+  z-index: 1;
+  border: none;
   background: transparent;
   color: var(--ink);
   font-family: var(--font-display);
