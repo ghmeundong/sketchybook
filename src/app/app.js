@@ -22,6 +22,7 @@ import {
 
 const startTitle = document.querySelector("[data-start-button]");
 const titleText = document.querySelector(".brand-title");
+const playgroundButton = document.querySelector("[data-playground-button]");
 const settingsToggle = document.querySelector("[data-settings-toggle]");
 const challengeModeToggle = document.querySelector("[data-challenge-mode-toggle]");
 const challengeModeStatus = document.getElementById("challenge-mode-status");
@@ -457,6 +458,15 @@ if (settingsToggle && settingsPanel) {
   );
   settingsToggle.addEventListener("click", () => {
     setSettingsPanelVisible(settingsPanel.hidden);
+  });
+}
+
+if (playgroundButton) {
+  playgroundButton.appendChild(
+    createActionIconCanvas("playground", { w: 48, h: 40, strokeWidth: 2.4 })
+  );
+  playgroundButton.addEventListener("click", () => {
+    window.dispatchEvent(new CustomEvent("sketchybook:start-playground"));
   });
 }
 

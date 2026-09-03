@@ -128,6 +128,18 @@ export function createActionIconCanvas(
     }
     rc.polygon(gearPoints, lineOptions);
     rc.ellipse(centerX, centerY, Math.min(w, h) * 0.26, Math.min(w, h) * 0.26, lineOptions);
+  } else if (type === "playground") {
+    const beamStartX = w * 0.22;
+    const beamEndX = w * 0.78;
+    rc.polygon(
+      [
+        [w * 0.36, h * 0.8],
+        [w * 0.5, h * 0.52],
+        [w * 0.64, h * 0.8],
+      ],
+      lineOptions
+    );
+    rc.line(beamStartX, h * 0.43, beamEndX, h * 0.61, lineOptions);
   } else if (type === "retry") {
     rc.line(22, 30, 42, 30, lineOptions);
     rc.line(42, 30, 42, 10, lineOptions);
@@ -153,6 +165,18 @@ export function createActionIconCanvas(
       ],
       fillOptions
     );
+  } else if (type === "undo" || type === "redo") {
+    const isUndo = type === "undo";
+    const arrowX = isUndo ? w * 0.2 : w * 0.8;
+    const arrowY = h * 0.34;
+    const curveStartX = isUndo ? w * 0.28 : w * 0.72;
+    const curvePath = isUndo
+      ? `M ${curveStartX} ${arrowY} C ${w * 0.62} ${arrowY}, ${w * 0.82} ${h * 0.42}, ${w * 0.82} ${h * 0.62} C ${w * 0.82} ${h * 0.84}, ${w * 0.62} ${h * 0.9}, ${w * 0.48} ${h * 0.9}`
+      : `M ${curveStartX} ${arrowY} C ${w * 0.38} ${arrowY}, ${w * 0.18} ${h * 0.42}, ${w * 0.18} ${h * 0.62} C ${w * 0.18} ${h * 0.84}, ${w * 0.38} ${h * 0.9}, ${w * 0.52} ${h * 0.9}`;
+    rc.path(curvePath, lineOptions);
+    const arrowDirection = isUndo ? 1 : -1;
+    rc.line(arrowX, arrowY, arrowX + arrowDirection * w * 0.16, h * 0.22, lineOptions);
+    rc.line(arrowX, arrowY, arrowX + arrowDirection * w * 0.16, h * 0.46, lineOptions);
   } else if (type === "question") {
     const questionCurveOptions = {
       ...lineOptions,

@@ -652,6 +652,13 @@ export function updateStrokeBody(stroke, floorY, options = {}) {
   return stroke;
 }
 
+export function destroyStrokeBody(stroke) {
+  if (!stroke?.physicsBody) return;
+  physicsWorld.destroyBody(stroke.physicsBody);
+  stroke.physicsBody = null;
+  stroke.physicsSegments = [];
+}
+
 export function resetPhysicsWorld() {
   let body = physicsWorld.getBodyList();
   while (body) {

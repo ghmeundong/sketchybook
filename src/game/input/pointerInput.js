@@ -35,7 +35,9 @@ import {
   initializeStage,
   resizeCanvas,
   hideStageClearOverlay,
+  startPlayground,
 } from "../engine/core/gameController.js";
+import { recordPlaygroundStroke } from "../ui/playgroundHistory.js";
 
 function segmentsCross(first, second) {
   const orientation = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
@@ -362,6 +364,7 @@ function stopDrawing(event) {
     // matches exactly what the player saw during drawing.
     createStrokeTexture(strokeBody, state.previewCanvas);
     state.physicsStrokes.push(strokeBody);
+    recordPlaygroundStroke(strokeBody);
     if (state.challengeModeEnabled) {
       state.challengeModeStrokeCount += 1;
     }
@@ -437,8 +440,12 @@ export function initPointerInput() {
     if (isGameActive && (event.key === "r" || event.key === "R")) {
       event.preventDefault();
       hideStageClearOverlay();
-      await initializeStage(state.currentStageNumber);
-      resizeCanvas();
+      if (state.isPlayground) {
+        await startPlayground();
+      } else {
+        await initializeStage(state.currentStageNumber);
+        resizeCanvas();
+      }
     }
 
     if (event.key === " " || event.code === "Space") {

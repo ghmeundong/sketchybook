@@ -67,6 +67,7 @@ body.settings-is-open .start-screen-actions {
   gap: 0.2rem;
 }
 
+.playground-toggle,
 .settings-toggle,
 .settings-panel-close {
   border: none;
@@ -77,6 +78,27 @@ body.settings-is-open .start-screen-actions {
   font: inherit;
   cursor: pointer;
   box-shadow: none;
+}
+
+.playground-toggle {
+  position: relative;
+  width: clamp(2.2rem, 4vw, 3.5rem);
+  height: clamp(2.2rem, 4vw, 3.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity 150ms ease;
+}
+
+.playground-toggle:hover,
+.playground-toggle:focus {
+  opacity: 1;
+  outline: none;
+}
+
+.playground-toggle:active {
+  opacity: 0.85;
 }
 
 .settings-toggle {
@@ -895,6 +917,7 @@ body.settings-is-open .start-screen-actions {
     gap: 0.3rem;
   }
 
+  .playground-toggle,
   .settings-toggle {
     width: clamp(1.8rem, 3vw, 2.2rem);
     height: clamp(1.8rem, 3vw, 2.2rem);

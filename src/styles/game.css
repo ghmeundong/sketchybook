@@ -368,6 +368,46 @@
   opacity: 0.85;
 }
 
+.playground-history-btn {
+  position: absolute;
+  top: var(--screen-corner-inset);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(2.8rem, 4vw, 3.75rem);
+  height: clamp(2.8rem, 4vw, 3.75rem);
+  padding: var(--screen-corner-padding);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 150ms ease;
+}
+
+.playground-undo-btn {
+  left: calc(50% - 4rem);
+}
+
+.playground-redo-btn {
+  right: calc(50% - 4rem);
+}
+
+.playground-history-btn:hover,
+.playground-history-btn:focus-visible {
+  opacity: 1;
+  outline: none;
+}
+
+.playground-history-btn:active {
+  opacity: 0.85;
+}
+
+.playground-history-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.25;
+}
+
 @media (width <= 768px) {
   .game-page {
     padding: 0.5rem;
