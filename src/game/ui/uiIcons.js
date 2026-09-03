@@ -154,9 +154,14 @@ export function createActionIconCanvas(
       fillOptions
     );
   } else if (type === "question") {
+    const questionCurveOptions = {
+      ...lineOptions,
+      strokeWidth: Math.max(strokeWidth, 3.2),
+      roughness: 0.8,
+    };
     rc.path(
       `M ${w / 2 - 6} ${h / 2 - 5} C ${w / 2 - 4} ${h / 2 - 12}, ${w / 2 + 6} ${h / 2 - 12}, ${w / 2 + 6} ${h / 2 - 4} C ${w / 2 + 6} ${h / 2}, ${w / 2} ${h / 2}, ${w / 2} ${h / 2 + 5}`,
-      lineOptions
+      questionCurveOptions
     );
     rc.ellipse(w / 2, h / 2 + 13, 2.5, 2.5, {
       ...lineOptions,
