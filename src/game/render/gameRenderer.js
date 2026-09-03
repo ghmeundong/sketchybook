@@ -28,7 +28,7 @@ export function drawStroke(start, end, width = 8, options = {}) {
 
   targetRough.ctx.save();
   targetRough.ctx.globalAlpha = alpha;
-  const step = Math.max(1.5, scaledWidth * 0.4);
+  const step = Math.max(1, scaledWidth * 0.22);
   for (let i = 0; i <= distance; i += step) {
     const t = distance === 0 ? 0 : i / distance;
     targetRough.circle(start.x + dx * t, start.y + dy * t, scaledWidth, {

@@ -57,8 +57,8 @@
 
 .settings-toggle {
   position: relative;
-  width: clamp(2.2rem, 4vw, 2.8rem);
-  height: clamp(2.2rem, 4vw, 2.8rem);
+  width: clamp(2.2rem, 4vw, 3.5rem);
+  height: clamp(2.2rem, 4vw, 3.5rem);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -77,8 +77,8 @@
 }
 
 .help-toggle {
-  width: clamp(2.2rem, 4vw, 2.8rem);
-  height: clamp(2.2rem, 4vw, 2.8rem);
+  width: clamp(2.2rem, 4vw, 3.5rem);
+  height: clamp(2.2rem, 4vw, 3.5rem);
   padding: 0;
   border: none;
   border-radius: 50%;
@@ -586,16 +586,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(0.7rem, 2vw, 1.2rem);
-  width: min(100%, clamp(34rem, 82vw, 50rem));
+  gap: clamp(0.7rem, 2vw, 1.75rem);
+  width: min(100%, clamp(34rem, 82vw, 64rem));
 }
 
 .selection-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: clamp(0.9rem, 2.2vw, 1.5rem);
-  width: min(100%, clamp(30rem, 70vw, 44rem));
+  gap: clamp(0.9rem, 2.2vw, 2rem);
+  width: min(100%, clamp(30rem, 70vw, 56rem));
   justify-content: center;
   align-items: center;
 }
@@ -603,8 +603,8 @@
 .selection-nav-btn {
   display: grid;
   place-items: center;
-  width: clamp(2.4rem, 4vw, 3rem);
-  height: clamp(2.4rem, 4vw, 3rem);
+  width: clamp(2.4rem, 4vw, 3.75rem);
+  height: clamp(2.4rem, 4vw, 3.75rem);
   border: none;
   background: transparent;
   color: var(--ink);
@@ -636,8 +636,8 @@
   place-items: center;
   aspect-ratio: 1;
   width: 100%;
-  min-height: clamp(7rem, 12vw, 10rem);
-  max-width: clamp(7rem, 12vw, 10rem);
+  min-height: clamp(7rem, 12vw, 12rem);
+  max-width: clamp(7rem, 12vw, 12rem);
   justify-self: center;
   border: none;
   background: transparent;
@@ -646,7 +646,7 @@
   cursor: pointer;
   transition: transform 180ms ease;
   padding: 0;
-  font-size: clamp(1rem, 2.6vw, 1.6rem);
+  font-size: clamp(1rem, 2.6vw, 1.9rem);
   font-weight: 700;
   color: var(--ink);
 }
@@ -807,7 +807,7 @@
 }
 
 .brand-title {
-  font-size: clamp(2.2rem, 8vw, 3.8rem);
+  font-size: clamp(2.2rem, 8vw, 5rem);
   letter-spacing: 0.3em;
   text-transform: uppercase;
   font-weight: 800;
@@ -817,7 +817,7 @@
 }
 
 .game-title {
-  font-size: clamp(1.4rem, 4.8vw, 2.4rem);
+  font-size: clamp(1.4rem, 4.8vw, 3rem);
   line-height: 1.1;
   letter-spacing: 0.06em;
   cursor: pointer;
