@@ -418,8 +418,8 @@ function triggerStartupFallback() {
 }
 
 prepareInitialState();
+initializeOrientationPrompt();
 if (import.meta.env.MODE !== "itch") {
-  initializeOrientationPrompt();
   lockLandscapeOrientation();
 }
 

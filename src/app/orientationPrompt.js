@@ -49,6 +49,10 @@ export function getSafeLandscapeLockPromise() {
 }
 
 export function requestLandscapeMode() {
+  if (isItchBuild) {
+    return Promise.resolve([]);
+  }
+
   const element = document.documentElement;
   const fullscreenRequest = element?.requestFullscreen || element?.webkitRequestFullscreen;
 
@@ -106,17 +110,16 @@ function createPrompt() {
 }
 
 export function initializeOrientationPrompt() {
-  if (isItchBuild) return null;
   if (promptInstance) return promptInstance;
   if (!document.body) return null;
 
   promptInstance = createPrompt();
 
   const updatePromptVisibility = () => {
-    const shouldShowPrompt =
-      isMobileDevice() &&
-      !isFullscreen() &&
-      (window.innerWidth <= window.innerHeight || isIOSDevice());
+    const isPortrait = window.innerWidth <= window.innerHeight;
+    const shouldShowPrompt = isItchBuild
+      ? isMobileDevice() && isPortrait
+      : isMobileDevice() && !isFullscreen() && (isPortrait || isIOSDevice());
 
     document.documentElement.classList.toggle("has-orientation-prompt", shouldShowPrompt);
   };
@@ -124,6 +127,8 @@ export function initializeOrientationPrompt() {
   updatePromptVisibility();
   document.addEventListener("fullscreenchange", updatePromptVisibility);
   document.addEventListener("webkitfullscreenchange", updatePromptVisibility);
+  window.addEventListener("resize", updatePromptVisibility, { passive: true });
+  window.addEventListener("orientationchange", updatePromptVisibility, { passive: true });
 
   return promptInstance;
 }
