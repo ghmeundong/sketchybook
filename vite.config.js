@@ -6,7 +6,7 @@ const __dirname = path.resolve();
 
 export default defineConfig(({ mode }) => ({
   root: "./",
-  base: mode === "electron" ? "./" : "/sketchybook/",
+  base: mode === "electron" || mode === "itch" ? "./" : "/sketchybook/",
   publicDir: "public",
   resolve: {
     alias: {

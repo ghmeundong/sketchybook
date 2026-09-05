@@ -28,6 +28,8 @@ import { drawingAudio } from "../audio/drawingAudioInstance.js";
 import { dom } from "../engine/core/domRefs.js";
 import { state } from "../engine/core/gameState.js";
 import { isFullscreenActive } from "../engine/core/fullscreen.js";
+
+const isItchBuild = import.meta.env.MODE === "itch";
 import {
   getLineLengthLimit,
   isDrawLimitReached,
@@ -150,8 +152,9 @@ function findBallAtPoint(clickPos) {
 }
 
 function startDrawing(event) {
+  const isFullscreen = isFullscreenActive() || isItchBuild;
   if (
-    !isFullscreenActive() ||
+    !isFullscreen ||
     state.stageCleared ||
     (state.challengeModeEnabled && state.challengeModeStrokeCount >= 1)
   ) {
@@ -169,7 +172,7 @@ function startDrawing(event) {
 }
 
 function continueDrawing(event) {
-  const isFullscreen = isFullscreenActive();
+  const isFullscreen = isFullscreenActive() || isItchBuild;
   if (!isFullscreen || state.stageCleared || !state.isDrawing || !state.lastPoint) {
     return;
   }

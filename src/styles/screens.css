@@ -67,6 +67,10 @@ body.settings-is-open .start-screen-actions {
   gap: 0.2rem;
 }
 
+.start-screen-tools > button {
+  flex: 0 0 auto;
+}
+
 .playground-toggle,
 .settings-toggle,
 .settings-panel-close {
@@ -918,9 +922,19 @@ body.settings-is-open .start-screen-actions {
   }
 
   .playground-toggle,
-  .settings-toggle {
-    width: clamp(1.8rem, 3vw, 2.2rem);
-    height: clamp(1.8rem, 3vw, 2.2rem);
+  .settings-toggle,
+  .help-toggle {
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+
+  .start-screen-tools {
+    gap: 0.45rem;
+  }
+
+  .start-screen-tools canvas {
+    width: 2.1rem !important;
+    height: 1.75rem !important;
   }
 
   .brand-title {
