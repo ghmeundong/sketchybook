@@ -1,5 +1,7 @@
 let promptInstance = null;
 
+const isItchBuild = import.meta.env.MODE === "itch";
+
 export function isMobileDevice() {
   const hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
   const isSmallScreen = window.matchMedia("(max-width: 600px)").matches;
@@ -104,6 +106,7 @@ function createPrompt() {
 }
 
 export function initializeOrientationPrompt() {
+  if (isItchBuild) return null;
   if (promptInstance) return promptInstance;
   if (!document.body) return null;
 

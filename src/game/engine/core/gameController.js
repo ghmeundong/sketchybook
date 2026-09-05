@@ -52,6 +52,8 @@ import {
 } from "../../ui/playgroundHistory.js";
 import { INK } from "../../../theme.js";
 
+const isItchBuild = import.meta.env.MODE === "itch";
+
 state.currentDifficulty = getInitialDifficulty();
 state.difficultyRules = getDifficultyRules(state.currentDifficulty);
 
@@ -189,6 +191,8 @@ export function updateDrawLimitProgressUI({ previewLength = state.totalDrawnLeng
 }
 
 export function lockLandscapeOrientation() {
+  if (import.meta.env.MODE === "itch") return;
+
   const attemptLock = () => {
     try {
       if (!screen?.orientation || typeof screen.orientation.lock !== "function") {
@@ -287,6 +291,8 @@ export function setActivePage(page) {
 }
 
 export async function tryEnterFullscreen() {
+  if (isItchBuild) return;
+
   const isFullscreen = isFullscreenActive();
   if (isFullscreen) {
     return;
@@ -739,9 +745,10 @@ export function syncGamePlayState() {
   const isFullscreen = isFullscreenActive();
   const isPageVisible = !document.hidden;
   const shouldPauseForFocusLoss = !state.isWindowFocused || !document.hasFocus();
+  const canRunOutsideFullscreen = isFullscreen || isItchBuild;
 
   if (
-    !shouldAdvancePhysics({ isGameActive, isFullscreen, isPageVisible }) ||
+    !shouldAdvancePhysics({ isGameActive, isFullscreen: canRunOutsideFullscreen, isPageVisible }) ||
     shouldPauseForFocusLoss
   ) {
     state.lastPhysicsTime = 0;
@@ -761,15 +768,22 @@ export function tick(timestamp = 0) {
   const isFullscreen = isFullscreenActive();
   const isPageVisible = !document.hidden;
   const shouldPauseForFocusLoss = !state.isWindowFocused || !document.hasFocus();
+  const canRunOutsideFullscreen = isFullscreen || isItchBuild;
   const shouldRunSimulation =
     shouldAdvancePhysics({
       isGameActive,
-      isFullscreen,
+      isFullscreen: canRunOutsideFullscreen,
       isPageVisible,
     }) && !shouldPauseForFocusLoss;
 
   if (!shouldRunSimulation) {
-    if (shouldRenderGuidanceMessage({ isGameActive, isFullscreen, isPageVisible })) {
+    if (
+      shouldRenderGuidanceMessage({
+        isGameActive,
+        isFullscreen: canRunOutsideFullscreen,
+        isPageVisible,
+      })
+    ) {
       render();
       verifyGamePageMusicAfterFirstRender(isGameActive);
     }

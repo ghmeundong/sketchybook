@@ -364,6 +364,8 @@ function changeDifficulty(newDifficulty) {
 }
 
 function lockLandscapeOrientation() {
+  if (import.meta.env.MODE === "itch") return;
+
   const attemptLock = () => {
     try {
       if (!screen?.orientation || typeof screen.orientation.lock !== "function") {
@@ -416,8 +418,10 @@ function triggerStartupFallback() {
 }
 
 prepareInitialState();
-initializeOrientationPrompt();
-lockLandscapeOrientation();
+if (import.meta.env.MODE !== "itch") {
+  initializeOrientationPrompt();
+  lockLandscapeOrientation();
+}
 
 const bgImage = new Image();
 bgImage.decoding = "async";

@@ -297,7 +297,7 @@ export function render() {
   }
 
   // Check if in fullscreen mode
-  const isFullscreen = isFullscreenActive();
+  const isFullscreen = isFullscreenActive() || import.meta.env.MODE === "itch";
 
   // If not fullscreen, show guidance message
   if (!isFullscreen) {
