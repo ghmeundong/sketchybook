@@ -41,3 +41,14 @@ export function exceedsLineLengthLimit({
     Number.EPSILON * Math.max(1, Math.abs(nextTotalDrawnLength), Math.abs(lineLengthLimit)) * 10;
   return nextTotalDrawnLength > lineLengthLimit + comparisonTolerance;
 }
+
+export function shouldRejectStroke({
+  intersectsStripedArea,
+  intersectsHatchedCircle,
+  intersectsBall,
+  canDrawOnBall,
+}) {
+  return Boolean(
+    intersectsStripedArea || intersectsHatchedCircle || (intersectsBall && !canDrawOnBall)
+  );
+}
