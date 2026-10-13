@@ -4,6 +4,7 @@ import {
   exceedsLineLengthLimit,
   getLogicalStrokeDistance,
   getStrokeDistance,
+  shouldRejectStroke,
 } from "../src/game/input/drawingPolicy.js";
 
 describe("drawing policy distance", () => {
@@ -57,6 +58,49 @@ describe("drawing policy distance", () => {
         stroke,
         lineLengthLimit: 500,
         coordinateSystem,
+      })
+    ).toBe(true);
+  });
+});
+
+describe("drawing policy object restrictions", () => {
+  it("rejects strokes through striped areas at every difficulty", () => {
+    expect(
+      shouldRejectStroke({
+        intersectsStripedArea: true,
+        intersectsHatchedCircle: false,
+        intersectsBall: false,
+        canDrawOnBall: true,
+      })
+    ).toBe(true);
+  });
+
+  it("rejects strokes through hatched circles at every difficulty", () => {
+    expect(
+      shouldRejectStroke({
+        intersectsStripedArea: false,
+        intersectsHatchedCircle: true,
+        intersectsBall: false,
+        canDrawOnBall: true,
+      })
+    ).toBe(true);
+  });
+
+  it("keeps ball drawing controlled by the difficulty setting", () => {
+    expect(
+      shouldRejectStroke({
+        intersectsStripedArea: false,
+        intersectsHatchedCircle: false,
+        intersectsBall: true,
+        canDrawOnBall: true,
+      })
+    ).toBe(false);
+    expect(
+      shouldRejectStroke({
+        intersectsStripedArea: false,
+        intersectsHatchedCircle: false,
+        intersectsBall: true,
+        canDrawOnBall: false,
       })
     ).toBe(true);
   });

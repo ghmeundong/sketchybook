@@ -21,6 +21,7 @@ import {
   exceedsLineLengthLimit,
   getLogicalStrokeDistance,
   getStrokeDistance,
+  shouldRejectStroke,
 } from "./drawingPolicy.js";
 import { shouldHandleSpacebarAction } from "../engine/config/inputRules.js";
 import { createStrokeTexture } from "../render/gameRenderer.js";
@@ -279,68 +280,27 @@ function stopDrawing(event) {
     }
   }
 
-  const { canvasWidth, canvasHeight } = state;
-  const intersectsCancelObject = state.gameObjects.some((obj) => {
-    if (obj instanceof CircleObject || obj instanceof Ball) {
-      const circleX = obj.screenX ?? (obj.nx != null ? obj.nx * canvasWidth : null);
-      const circleY = obj.screenY ?? (obj.ny != null ? obj.ny * canvasHeight : null);
-      const radius =
-        obj.physicalRadius ??
-        (obj.radius > 1 ? obj.radius : obj.radius * Math.min(canvasWidth, canvasHeight));
-
-      if (circleX == null || circleY == null || !Number.isFinite(radius) || radius <= 0) {
-        return false;
-      }
-
-      for (let i = 1; i < state.currentStroke.length; i += 1) {
-        const a = state.currentStroke[i - 1];
-        const b = state.currentStroke[i];
-        if (
-          segmentIntersectsCircle(
-            { x1: a.x, y1: a.y, x2: b.x, y2: b.y },
-            { x: circleX, y: circleY, radius }
-          )
-        ) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    if (obj instanceof StripedRectObject) {
-      const rectX = obj.screenX ?? (obj.nx != null ? obj.nx * canvasWidth : null);
-      const rectY = obj.screenY ?? (obj.ny != null ? obj.ny * canvasHeight : null);
-      const width = obj.width > 1 ? obj.width : obj.width * canvasWidth;
-      const height = obj.height > 1 ? obj.height : obj.height * canvasHeight;
-
-      if (rectX == null || rectY == null || !Number.isFinite(width) || !Number.isFinite(height)) {
-        return false;
-      }
-
-      for (let i = 1; i < state.currentStroke.length; i += 1) {
-        const a = state.currentStroke[i - 1];
-        const b = state.currentStroke[i];
-        if (
-          segmentIntersectsRect(
-            { x1: a.x, y1: a.y, x2: b.x, y2: b.y },
-            { x: rectX - width / 2, y: rectY - height / 2, width, height }
-          )
-        ) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    return false;
-  });
+  const intersectsStripedArea = state.gameObjects.some(
+    (obj) => obj instanceof StripedRectObject && strokeIntersectsObject(state.currentStroke, obj)
+  );
+  const intersectsHatchedCircle = state.gameObjects.some(
+    (obj) => obj instanceof CircleObject && strokeIntersectsObject(state.currentStroke, obj)
+  );
+  const intersectsBall = state.gameObjects.some(
+    (obj) => obj instanceof Ball && strokeIntersectsObject(state.currentStroke, obj)
+  );
 
   const strokeBody = stageCreateStrokeBody(state.currentStroke);
 
   // 난이도 규칙에 따라 공 위에 그리기를 제한
-  const shouldRejectIfIntersectsBall = !state.difficultyRules.canDrawOnBall;
   const shouldCreateStroke =
-    strokeBody && (!shouldRejectIfIntersectsBall || !intersectsCancelObject);
+    strokeBody &&
+    !shouldRejectStroke({
+      intersectsStripedArea,
+      intersectsHatchedCircle,
+      intersectsBall,
+      canDrawOnBall: state.difficultyRules.canDrawOnBall,
+    });
 
   if (shouldCreateStroke) {
     const floorY = (dom.canvas?.clientHeight || 0) - 24;
@@ -374,7 +334,7 @@ function stopDrawing(event) {
     state.totalDrawnLength += getLogicalStrokeDistance(state.currentStroke, state.coordinateSystem);
     updateDrawLimitProgressUI();
   } else if (!shouldCreateStroke && state.currentStroke) {
-    // 선이 취소됐을 때 (공이나 striped rect와 만났을 때) 진행 바 리셋
+    // Reset progress when a stroke crosses a restricted object.
     updateDrawLimitProgressUI();
   }
 
