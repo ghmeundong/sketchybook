@@ -142,7 +142,12 @@ function initializeModeSelection() {
     if (roomPanel) roomPanel.hidden = false;
     if (roomGlobalBackButton) roomGlobalBackButton.hidden = false;
     if (modeStatus) modeStatus.textContent = "";
-    roomStatus.textContent = "Create a room or enter a friend's code.";
+    if (!roomSocket || roomSocket.readyState !== WebSocket.OPEN) {
+      resetRoomPanel("Create a room or enter a friend's code.");
+    } else {
+      roomEntryActions.hidden = true;
+      roomConnectedState.hidden = false;
+    }
   });
 
   modeBackButton?.addEventListener("click", () => {
@@ -179,10 +184,8 @@ function initializeModeSelection() {
   });
 
   roomLeaveButton?.addEventListener("click", () => {
-    clearTimeout(roomStartTimer);
-    roomSocket?.close(1000, "Player left the room");
-    roomSocket = null;
-    resetRoomPanel("You left the room.");
+    closeRoomPanel();
+    setActivePage(dom.modePage);
   });
 
   roomSelectStageButton?.addEventListener("click", () => {
@@ -416,7 +419,11 @@ function leaveRoom() {
   clearTimeout(roomStartTimer);
   closeRoomSocketOnly("Player left the room");
   selectionStatus.hidden = true;
-  if (!roomPanel.hidden) resetRoomPanel("You left the room.");
+  roomPanel.hidden = false;
+  resetRoomPanel("You left the room.");
+  roomGlobalBackButton.hidden = false;
+  modeScreen?.classList.add("is-room-open");
+  multiplayerButton.setAttribute("aria-pressed", "true");
   setActivePage(dom.modePage);
 }
 
