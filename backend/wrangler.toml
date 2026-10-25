@@ -8,9 +8,6 @@ account_id = "6657ba2c0937d03cbb1faff70a262649"
 [vars]
 GOOGLE_CLIENT_ID = "529097378346-95i01gu1nmv8qcfrf459j0taep3t7vm6.apps.googleusercontent.com"
 
-[build]
-command = "npm install"
-
 [triggers]
 # Add schedule triggers here if you need scheduled cleanup tasks.
 
@@ -18,6 +15,14 @@ command = "npm install"
 binding = "DB"
 database_name = "sketchybook"
 database_id = "eb3ca5e0-1ee4-48b9-861a-334532158296"
+
+[[durable_objects.bindings]]
+name = "MULTIPLAYER_ROOMS"
+class_name = "MultiplayerRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MultiplayerRoom"]
 
 # Local Google auth exchange may require a client secret.
 # Add it securely with wrangler secret put GOOGLE_CLIENT_SECRET if needed.

@@ -1,5 +1,6 @@
 // Central DOM element lookups, queried once and shared across game modules.
 export const dom = {
+  globalToolbar: document.querySelector("[data-global-app-toolbar]"),
   board: document.querySelector("#game-board"),
   canvas: document.querySelector("#game-canvas"),
   mobileLaunchButton: document.querySelector("[data-mobile-launch]"),
@@ -13,8 +14,8 @@ export const dom = {
   stageButtons: Array.from(document.querySelectorAll(".stage-card")),
   stagePageButtons: Array.from(document.querySelectorAll("[data-stage-page]")),
   backHomeButton: document.querySelector("[data-back-home-button]"),
-  helpToggle: document.querySelector("[data-selection-help-toggle]"),
-  helpPanel: document.getElementById("selection-help-panel"),
+  helpToggle: document.querySelector("[data-help-toggle]"),
+  helpPanel: document.getElementById("start-help-panel"),
   body: document.body,
 };
 

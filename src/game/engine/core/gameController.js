@@ -275,6 +275,7 @@ export function setActivePage(page) {
     if (!item) return;
     item.classList.toggle("is-active", item === page);
   });
+  dom.globalToolbar?.classList.toggle("is-hidden", page === dom.playPage);
   setActiveAudioPage(page);
   if (page === dom.selectionPage) {
     resetStageState();
@@ -400,6 +401,8 @@ export function createGameExitButton() {
 
   gameExitButton.appendChild(createActionIconCanvas("exit", { w: 60, h: 48, strokeWidth: 2.5 }));
   gameExitButton.addEventListener("click", async () => {
+    const exitEvent = new CustomEvent("sketchybook:game-exit", { cancelable: true });
+    if (!window.dispatchEvent(exitEvent)) return;
     hideStageClearOverlay();
     setActivePage(state.isPlayground ? dom.startPage : dom.selectionPage);
     if (state.isPlayground) {
