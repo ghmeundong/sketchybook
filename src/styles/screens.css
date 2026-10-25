@@ -10,6 +10,173 @@
   padding: var(--page-padding);
 }
 
+.mode-screen {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: clamp(1.5rem, 5vh, 3.5rem) 1.25rem;
+  color: var(--ink);
+  text-align: center;
+}
+
+.mode-screen-kicker {
+  margin: 0 0 0.5rem;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: 0.14em;
+}
+
+.mode-screen-title {
+  margin: 0 0 clamp(1rem, 3vh, 1.8rem);
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 7vh, 4.6rem);
+  font-weight: 900;
+  line-height: 1.05;
+  color: var(--ink-strong);
+  text-shadow:
+    1px 1px 0 var(--paper-bright),
+    2px 2px 0 rgb(79 59 36 / 18%);
+}
+
+.mode-screen-prompt {
+  margin: 0.8rem 0 1.5rem;
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: clamp(0.95rem, 2.1vh, 1.2rem);
+}
+
+.mode-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 17rem));
+  gap: clamp(1rem, 4vw, 2.5rem);
+  width: min(100%, 37rem);
+}
+
+.mode-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 17rem;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.15rem 1rem 1rem;
+  border: 0;
+  border-radius: 2px;
+  background: rgb(255 248 232 / 76%);
+  color: var(--ink);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease;
+}
+
+.mode-card:hover,
+.mode-card:focus-visible {
+  z-index: 1;
+  outline: none;
+  background: var(--paper-bright);
+  transform: translateY(-4px) rotate(-0.5deg);
+}
+
+.mode-multiplayer-card:hover,
+.mode-multiplayer-card:focus-visible {
+  transform: translateY(-4px) rotate(0.5deg);
+}
+
+.mode-card[aria-pressed="true"] {
+  background: #fff5d9;
+  transform: translateY(-2px) rotate(-0.5deg);
+}
+
+.mode-card > .rough-frame-canvas {
+  z-index: 0 !important;
+}
+
+.mode-card-art {
+  display: block;
+  width: min(100%, 13.75rem);
+  height: 8rem;
+  flex: 0 0 auto;
+}
+
+.mode-card-title,
+.mode-card-description,
+.mode-card-action {
+  position: relative;
+  z-index: 1;
+}
+
+.mode-card-title {
+  margin-top: 0.2rem;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.mode-card-description {
+  max-width: 15rem;
+  margin-top: 0.35rem;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.mode-card-action {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: auto;
+  padding-top: 0.8rem;
+  color: var(--ink-strong);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.mode-card-action span {
+  color: #9b6c28;
+  font-size: 1.05rem;
+}
+
+.mode-screen-status {
+  min-height: 1.4em;
+  max-width: 32rem;
+  margin: 1rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.settings-mode-change {
+  position: relative;
+  width: 100%;
+  min-height: 2.4rem;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  background: rgb(255 248 232 / 55%);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.settings-mode-change:hover,
+.settings-mode-change:focus-visible {
+  color: var(--ink-strong);
+  outline: none;
+  background: rgb(255 248 232 / 90%);
+}
+
 .start-screen {
   position: relative;
 }
@@ -869,6 +1036,9 @@ body.settings-is-open .start-screen-actions {
   opacity: 0.95;
   line-height: 1.1;
   margin-bottom: 0.3rem;
+  text-shadow:
+    1px 1px 0 var(--paper-bright),
+    2px 2px 0 rgb(79 59 36 / 18%);
 }
 
 .game-title {
@@ -896,6 +1066,53 @@ body.settings-is-open .start-screen-actions {
 
   .selection-grid {
     width: min(100%, 22rem);
+  }
+
+  .mode-screen {
+    justify-content: flex-start;
+    padding-top: max(2.5rem, 8vh);
+  }
+
+  .mode-options {
+    grid-template-columns: minmax(0, 22rem);
+    justify-content: center;
+    gap: 0.9rem;
+  }
+
+  .mode-card {
+    min-height: 13rem;
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+    column-gap: 0.75rem;
+    padding: 0.75rem;
+    text-align: left;
+  }
+
+  .mode-card-art {
+    width: 6.5rem;
+    height: 6.5rem;
+    grid-row: 1 / 4;
+    align-self: center;
+  }
+
+  .mode-card-title {
+    align-self: end;
+    margin-top: 0;
+    font-size: 1.1rem;
+  }
+
+  .mode-card-description {
+    margin-top: 0.2rem;
+  }
+
+  .mode-card-action {
+    margin-top: 0.45rem;
+    padding-top: 0;
+  }
+
+  .mode-screen-status {
+    margin-top: 0.75rem;
   }
 }
 
@@ -1025,4 +1242,85 @@ body.settings-is-open .start-screen-actions {
     font-size: 0.7rem;
     padding: 0.5rem 0.9rem;
   }
+
+  .mode-screen {
+    justify-content: center;
+    padding-top: 1.2rem;
+    padding-bottom: 1rem;
+  }
+
+  .mode-screen-kicker {
+    margin-bottom: 0.2rem;
+    font-size: 0.62rem;
+  }
+
+  .mode-screen-title {
+    font-size: clamp(2rem, 7vh, 3rem);
+  }
+
+  .mode-screen-prompt {
+    margin: 0.4rem 0 0.8rem;
+  }
+
+  .mode-options {
+    grid-template-columns: repeat(2, minmax(0, 14rem));
+    gap: 1rem;
+  }
+
+  .mode-card {
+    min-height: 13rem;
+    display: flex;
+    padding: 0.7rem 0.55rem;
+    text-align: center;
+  }
+
+  .mode-card-art {
+    width: min(100%, 10rem);
+    height: 5.5rem;
+  }
+
+  .mode-card-title {
+    margin-top: 0.1rem;
+    font-size: 1rem;
+  }
+
+  .mode-card-description {
+    font-size: 0.72rem;
+  }
+
+  .mode-card-action {
+    font-size: 0.62rem;
+  }
+}
+
+@media (width <= 560px) and (orientation: portrait) {
+  .mode-screen {
+    justify-content: flex-start;
+    padding-top: max(2.4rem, 7vh);
+  }
+
+  .mode-options {
+    grid-template-columns: minmax(0, 21rem);
+  }
+
+  .mode-card {
+    min-height: 12rem;
+    display: grid;
+    grid-template-columns: 6rem minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+    text-align: left;
+  }
+
+  .mode-card-art {
+    width: 6rem;
+    height: 6rem;
+    grid-row: 1 / 4;
+  }
+}
+
+.mode-screen-title,
+.brand-title,
+.selection-screen-title {
+  font-size: clamp(1.8rem, min(6vw, 7vh), 4.2rem);
+  letter-spacing: 0.12em;
 }

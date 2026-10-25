@@ -271,7 +271,7 @@ export function updateStageUrl(stageNumber = null) {
 }
 
 export function setActivePage(page) {
-  [dom.startPage, dom.selectionPage, dom.playPage].forEach((item) => {
+  [dom.modePage, dom.startPage, dom.selectionPage, dom.playPage].forEach((item) => {
     if (!item) return;
     item.classList.toggle("is-active", item === page);
   });
@@ -522,7 +522,7 @@ export async function initializePageFlow() {
       stagePageSize,
       totalStagePages
     );
-    setActivePage(dom.startPage);
+    setActivePage(dom.modePage);
   }
 }
 
