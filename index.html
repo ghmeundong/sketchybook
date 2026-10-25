@@ -64,7 +64,33 @@
     <div id="page-loader">Loading Sketchybook…</div>
     <main id="page-content">
       <div id="book" class="book">
-        <div class="page page-start is-active">
+        <div class="page page-mode is-active">
+          <section class="mode-screen" aria-labelledby="mode-screen-title">
+            <h1 class="mode-screen-title" id="mode-screen-title">SKETCHYBOOK</h1>
+            <div class="mode-options">
+              <button class="mode-card mode-card--single" type="button" data-select-single>
+                <canvas class="mode-card-art" data-mode-art="single" aria-hidden="true"></canvas>
+                <span class="mode-card-title">Singleplayer</span>
+                <span class="mode-card-description">Draw, guide, and solve at your own pace.</span>
+                <span class="mode-card-action">PLAY SOLO <span aria-hidden="true">&#8594;</span></span>
+              </button>
+              <button
+                class="mode-card mode-multiplayer-card"
+                type="button"
+                data-select-multiplayer
+                aria-pressed="false"
+              >
+                <canvas class="mode-card-art" data-mode-art="multi" aria-hidden="true"></canvas>
+                <span class="mode-card-title">Multiplayer</span>
+                <span class="mode-card-description">Draw together from different devices.</span>
+                <span class="mode-card-action">PLAY TOGETHER <span aria-hidden="true">&#8594;</span></span>
+              </button>
+            </div>
+            <p class="mode-screen-status" data-mode-status aria-live="polite"></p>
+          </section>
+        </div>
+
+        <div class="page page-start">
           <section class="start-screen" aria-label="Game start screen">
             <div class="start-screen-login">
               <div id="google-signin" class="google-signin-container"></div>
@@ -170,6 +196,14 @@
                     />
                   </div>
                 </div>
+                <button
+                  class="settings-mode-change"
+                  type="button"
+                  data-mode-back
+                  data-settings-close
+                >
+                  Change play mode
+                </button>
                 <button class="settings-panel-close" type="button" data-settings-close>
                   Close
                 </button>

@@ -6,6 +6,7 @@ export const dom = {
   drawLimitProgress: document.getElementById("draw-limit-progress"),
   drawLimitProgressTrackCanvas: document.getElementById("draw-limit-progress-track-canvas"),
   drawLimitProgressFillCanvas: document.getElementById("draw-limit-progress-fill-canvas"),
+  modePage: document.querySelector(".page-mode"),
   selectionPage: document.querySelector(".page-selection"),
   playPage: document.querySelector(".page-play"),
   startPage: document.querySelector(".page-start"),
