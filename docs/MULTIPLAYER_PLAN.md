@@ -25,7 +25,10 @@ Suggested event fields:
   "roomSequence": 42,
   "applyTick": 1800,
   "playerId": "room-scoped-id",
-  "points": [{ "x": 120, "y": 240 }, { "x": 128, "y": 246 }],
+  "points": [
+    { "x": 120, "y": 240 },
+    { "x": 128, "y": 246 }
+  ],
   "width": 8,
   "color": "#222222"
 }

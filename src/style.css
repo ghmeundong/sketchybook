@@ -25,7 +25,6 @@
     display: flex;
   }
 
-  /* 세로 모드일 때만 스크롤 방지 */
   html.has-orientation-prompt body {
     overflow: hidden;
   }

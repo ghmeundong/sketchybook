@@ -17,6 +17,7 @@ export const dom = {
   helpToggle: document.querySelector("[data-help-toggle]"),
   helpPanel: document.getElementById("start-help-panel"),
   body: document.body,
+  mapBoardPage: document.querySelector(".page-map-board"),
   mapEditorPage: document.querySelector(".page-map-editor"),
 };
 

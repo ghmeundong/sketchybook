@@ -190,7 +190,8 @@ function initializeModeSelection() {
 
   mapMakerButton?.addEventListener("click", () => {
     if (modeStatus) modeStatus.textContent = "";
-    setActivePage(dom.mapEditorPage);
+    setActivePage(dom.mapBoardPage);
+    window.dispatchEvent(new Event("sketchybook:map-board-open"));
   });
 
   multiplayerButton.addEventListener("click", () => {

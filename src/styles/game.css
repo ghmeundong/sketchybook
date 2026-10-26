@@ -287,6 +287,11 @@
   outline: none;
 }
 
+.stage-clear-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
 .stage-clear-icon {
   display: inline-flex;
   align-items: center;
