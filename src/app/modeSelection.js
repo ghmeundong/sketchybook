@@ -3,6 +3,7 @@ import { attachRoughFrame } from "../game/ui/roughFrame.js";
 import { setActivePage, startStage } from "../game/engine/core/gameController.js";
 import { createActionIconCanvas } from "../game/ui/uiIcons.js";
 import { dom } from "../game/engine/core/domRefs.js";
+import { state } from "../game/engine/core/gameState.js";
 import { GOLD, INK, INK_SOFT } from "../theme.js";
 import { connectToRoom, createRoom } from "../services/multiplayer.js";
 
@@ -43,6 +44,9 @@ let roomStartTimer = null;
 let serverClockOffset = 0;
 let selfPlayerId = null;
 let roomCode = null;
+let toastTimer = null;
+let toastHideTimer = null;
+let roomToast = null;
 
 function drawModeArtwork(canvas, mode) {
   if (!canvas) return;
@@ -131,6 +135,17 @@ function initializeModeSelection() {
     roughness: 1.6,
   });
   initializeArtwork();
+  roomToast = document.createElement("div");
+  roomToast.className = "multiplayer-toast";
+  roomToast.setAttribute("role", "status");
+  roomToast.setAttribute("aria-live", "polite");
+  roomToast.hidden = true;
+  document.body.appendChild(roomToast);
+  document.addEventListener("pointerdown", (event) => {
+    if (!roomToast?.hidden && !roomToast?.contains(event.target)) {
+      dismissRoomToast();
+    }
+  });
   [roomCopyLinkButton, selectionCopyLinkButton].forEach((button) => {
     button?.appendChild(createActionIconCanvas("copy", { w: 24, h: 24, strokeWidth: 2.2 }));
   });
@@ -210,7 +225,14 @@ function initializeModeSelection() {
       button.classList.toggle("is-selected", button === event.detail.button);
       button.disabled = true;
     });
-    roomSocket.send(JSON.stringify({ type: "start-game", stageNumber: selectedRoomStage }));
+    roomSocket.send(
+      JSON.stringify({
+        type: "start-game",
+        stageNumber: selectedRoomStage,
+        difficulty: state.currentDifficulty,
+        challengeModeEnabled: state.challengeModeEnabled,
+      })
+    );
     if (selectionMessage) {
       selectionMessage.textContent = `Starting Stage ${selectedRoomStage} together…`;
     }
@@ -228,10 +250,37 @@ function initializeModeSelection() {
   });
 
   window.addEventListener("sketchybook:game-exit", (event) => {
-    if (!roomSocket || roomRole !== "host" || roomSocket.readyState !== WebSocket.OPEN) return;
+    if (!roomSocket || roomSocket.readyState !== WebSocket.OPEN) return;
     event.preventDefault();
+    if (roomRole !== "host") {
+      roomStatus.textContent = "Only the host can leave the active multiplayer game.";
+      return;
+    }
     roomStatus.textContent = "Returning everyone to the room…";
     roomSocket.send(JSON.stringify({ type: "return-to-lobby" }));
+  });
+
+  window.addEventListener("sketchybook:stage-clear-check", (event) => {
+    if (!roomSocket || roomSocket.readyState !== WebSocket.OPEN) return;
+    if (roomRole !== "host") {
+      event.preventDefault();
+      return;
+    }
+    roomSocket.send(
+      JSON.stringify({
+        type: "stage-clear",
+        stageNumber: event.detail.stageNumber,
+        stageEventCount: event.detail.stageEventCount,
+      })
+    );
+  });
+
+  window.addEventListener("sketchybook:stage-next", (event) => {
+    handleHostStageTransition(event, "next-stage");
+  });
+
+  window.addEventListener("sketchybook:stage-retry", (event) => {
+    handleHostStageTransition(event, "retry-stage");
   });
 
   const inviteCode = new URLSearchParams(window.location.search).get("room")?.trim().toUpperCase();
@@ -247,6 +296,44 @@ function initializeModeSelection() {
     }
     void joinRoomByCode(inviteCode);
   }
+}
+
+function showRoomToast(message) {
+  if (!roomToast) return;
+  window.clearTimeout(toastTimer);
+  window.clearTimeout(toastHideTimer);
+  roomToast.textContent = message;
+  roomToast.hidden = false;
+  roomToast.classList.add("is-visible");
+  toastTimer = window.setTimeout(() => {
+    roomToast.classList.remove("is-visible");
+    toastHideTimer = window.setTimeout(() => {
+      roomToast.hidden = true;
+    }, 180);
+  }, 1000);
+}
+
+function dismissRoomToast() {
+  window.clearTimeout(toastTimer);
+  window.clearTimeout(toastHideTimer);
+  toastTimer = null;
+  toastHideTimer = null;
+  roomToast?.classList.remove("is-visible");
+  if (roomToast) roomToast.hidden = true;
+}
+
+function handleHostStageTransition(event, type, stageNumber = event.detail?.stageNumber) {
+  if (!roomSocket || roomSocket.readyState !== WebSocket.OPEN) return;
+  event.preventDefault();
+  if (roomRole !== "host") {
+    roomStatus.textContent = "Only the host can change the stage for everyone.";
+    return;
+  }
+  roomSocket.send(JSON.stringify({ type, stageNumber }));
+  roomStatus.textContent =
+    type === "next-stage"
+      ? `Starting Stage ${stageNumber} together…`
+      : "Restarting the stage together…";
 }
 
 function getPlayerName() {
@@ -286,6 +373,9 @@ async function withRoomConnection(connect) {
     }
   } catch (error) {
     roomStatus.textContent = error.message || "Could not connect to the room.";
+    if (error.code === "ROOM_IN_PROGRESS") {
+      showRoomToast(error.message);
+    }
   } finally {
     isConnecting = false;
     setRoomControlsDisabled(false);
@@ -312,13 +402,18 @@ async function copyRoomInviteLink() {
     temporaryInput.style.opacity = "0";
     document.body.append(temporaryInput);
     temporaryInput.select();
-    document.execCommand("copy");
+    const copied = document.execCommand("copy");
     temporaryInput.remove();
+    if (!copied) {
+      showRoomToast("Could not copy the invite link. Please copy it manually.");
+      return;
+    }
   }
-  roomStatus.textContent = "Invite link copied. Send it to your friend.";
+  roomStatus.textContent = "Invite link copied.";
   if (selectionMessage && dom.selectionPage.classList.contains("is-active")) {
-    selectionMessage.textContent = "Invite link copied. Send it to your friend.";
+    selectionMessage.textContent = "Invite link copied.";
   }
+  showRoomToast("Invite link copied.");
 }
 
 function handleRoomMessage(message) {
@@ -361,6 +456,14 @@ function handleRoomMessage(message) {
   if (message.type === "room-start") {
     clearTimeout(roomStartTimer);
     selectedRoomStage = message.stageNumber;
+    window.dispatchEvent(
+      new CustomEvent("sketchybook:room-mode", {
+        detail: {
+          difficulty: message.difficulty,
+          challengeModeEnabled: message.challengeModeEnabled,
+        },
+      })
+    );
     const delay = Math.max(0, message.startAt - (Date.now() + serverClockOffset));
     roomStartTimer = window.setTimeout(async () => {
       selectionStatus.hidden = true;
@@ -376,6 +479,16 @@ function handleRoomMessage(message) {
 
   if (message.type === "stroke") {
     window.dispatchEvent(new CustomEvent("sketchybook:room-stroke", { detail: message }));
+    return;
+  }
+
+  if (message.type === "ball-launch") {
+    window.dispatchEvent(new CustomEvent("sketchybook:room-ball-launch", { detail: message }));
+    return;
+  }
+
+  if (message.type === "stage-clear") {
+    window.dispatchEvent(new CustomEvent("sketchybook:room-stage-clear", { detail: message }));
     return;
   }
 

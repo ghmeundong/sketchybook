@@ -41,6 +41,7 @@ import { recordPlaygroundStroke } from "../ui/playgroundHistory.js";
 import {
   getServerTime,
   isRoomConnected,
+  sendRoomBallLaunch,
   sendRoomStroke,
   sendRoomStrokePreview,
   cancelRoomStrokePreview,
@@ -51,6 +52,8 @@ const MAX_SHARED_STROKE_POINTS = 256;
 const MAX_PREVIEW_BATCH_POINTS = 31;
 const PREVIEW_SEND_INTERVAL_MS = 50;
 const scheduledStrokeTimers = new Map();
+const pendingBallLaunches = new Set();
+const pendingBallLaunchTimers = new Map();
 let liveStrokeId = null;
 let liveStrokeSequence = 0;
 let liveStrokeSentPointCount = 0;
@@ -242,6 +245,54 @@ function receiveRoomStroke(message) {
   scheduledStrokeTimers.set(message.eventId, timerId);
 }
 
+function applyBallLaunch() {
+  state.stageEventCount += 1;
+  for (const obj of state.gameObjects) {
+    if (!(obj instanceof Ball) || !obj.physicsBody) continue;
+
+    try {
+      const { linear: impulseLinear, angular: angularImpulse } = getBallImpulseValues();
+      const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
+      applyImpulseAtLocalPoint(obj.physicsBody, impulseLinear, 0, 0, offsetY);
+      applyAngularImpulseToBody(obj.physicsBody, angularImpulse);
+      if (getLineLengthLimit() !== null) {
+        state.totalDrawnLength += 200;
+        updateDrawLimitProgressUI();
+      }
+    } catch (error) {
+      console.warn("moving ball failed:", error);
+    }
+    break;
+  }
+}
+
+function receiveRoomBallLaunch(message) {
+  if (
+    !message?.eventId ||
+    !Number.isFinite(message.applyAt) ||
+    !Number.isInteger(message.stageNumber)
+  ) {
+    return;
+  }
+
+  const pendingTimerId = pendingBallLaunchTimers.get(message.eventId);
+  if (pendingTimerId) window.clearTimeout(pendingTimerId);
+  pendingBallLaunchTimers.delete(message.eventId);
+  pendingBallLaunches.delete(message.eventId);
+
+  const delay = Math.max(0, message.applyAt - getServerTime());
+  const timerId = window.setTimeout(() => {
+    scheduledStrokeTimers.delete(message.eventId);
+    if (
+      dom.playPage?.classList.contains("is-active") &&
+      state.currentStageNumber === message.stageNumber
+    ) {
+      applyBallLaunch();
+    }
+  }, delay);
+  scheduledStrokeTimers.set(message.eventId, timerId);
+}
+
 function receiveRoomStrokePreview(message) {
   if (
     !message?.strokeId ||
@@ -312,6 +363,9 @@ function cancelLiveStrokePreview(notifyPeers = true) {
 function clearRoomStrokePreviews() {
   for (const timerId of scheduledStrokeTimers.values()) window.clearTimeout(timerId);
   scheduledStrokeTimers.clear();
+  for (const timerId of pendingBallLaunchTimers.values()) window.clearTimeout(timerId);
+  pendingBallLaunchTimers.clear();
+  pendingBallLaunches.clear();
   state.roomStrokePreviews = [];
 }
 
@@ -507,31 +561,35 @@ export function launchBallFromInput(eventRepeat = false) {
   if (!canLaunchBall) return;
 
   const ball = state.gameObjects.find((obj) => obj instanceof Ball && obj.physicsBody);
-  if (!ball || !isBodyTouchingSurface(ball.physicsBody)) return;
-
-  state.stageEventCount += 1;
-  for (const obj of state.gameObjects) {
-    if (obj instanceof Ball && obj.physicsBody) {
-      try {
-        const { linear: impulseLinear, angular: angularImpulse } = getBallImpulseValues();
-        const offsetY = -Math.max(2, obj.physicalRadius * 0.6);
-        applyImpulseAtLocalPoint(obj.physicsBody, impulseLinear, 0, 0, offsetY);
-        applyAngularImpulseToBody(obj.physicsBody, angularImpulse);
-        if (getLineLengthLimit() !== null) {
-          state.totalDrawnLength += 200;
-          updateDrawLimitProgressUI();
-        }
-      } catch (error) {
-        console.warn("moving ball failed:", error);
-      }
-      break;
-    }
+  if (!ball || pendingBallLaunches.size > 0 || !isBodyTouchingSurface(ball.physicsBody)) {
+    return;
   }
+
+  if (isRoomConnected()) {
+    const eventId = sendRoomBallLaunch();
+    if (!eventId) {
+      console.warn("Could not synchronize the ball launch with the room.");
+      return;
+    }
+
+    pendingBallLaunches.add(eventId);
+    const timeoutId = window.setTimeout(() => {
+      pendingBallLaunches.delete(eventId);
+      pendingBallLaunchTimers.delete(eventId);
+    }, 5000);
+    pendingBallLaunchTimers.set(eventId, timeoutId);
+    return;
+  }
+
+  applyBallLaunch();
 }
 
 export function initPointerInput() {
   window.addEventListener("sketchybook:room-stroke", (event) => {
     receiveRoomStroke(event.detail);
+  });
+  window.addEventListener("sketchybook:room-ball-launch", (event) => {
+    receiveRoomBallLaunch(event.detail);
   });
   window.addEventListener("sketchybook:room-stroke-preview", (event) => {
     receiveRoomStrokePreview(event.detail);
@@ -560,6 +618,11 @@ export function initPointerInput() {
 
     if (isGameActive && (event.key === "r" || event.key === "R")) {
       event.preventDefault();
+      const retryEvent = new CustomEvent("sketchybook:stage-retry", {
+        cancelable: true,
+        detail: { stageNumber: state.currentStageNumber },
+      });
+      if (!window.dispatchEvent(retryEvent)) return;
       hideStageClearOverlay();
       if (state.isPlayground) {
         await startPlayground();

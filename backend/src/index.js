@@ -11,6 +11,7 @@ const MAX_PLAYER_NAME_LENGTH = 20;
 const MAX_STROKE_POINTS = 256;
 const MIN_STROKE_LEAD_MS = 700;
 const MAX_STROKE_LEAD_MS = 3000;
+const VALID_DIFFICULTIES = new Set(["easy", "normal", "hard", "insane"]);
 
 function createRoomCode(randomBytes = crypto.getRandomValues(new Uint8Array(ROOM_CODE_LENGTH))) {
   return Array.from(
@@ -55,6 +56,26 @@ async function handleRoomRequest(request, env) {
     return errorResponse("Could not create room. Please try again.", 503);
   }
 
+  if (
+    parts.length === 4 &&
+    parts[1] === "rooms" &&
+    parts[3] === "status" &&
+    request.method === "GET"
+  ) {
+    const roomCode = normalizeRoomCode(parts[2]);
+    if (!roomCode) return errorResponse("Invalid room code.", 400);
+    const room = env.MULTIPLAYER_ROOMS.getByName(roomCode);
+    const response = await room.fetch("https://room.internal/status");
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: {
+        ...Object.fromEntries(response.headers),
+        ...CORS_HEADERS,
+      },
+    });
+  }
+
   if (parts.length === 3 && parts[1] === "rooms" && request.method === "GET") {
     const roomCode = normalizeRoomCode(parts[2]);
     if (!roomCode) return errorResponse("Invalid room code.", 400);
@@ -75,6 +96,14 @@ export class MultiplayerRoom {
 
   async fetch(request) {
     const url = new URL(request.url);
+    if (request.method === "GET" && url.pathname === "/status") {
+      const status = await this.state.storage.get("status");
+      if (!(await this.state.storage.get("createdAt"))) {
+        return Response.json({ error: "Room not found." }, { status: 404 });
+      }
+      return Response.json({ status });
+    }
+
     if (request.method === "POST" && url.pathname === "/create") {
       const existing = await this.state.storage.get("createdAt");
       if (existing) return new Response("Room already exists", { status: 409 });
@@ -86,6 +115,9 @@ export class MultiplayerRoom {
       await this.state.storage.put("roomSequence", 0);
       await this.state.storage.put("recentStrokeEvents", []);
       await this.state.storage.put("lastStrokeApplyAt", 0);
+      await this.state.storage.put("lastRoomActionApplyAt", 0);
+      await this.state.storage.put("recentBallLaunchEvents", []);
+      await this.state.storage.delete("stageClearStage");
       await this.state.storage.put("previewSequences", {});
       await this.state.storage.setAlarm(Date.now() + 2 * 60 * 60 * 1000);
       return Response.json({ hostToken }, { status: 201 });
@@ -153,7 +185,41 @@ export class MultiplayerRoom {
     }
 
     const player = socket.deserializeAttachment();
+    if (payload?.type === "stage-clear") {
+      if (!player?.isHost) {
+        socket.send(
+          JSON.stringify({ type: "error", message: "Only the host can clear the stage." })
+        );
+        return;
+      }
+      if (
+        !(await this.isGameplayReady()) ||
+        !Number.isInteger(payload.stageNumber) ||
+        payload.stageNumber !== (await this.state.storage.get("selectedStage")) ||
+        !Number.isInteger(payload.stageEventCount) ||
+        payload.stageEventCount < 0 ||
+        payload.stageEventCount > 100000
+      ) {
+        socket.send(JSON.stringify({ type: "error", message: "Invalid stage clear." }));
+        return;
+      }
+      if ((await this.state.storage.get("stageClearStage")) === payload.stageNumber) return;
+      await this.state.storage.put("stageClearStage", payload.stageNumber);
+      this.broadcast({
+        type: "stage-clear",
+        stageNumber: payload.stageNumber,
+        stageEventCount: payload.stageEventCount,
+      });
+      return;
+    }
+
     if (payload?.type === "stroke-preview") {
+      if (!(await this.isGameplayReady())) {
+        socket.send(
+          JSON.stringify({ type: "error", message: "The room is not ready for gameplay." })
+        );
+        return;
+      }
       await this.handleStrokePreview(socket, player, payload);
       return;
     }
@@ -164,12 +230,78 @@ export class MultiplayerRoom {
     }
 
     if (payload?.type === "stroke") {
+      if (!(await this.isGameplayReady())) {
+        socket.send(
+          JSON.stringify({ type: "error", message: "The room is not ready for gameplay." })
+        );
+        return;
+      }
       await this.handleStrokeMessage(socket, player, payload);
+      return;
+    }
+
+    if (payload?.type === "ball-launch") {
+      if (!(await this.isGameplayReady())) {
+        socket.send(
+          JSON.stringify({ type: "error", message: "The room is not ready for gameplay." })
+        );
+        return;
+      }
+      await this.handleBallLaunchMessage(socket, player, payload);
       return;
     }
 
     if (!player?.isHost) {
       socket.send(JSON.stringify({ type: "error", message: "Only the host can do that." }));
+      return;
+    }
+
+    if (payload?.type === "next-stage" || payload?.type === "retry-stage") {
+      if ((await this.state.storage.get("status")) !== "started") {
+        socket.send(JSON.stringify({ type: "error", message: "The room is not in a game." }));
+        return;
+      }
+
+      const now = Date.now();
+      const pendingStartAt = (await this.state.storage.get("startedAt")) || 0;
+      if (pendingStartAt > now) {
+        socket.send(
+          JSON.stringify({ type: "error", message: "A stage transition is already pending." })
+        );
+        return;
+      }
+
+      const currentStage = await this.state.storage.get("selectedStage");
+      const requestedStage =
+        payload.type === "next-stage" ? Math.min(currentStage + 1, 18) : currentStage;
+      if (
+        !Number.isInteger(currentStage) ||
+        !Number.isInteger(payload.stageNumber) ||
+        payload.stageNumber !== requestedStage
+      ) {
+        socket.send(JSON.stringify({ type: "error", message: "Invalid stage transition." }));
+        return;
+      }
+
+      const startAt = now + 2500;
+      await this.state.storage.put("selectedStage", requestedStage);
+      await this.state.storage.put("startedAt", startAt);
+      await this.state.storage.put("roomSequence", 0);
+      await this.state.storage.put("recentStrokeEvents", []);
+      await this.state.storage.put("lastStrokeApplyAt", 0);
+      await this.state.storage.put("lastRoomActionApplyAt", 0);
+      await this.state.storage.put("recentBallLaunchEvents", []);
+      await this.state.storage.delete("stageClearStage");
+      await this.state.storage.put("previewSequences", {});
+      this.broadcast({
+        type: "room-start",
+        stageNumber: requestedStage,
+        startAt,
+        serverTime: now,
+        difficulty: await this.state.storage.get("selectedDifficulty"),
+        challengeModeEnabled: await this.state.storage.get("challengeModeEnabled"),
+        players: this.getPlayers(),
+      });
       return;
     }
 
@@ -184,6 +316,9 @@ export class MultiplayerRoom {
       await this.state.storage.put("roomSequence", 0);
       await this.state.storage.put("recentStrokeEvents", []);
       await this.state.storage.put("lastStrokeApplyAt", 0);
+      await this.state.storage.put("lastRoomActionApplyAt", 0);
+      await this.state.storage.put("recentBallLaunchEvents", []);
+      await this.state.storage.delete("stageClearStage");
       await this.state.storage.put("previewSequences", {});
       await this.broadcastRoomState();
       this.broadcast({ type: "room-lobby", serverTime: Date.now() });
@@ -212,11 +347,25 @@ export class MultiplayerRoom {
         socket.send(JSON.stringify({ type: "error", message: "Select a valid stage first." }));
         return;
       }
+      const difficulty = payload.difficulty ?? "normal";
+      if (
+        !VALID_DIFFICULTIES.has(difficulty) ||
+        (payload.challengeModeEnabled != null && typeof payload.challengeModeEnabled !== "boolean")
+      ) {
+        socket.send(JSON.stringify({ type: "error", message: "Invalid room game mode." }));
+        return;
+      }
+      const challengeModeEnabled = difficulty === "insane" || Boolean(payload.challengeModeEnabled);
       await this.state.storage.put("selectedStage", stageNumber);
+      await this.state.storage.put("selectedDifficulty", difficulty);
+      await this.state.storage.put("challengeModeEnabled", challengeModeEnabled);
       const startAt = Date.now() + 2500;
       await this.state.storage.put("roomSequence", 0);
       await this.state.storage.put("recentStrokeEvents", []);
       await this.state.storage.put("lastStrokeApplyAt", 0);
+      await this.state.storage.put("lastRoomActionApplyAt", 0);
+      await this.state.storage.put("recentBallLaunchEvents", []);
+      await this.state.storage.delete("stageClearStage");
       await this.state.storage.put("previewSequences", {});
       await this.state.storage.put("status", "started");
       await this.state.storage.put("startedAt", startAt);
@@ -225,12 +374,21 @@ export class MultiplayerRoom {
         stageNumber,
         startAt,
         serverTime: Date.now(),
+        difficulty,
+        challengeModeEnabled,
         players: this.getPlayers(),
       });
       return;
     }
 
     socket.send(JSON.stringify({ type: "error", message: "Unsupported message type." }));
+  }
+
+  async isGameplayReady() {
+    return (
+      (await this.state.storage.get("status")) === "started" &&
+      ((await this.state.storage.get("startedAt")) || 0) <= Date.now()
+    );
   }
 
   async handleStrokeMessage(socket, player, payload) {
@@ -277,12 +435,16 @@ export class MultiplayerRoom {
     const now = Date.now();
     const requestedLead = Number.isFinite(payload.leadTimeMs) ? payload.leadTimeMs : 1000;
     const leadTimeMs = Math.min(MAX_STROKE_LEAD_MS, Math.max(MIN_STROKE_LEAD_MS, requestedLead));
-    const previousApplyAt = (await this.state.storage.get("lastStrokeApplyAt")) || 0;
+    const previousApplyAt =
+      (await this.state.storage.get("lastRoomActionApplyAt")) ||
+      (await this.state.storage.get("lastStrokeApplyAt")) ||
+      0;
     const applyAt = Math.max(now + leadTimeMs, previousApplyAt + 1);
     const roomSequence = ((await this.state.storage.get("roomSequence")) || 0) + 1;
 
     await this.state.storage.put("roomSequence", roomSequence);
     await this.state.storage.put("lastStrokeApplyAt", applyAt);
+    await this.state.storage.put("lastRoomActionApplyAt", applyAt);
     await this.state.storage.put("recentStrokeEvents", [...recentEvents, eventKey].slice(-512));
     if (typeof payload.strokeId === "string") {
       const previewSequences = (await this.state.storage.get("previewSequences")) || {};
@@ -302,6 +464,50 @@ export class MultiplayerRoom {
       points,
       width,
       color,
+    });
+  }
+
+  async handleBallLaunchMessage(socket, player, payload) {
+    if (!player?.playerId || (await this.state.storage.get("status")) !== "started") {
+      socket.send(JSON.stringify({ type: "error", message: "The room is not in a game." }));
+      return;
+    }
+
+    const { eventId } = payload;
+    if (typeof eventId !== "string" || !/^[\da-f-]{8,64}$/i.test(eventId)) {
+      socket.send(JSON.stringify({ type: "error", message: "Invalid ball launch." }));
+      return;
+    }
+
+    const eventKey = `${player.playerId}:${eventId}`;
+    const recentEvents = (await this.state.storage.get("recentBallLaunchEvents")) || [];
+    if (recentEvents.includes(eventKey)) {
+      socket.send(JSON.stringify({ type: "ball-launch-duplicate", eventId }));
+      return;
+    }
+
+    const now = Date.now();
+    const requestedLead = Number.isFinite(payload.leadTimeMs) ? payload.leadTimeMs : 1000;
+    const leadTimeMs = Math.min(MAX_STROKE_LEAD_MS, Math.max(MIN_STROKE_LEAD_MS, requestedLead));
+    const previousApplyAt =
+      (await this.state.storage.get("lastRoomActionApplyAt")) ||
+      (await this.state.storage.get("lastStrokeApplyAt")) ||
+      0;
+    const applyAt = Math.max(now + leadTimeMs, previousApplyAt + 1);
+    const roomSequence = ((await this.state.storage.get("roomSequence")) || 0) + 1;
+
+    await this.state.storage.put("roomSequence", roomSequence);
+    await this.state.storage.put("lastRoomActionApplyAt", applyAt);
+    await this.state.storage.put("recentBallLaunchEvents", [...recentEvents, eventKey].slice(-512));
+    this.broadcast({
+      type: "ball-launch",
+      eventId,
+      roomSequence,
+      applyAt,
+      serverTime: now,
+      stageNumber: await this.state.storage.get("selectedStage"),
+      playerId: player.playerId,
+      playerName: player.name,
     });
   }
 

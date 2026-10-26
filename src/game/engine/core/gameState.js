@@ -17,6 +17,7 @@ export const state = {
   currentStageNumber: 1,
   isPlayground: false,
   stageCleared: false,
+  stageClearRequestPending: false,
   stageHasSimulated: false,
   stageEventCount: 0,
   stageMinEvents: 0,
@@ -46,6 +47,7 @@ export const state = {
   playgroundUndoStack: [],
   playgroundRedoStack: [],
   lastPhysicsTime: 0,
+  physicsAccumulatorMs: 0,
   totalDrawnLength: 0,
   drawLimitProgressTrackDrawn: false,
 
