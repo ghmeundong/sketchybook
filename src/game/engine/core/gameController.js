@@ -326,11 +326,16 @@ export function updateStageUrl(stageNumber = null) {
 }
 
 export function setActivePage(page) {
-  [dom.modePage, dom.startPage, dom.selectionPage, dom.playPage].forEach((item) => {
-    if (!item) return;
-    item.classList.toggle("is-active", item === page);
-  });
-  dom.globalToolbar?.classList.toggle("is-hidden", page === dom.playPage);
+  [dom.modePage, dom.mapEditorPage, dom.startPage, dom.selectionPage, dom.playPage].forEach(
+    (item) => {
+      if (!item) return;
+      item.classList.toggle("is-active", item === page);
+    }
+  );
+  dom.globalToolbar?.classList.toggle(
+    "is-hidden",
+    page === dom.playPage || page === dom.mapEditorPage
+  );
   setActiveAudioPage(page);
   if (page === dom.selectionPage) {
     resetStageState();
