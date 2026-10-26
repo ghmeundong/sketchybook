@@ -14,7 +14,7 @@ import {
   hideStageClearOverlay as hideStageClearOverlayUI,
 } from "../../ui/gameUi.js";
 import { getChallengeModePreference, setChallengeModePreference } from "../config/challengeMode.js";
-import { shouldAdvancePhysics, shouldRenderGuidanceMessage } from "../config/inputRules.js";
+import { shouldAdvancePhysics } from "../config/inputRules.js";
 import { shouldRebuildPhysicsWorld } from "../physics/physicsState.js";
 import { isChallengeClearedLocal, saveChallengeCleared } from "../../ui/stageProgress.js";
 import {
@@ -32,7 +32,6 @@ import { createGameObjects } from "../../stages/gameObjectFactory.js";
 import { DIFFICULTY_LEVELS, getDifficultyRules } from "../config/difficultyLevels.js";
 import { dom, stagePageSize, totalStageCount, totalStagePages } from "./domRefs.js";
 import { state } from "./gameState.js";
-import { isFullscreenActive } from "./fullscreen.js";
 import { render, getRenderDpr } from "../../render/gameRenderer.js";
 import {
   playScoreStarSound,
@@ -234,6 +233,8 @@ export function resetStageState() {
   state.currentStroke = null;
   state.isDrawing = false;
   state.lastPoint = null;
+  state.roomStrokePreviews = [];
+  window.dispatchEvent(new CustomEvent("sketchybook:stage-reset"));
   state.stageCleared = false;
   state.currentStage = null;
   state.stageHasSimulated = false;
@@ -271,10 +272,11 @@ export function updateStageUrl(stageNumber = null) {
 }
 
 export function setActivePage(page) {
-  [dom.startPage, dom.selectionPage, dom.playPage].forEach((item) => {
+  [dom.modePage, dom.startPage, dom.selectionPage, dom.playPage].forEach((item) => {
     if (!item) return;
     item.classList.toggle("is-active", item === page);
   });
+  dom.globalToolbar?.classList.toggle("is-hidden", page === dom.playPage);
   setActiveAudioPage(page);
   if (page === dom.selectionPage) {
     resetStageState();
@@ -291,12 +293,13 @@ export function setActivePage(page) {
 }
 
 export async function tryEnterFullscreen() {
-  if (isItchBuild) return;
+  const isDesktop =
+    Boolean(window.electronAPI?.setFullscreen) ||
+    (window.matchMedia
+      ? window.matchMedia("(pointer: fine)").matches
+      : navigator.maxTouchPoints === 0);
+  if (isItchBuild || isDesktop) return;
 
-  const isFullscreen = isFullscreenActive();
-  if (isFullscreen) {
-    return;
-  }
   if (window.electronAPI?.setFullscreen) {
     try {
       await window.electronAPI.setFullscreen(true);
@@ -400,6 +403,8 @@ export function createGameExitButton() {
 
   gameExitButton.appendChild(createActionIconCanvas("exit", { w: 60, h: 48, strokeWidth: 2.5 }));
   gameExitButton.addEventListener("click", async () => {
+    const exitEvent = new CustomEvent("sketchybook:game-exit", { cancelable: true });
+    if (!window.dispatchEvent(exitEvent)) return;
     hideStageClearOverlay();
     setActivePage(state.isPlayground ? dom.startPage : dom.selectionPage);
     if (state.isPlayground) {
@@ -522,7 +527,7 @@ export async function initializePageFlow() {
       stagePageSize,
       totalStagePages
     );
-    setActivePage(dom.startPage);
+    setActivePage(dom.modePage);
   }
 }
 
@@ -742,15 +747,9 @@ export function resizeCanvas() {
 
 export function syncGamePlayState() {
   const isGameActive = dom.playPage?.classList.contains("is-active");
-  const isFullscreen = isFullscreenActive();
   const isPageVisible = !document.hidden;
-  const shouldPauseForFocusLoss = !state.isWindowFocused || !document.hasFocus();
-  const canRunOutsideFullscreen = isFullscreen || isItchBuild;
 
-  if (
-    !shouldAdvancePhysics({ isGameActive, isFullscreen: canRunOutsideFullscreen, isPageVisible }) ||
-    shouldPauseForFocusLoss
-  ) {
+  if (!shouldAdvancePhysics({ isGameActive, isPageVisible })) {
     state.lastPhysicsTime = 0;
     if (state.isDrawing) {
       state.isDrawing = false;
@@ -765,28 +764,10 @@ export function syncGamePlayState() {
 
 export function tick(timestamp = 0) {
   const isGameActive = dom.playPage?.classList.contains("is-active");
-  const isFullscreen = isFullscreenActive();
   const isPageVisible = !document.hidden;
-  const shouldPauseForFocusLoss = !state.isWindowFocused || !document.hasFocus();
-  const canRunOutsideFullscreen = isFullscreen || isItchBuild;
-  const shouldRunSimulation =
-    shouldAdvancePhysics({
-      isGameActive,
-      isFullscreen: canRunOutsideFullscreen,
-      isPageVisible,
-    }) && !shouldPauseForFocusLoss;
+  const shouldRunSimulation = shouldAdvancePhysics({ isGameActive, isPageVisible });
 
   if (!shouldRunSimulation) {
-    if (
-      shouldRenderGuidanceMessage({
-        isGameActive,
-        isFullscreen: canRunOutsideFullscreen,
-        isPageVisible,
-      })
-    ) {
-      render();
-      verifyGamePageMusicAfterFirstRender(isGameActive);
-    }
     state.animationFrameId = window.requestAnimationFrame(tick);
     return;
   }

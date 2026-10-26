@@ -33,10 +33,7 @@ export function requestBackgroundMusicPlayback(force = false) {
   const playPromise = backgroundMusic.play();
   playPromise
     ?.then(() => {
-      if (playbackRequestId !== backgroundMusicPlaybackRequestId) {
-        backgroundMusic.pause();
-        return;
-      }
+      if (playbackRequestId !== backgroundMusicPlaybackRequestId) return;
       backgroundMusic.muted = false;
       if (backgroundMusicRetryTimer) {
         clearTimeout(backgroundMusicRetryTimer);

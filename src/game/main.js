@@ -56,15 +56,12 @@ window.addEventListener("electron-fullscreen-change", (event) => {
   });
 });
 window.addEventListener("visibilitychange", () => {
-  state.isWindowFocused = !document.hidden;
   syncGamePlayState();
 });
 window.addEventListener("focus", () => {
-  state.isWindowFocused = true;
   syncGamePlayState();
 });
 window.addEventListener("blur", () => {
-  state.isWindowFocused = false;
   syncGamePlayState();
 });
 
