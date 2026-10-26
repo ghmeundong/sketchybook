@@ -669,6 +669,8 @@ export function resetPhysicsWorld() {
 
   physicsGround = null;
   physicsFloorY = null;
+  physicsLeftWall = null;
+  physicsRightWall = null;
 }
 
 export function stepPhysicsWorld(options = {}) {

@@ -19,3 +19,17 @@ export function rescalePoints(points, oldWidth, oldHeight, newWidth, newHeight) 
 
   return points.map((point) => rescalePoint(point, oldWidth, oldHeight, newWidth, newHeight));
 }
+
+export function rescaleLocalPoint(point, angle, scaleX, scaleY) {
+  const cosine = Math.cos(angle);
+  const sine = Math.sin(angle);
+  const rotatedX = cosine * point.x - sine * point.y;
+  const rotatedY = sine * point.x + cosine * point.y;
+  const scaledX = rotatedX * scaleX;
+  const scaledY = rotatedY * scaleY;
+
+  return {
+    x: cosine * scaledX + sine * scaledY,
+    y: -sine * scaledX + cosine * scaledY,
+  };
+}

@@ -184,6 +184,7 @@ function createAndRegisterStroke(points, previewSource = null) {
     type: attachment && !isMovingAttachment ? "static" : "dynamic",
   });
   if (isMovingAttachment) {
+    strokeBody.attachedTo = attachment;
     attachBodyToBody(strokeBody.physicsBody, attachmentBody, attachmentBody.getPosition());
   }
 
