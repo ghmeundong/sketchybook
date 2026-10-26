@@ -31,10 +31,6 @@ export function shouldHandleSpacebarAction({
   });
 }
 
-export function shouldAdvancePhysics({ isGameActive, isFullscreen, isPageVisible }) {
-  return Boolean(isGameActive && isFullscreen && isPageVisible);
-}
-
-export function shouldRenderGuidanceMessage({ isGameActive, isFullscreen, isPageVisible }) {
-  return Boolean(isGameActive && isPageVisible && !isFullscreen);
+export function shouldAdvancePhysics({ isGameActive, isPageVisible }) {
+  return Boolean(isGameActive && isPageVisible);
 }

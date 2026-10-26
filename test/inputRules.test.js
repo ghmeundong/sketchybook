@@ -3,7 +3,6 @@ import {
   shouldAdvancePhysics,
   shouldAllowBallLaunch,
   shouldHandleSpacebarAction,
-  shouldRenderGuidanceMessage,
 } from "../src/game/engine/config/inputRules.js";
 
 describe("shouldAllowBallLaunch", () => {
@@ -61,21 +60,12 @@ describe("shouldAllowBallLaunch", () => {
     ).toBe(false);
   });
 
-  it("pauses physics when the game is not currently playable", () => {
+  it("advances physics when active even when the window is not focused", () => {
     expect(
       shouldAdvancePhysics({
         isGameActive: true,
         isFullscreen: false,
-        isPageVisible: true,
-      })
-    ).toBe(false);
-  });
-
-  it("renders the fullscreen guidance message while the game is active but not yet fullscreen", () => {
-    expect(
-      shouldRenderGuidanceMessage({
-        isGameActive: true,
-        isFullscreen: false,
+        isWindowFocused: false,
         isPageVisible: true,
       })
     ).toBe(true);
