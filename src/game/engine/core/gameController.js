@@ -32,7 +32,7 @@ import { createGameObjects } from "../../stages/gameObjectFactory.js";
 import { DIFFICULTY_LEVELS, getDifficultyRules } from "../config/difficultyLevels.js";
 import { dom, stagePageSize, totalStageCount, totalStagePages } from "./domRefs.js";
 import { state } from "./gameState.js";
-import { render, getRenderDpr } from "../../render/gameRenderer.js";
+import { render, getCanvasPixelSize, getRenderDpr } from "../../render/gameRenderer.js";
 import {
   playScoreStarSound,
   playStageClearSound,
@@ -707,8 +707,9 @@ export function resizeCanvas() {
   state.canvasWidth = measuredWidth;
   state.canvasHeight = measuredHeight;
 
-  dom.canvas.width = state.canvasWidth * dpr;
-  dom.canvas.height = state.canvasHeight * dpr;
+  const canvasPixelSize = getCanvasPixelSize(state.canvasWidth, state.canvasHeight, dpr);
+  dom.canvas.width = canvasPixelSize.width;
+  dom.canvas.height = canvasPixelSize.height;
   dom.canvas.style.width = `${state.canvasWidth}px`;
   dom.canvas.style.height = `${state.canvasHeight}px`;
 
@@ -744,8 +745,9 @@ export function resizeCanvas() {
     state.previewCanvas.style.zIndex = "50";
     if (dom.board) dom.board.appendChild(state.previewCanvas);
   }
-  state.previewCanvas.width = Math.max(1, state.canvasWidth) * dpr;
-  state.previewCanvas.height = Math.max(1, state.canvasHeight) * dpr;
+  const previewPixelSize = getCanvasPixelSize(state.canvasWidth, state.canvasHeight, dpr);
+  state.previewCanvas.width = previewPixelSize.width;
+  state.previewCanvas.height = previewPixelSize.height;
   state.previewCanvas.style.width = `${Math.max(1, state.canvasWidth)}px`;
   state.previewCanvas.style.height = `${Math.max(1, state.canvasHeight)}px`;
   state.previewCtx = state.previewCanvas.getContext("2d");
@@ -817,8 +819,6 @@ export function resizeCanvas() {
       stroke.grounded = false;
       stroke.angle = 0;
       stroke.angularVelocity = 0;
-      stroke.texture = null;
-      stroke.textureOffset = null;
     }
   }
 

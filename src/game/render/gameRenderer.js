@@ -7,6 +7,13 @@ export function getRenderDpr() {
   return Math.min(2, Math.max(1, window.devicePixelRatio || 1));
 }
 
+export function getCanvasPixelSize(width, height, dpr = getRenderDpr()) {
+  return {
+    width: Math.max(1, Math.round(width * dpr)),
+    height: Math.max(1, Math.round(height * dpr)),
+  };
+}
+
 export function getStrokeWidth() {
   const viewportScale = state.canvasHeight > 0 ? state.canvasHeight / 900 : 1;
   return Math.min(10, Math.max(4, 8 * viewportScale));
@@ -47,12 +54,13 @@ export function drawStrokePreview(points) {
   if (!state.previewCtx || !state.previewCanvas) return;
 
   // Ensure preview canvas uses same pixel size as main canvas
+  const pixelSize = getCanvasPixelSize(state.canvasWidth, state.canvasHeight, dpr);
   if (
-    state.previewCanvas.width !== Math.max(1, state.canvasWidth) * dpr ||
-    state.previewCanvas.height !== Math.max(1, state.canvasHeight) * dpr
+    state.previewCanvas.width !== pixelSize.width ||
+    state.previewCanvas.height !== pixelSize.height
   ) {
-    state.previewCanvas.width = Math.max(1, state.canvasWidth) * dpr;
-    state.previewCanvas.height = Math.max(1, state.canvasHeight) * dpr;
+    state.previewCanvas.width = pixelSize.width;
+    state.previewCanvas.height = pixelSize.height;
     state.previewCanvas.style.width = `${Math.max(1, state.canvasWidth)}px`;
     state.previewCanvas.style.height = `${Math.max(1, state.canvasHeight)}px`;
     state.previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -189,6 +197,10 @@ export function drawPhysicsStroke(stroke) {
     return;
   }
 
+  if (!stroke.texture && stroke.body) {
+    createStrokeTexture(stroke);
+  }
+
   if (stroke.texture && stroke.textureOffset) {
     const { centerX, centerY, width, height } = stroke.textureOffset;
     ctx.save();
@@ -200,16 +212,21 @@ export function drawPhysicsStroke(stroke) {
     return;
   }
 
-  const vertices = stroke.points;
-
-  for (let i = 0; i < vertices.length - 1; i += 1) {
-    const p1 = vertices[i];
-    const p2 = vertices[i + 1];
-    drawStroke(p1, p2, 8, {
-      alpha: 0.18,
-      roughness: 2.0,
-    });
+  const [firstPoint, ...remainingPoints] = stroke.points;
+  if (!firstPoint || remainingPoints.length === 0) return;
+  ctx.save();
+  ctx.globalAlpha = 0.18;
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = Math.max(1.5, 8 * 0.55 * (getStrokeWidth() / 8));
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(firstPoint.x, firstPoint.y);
+  for (const point of remainingPoints) {
+    ctx.lineTo(point.x, point.y);
   }
+  ctx.stroke();
+  ctx.restore();
 }
 
 export function ensureFloorTexture() {
