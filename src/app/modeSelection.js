@@ -10,6 +10,7 @@ import { getStoredUser } from "../services/auth.js";
 
 const singleButton = document.querySelector("[data-select-single]");
 const multiplayerButton = document.querySelector("[data-select-multiplayer]");
+const mapMakerButton = document.querySelector("[data-select-map-maker]");
 const modeBackButton = document.querySelector("[data-mode-back]");
 const startModeBackButton = document.querySelector("[data-start-mode-back]");
 const modeStatus = document.querySelector("[data-mode-status]");
@@ -79,7 +80,7 @@ function drawModeArtwork(canvas, mode) {
     });
     roughCanvas.line(160, 42, 177, 31, { ...lineStyle, stroke: INK_SOFT });
     roughCanvas.line(168, 51, 190, 48, { ...lineStyle, stroke: INK_SOFT });
-  } else {
+  } else if (mode === "multi") {
     roughCanvas.circle(72, 56, 35, {
       ...lineStyle,
       fill: "#dce8d5",
@@ -96,6 +97,22 @@ function drawModeArtwork(canvas, mode) {
     roughCanvas.arc(148, 111, 48, 46, Math.PI, Math.PI * 2, false, lineStyle);
     roughCanvas.line(98, 36, 122, 36, { ...lineStyle, stroke: GOLD, strokeWidth: 3 });
     roughCanvas.line(104, 28, 116, 28, { ...lineStyle, stroke: GOLD, strokeWidth: 2 });
+  } else {
+    roughCanvas.line(24, 103, 196, 103, { ...lineStyle, strokeWidth: 3 });
+    roughCanvas.line(42, 102, 42, 79, lineStyle);
+    roughCanvas.line(42, 79, 96, 79, lineStyle);
+    roughCanvas.line(96, 79, 96, 56, lineStyle);
+    roughCanvas.line(96, 56, 164, 56, lineStyle);
+    roughCanvas.line(164, 56, 164, 102, lineStyle);
+    roughCanvas.circle(68, 66, 17, {
+      ...lineStyle,
+      fill: GOLD,
+      fillStyle: "hachure",
+      hachureGap: 5,
+    });
+    roughCanvas.line(133, 54, 133, 33, { ...lineStyle, stroke: INK_SOFT });
+    roughCanvas.line(133, 34, 151, 41, { ...lineStyle, stroke: INK_SOFT });
+    roughCanvas.line(151, 41, 133, 47, { ...lineStyle, stroke: INK_SOFT });
   }
 }
 
@@ -110,6 +127,7 @@ function initializeModeSelection() {
 
   attachRoughFrame(singleButton, { inset: 0, outside: 7, strokeWidth: 2.2, roughness: 1.8 });
   attachRoughFrame(multiplayerButton, { inset: 0, outside: 7, strokeWidth: 2.2, roughness: 1.8 });
+  attachRoughFrame(mapMakerButton, { inset: 0, outside: 7, strokeWidth: 2.2, roughness: 1.8 });
   attachRoughFrame(modeBackButton, { inset: 1, outside: 3, strokeWidth: 1.4, roughness: 1.6 });
   attachRoughFrame(roomPanel, { inset: 0, outside: 7, strokeWidth: 2.2, roughness: 1.8 });
   attachRoughFrame(roomCreateButton, { inset: 0, outside: 3, strokeWidth: 1.7, roughness: 1.6 });
@@ -168,6 +186,11 @@ function initializeModeSelection() {
     multiplayerButton.setAttribute("aria-pressed", "false");
     if (modeStatus) modeStatus.textContent = "";
     setActivePage(dom.startPage);
+  });
+
+  mapMakerButton?.addEventListener("click", () => {
+    if (modeStatus) modeStatus.textContent = "";
+    setActivePage(dom.mapEditorPage);
   });
 
   multiplayerButton.addEventListener("click", () => {
