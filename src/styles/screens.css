@@ -1753,7 +1753,10 @@ body.multiplayer-room-connected .selection-exit-btn {
   }
 
   .mode-options {
-    grid-template-columns: minmax(0, 21rem);
+    width: min(100%, 21rem);
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: center;
+    margin-inline: auto;
   }
 
   .mode-card {
