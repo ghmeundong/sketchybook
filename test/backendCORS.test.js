@@ -96,6 +96,122 @@ describe("backend CORS handling", () => {
     expect(host.sent.at(-1)).toMatchObject({ type: "error" });
   });
 
+  it("accepts player strokes with server-assigned order and activation time", async () => {
+    const host = createTestSocket({ isHost: true, playerId: "host", name: "Host" });
+    const guest = createTestSocket({ isHost: false, playerId: "guest", name: "Guest" });
+    const storage = createTestStorage({ status: "started", selectedStage: 4 });
+    const room = new MultiplayerRoom({ storage, getWebSockets: () => [host, guest] });
+
+    await room.webSocketMessage(
+      guest,
+      JSON.stringify({
+        type: "stroke",
+        eventId: "deadbeef-0001",
+        roomSequence: 900,
+        applyAt: 1,
+        playerId: "spoofed-player",
+        points: [
+          { x: 100, y: 120 },
+          { x: 240, y: 280 },
+        ],
+        width: 8,
+        color: "#4f3b24",
+        leadTimeMs: 700,
+      })
+    );
+
+    const acceptedStroke = host.sent.at(-1);
+    expect(acceptedStroke).toMatchObject({
+      type: "stroke",
+      eventId: "deadbeef-0001",
+      roomSequence: 1,
+      stageNumber: 4,
+      playerId: "guest",
+      playerName: "Guest",
+    });
+    expect(acceptedStroke.applyAt - acceptedStroke.serverTime).toBeGreaterThanOrEqual(700);
+    expect(guest.sent.at(-1)).toEqual(acceptedStroke);
+  });
+
+  it("deduplicates stroke event IDs and rejects invalid logical coordinates", async () => {
+    const host = createTestSocket({ isHost: true, playerId: "host" });
+    const guest = createTestSocket({ isHost: false, playerId: "guest" });
+    const storage = createTestStorage({ status: "started", selectedStage: 2 });
+    const room = new MultiplayerRoom({ storage, getWebSockets: () => [host, guest] });
+    const stroke = {
+      type: "stroke",
+      eventId: "deadbeef-0002",
+      points: [
+        { x: 10, y: 20 },
+        { x: 40, y: 50 },
+      ],
+      width: 8,
+      color: "#4f3b24",
+    };
+
+    await room.webSocketMessage(guest, JSON.stringify(stroke));
+    await room.webSocketMessage(guest, JSON.stringify(stroke));
+    expect(host.sent.filter((message) => message.type === "stroke")).toHaveLength(1);
+    expect(guest.sent.at(-1)).toMatchObject({ type: "stroke-duplicate", eventId: "deadbeef-0002" });
+
+    await room.webSocketMessage(
+      guest,
+      JSON.stringify({
+        ...stroke,
+        eventId: "deadbeef-0003",
+        points: [
+          { x: 1601, y: 20 },
+          { x: 40, y: 50 },
+        ],
+      })
+    );
+    expect(host.sent.filter((message) => message.type === "stroke")).toHaveLength(1);
+    expect(guest.sent.at(-1)).toMatchObject({ type: "error", message: "Invalid stroke." });
+  });
+
+  it("relays ordered live stroke previews to peers and broadcasts cancellation", async () => {
+    const host = createTestSocket({ isHost: true, playerId: "host" });
+    const guest = createTestSocket({ isHost: false, playerId: "guest" });
+    const storage = createTestStorage({ status: "started", previewSequences: {} });
+    const room = new MultiplayerRoom({ storage, getWebSockets: () => [host, guest] });
+    const preview = {
+      type: "stroke-preview",
+      strokeId: "deadbeef-0004",
+      sequence: 0,
+      points: [
+        { x: 100, y: 110 },
+        { x: 130, y: 140 },
+      ],
+    };
+
+    await room.webSocketMessage(guest, JSON.stringify(preview));
+    expect(host.sent.at(-1)).toMatchObject({
+      type: "stroke-preview",
+      strokeId: preview.strokeId,
+      sequence: 0,
+      playerId: "guest",
+      points: preview.points,
+    });
+    expect(guest.sent).toHaveLength(0);
+
+    await room.webSocketMessage(guest, JSON.stringify({ ...preview, sequence: 2 }));
+    expect(guest.sent.at(-1)).toMatchObject({
+      type: "error",
+      message: "Out-of-order stroke preview.",
+    });
+
+    await room.webSocketMessage(
+      guest,
+      JSON.stringify({ type: "stroke-preview-cancel", strokeId: preview.strokeId })
+    );
+    expect(host.sent.at(-1)).toMatchObject({
+      type: "stroke-preview-end",
+      strokeId: preview.strokeId,
+      playerId: "guest",
+    });
+    expect(storage.values.get("previewSequences")).toEqual({});
+  });
+
   it("returns a started room to the lobby so the host can start another stage", async () => {
     const host = createTestSocket({ isHost: true, playerId: "host" });
     const guest = createTestSocket({ isHost: false, playerId: "guest" });

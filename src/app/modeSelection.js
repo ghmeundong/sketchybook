@@ -315,8 +315,26 @@ function handleRoomMessage(message) {
     return;
   }
 
+  if (message.type === "stroke") {
+    window.dispatchEvent(new CustomEvent("sketchybook:room-stroke", { detail: message }));
+    return;
+  }
+
+  if (message.type === "stroke-preview") {
+    window.dispatchEvent(new CustomEvent("sketchybook:room-stroke-preview", { detail: message }));
+    return;
+  }
+
+  if (message.type === "stroke-preview-end") {
+    window.dispatchEvent(
+      new CustomEvent("sketchybook:room-stroke-preview-end", { detail: message })
+    );
+    return;
+  }
+
   if (message.type === "room-lobby") {
     clearTimeout(roomStartTimer);
+    window.dispatchEvent(new CustomEvent("sketchybook:room-lobby"));
     selectedRoomStage = null;
     roomSelectedStage.hidden = true;
     document.querySelectorAll(".page-selection .stage-card").forEach((button) => {
@@ -332,6 +350,7 @@ function handleRoomMessage(message) {
   }
 
   if (message.type === "room-closed") {
+    window.dispatchEvent(new CustomEvent("sketchybook:room-closed"));
     roomSocket = null;
     resetRoomPanel(message.reason || "The host closed the room.");
     return;
@@ -346,6 +365,7 @@ function handleRoomMessage(message) {
   }
 
   if (message.type === "disconnected") {
+    window.dispatchEvent(new CustomEvent("sketchybook:room-closed"));
     if (roomPanel?.hidden) return;
     roomSocket = null;
     resetRoomPanel("Connection lost. Rejoin the room to continue.");

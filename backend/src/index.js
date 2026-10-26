@@ -8,6 +8,9 @@ const ROOM_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 const ROOM_CODE_LENGTH = 6;
 const MAX_ROOM_PLAYERS = 4;
 const MAX_PLAYER_NAME_LENGTH = 20;
+const MAX_STROKE_POINTS = 256;
+const MIN_STROKE_LEAD_MS = 700;
+const MAX_STROKE_LEAD_MS = 3000;
 
 function createRoomCode(randomBytes = crypto.getRandomValues(new Uint8Array(ROOM_CODE_LENGTH))) {
   return Array.from(
@@ -80,6 +83,10 @@ export class MultiplayerRoom {
       await this.state.storage.put("hostToken", hostToken);
       await this.state.storage.delete("selectedStage");
       await this.state.storage.put("status", "waiting");
+      await this.state.storage.put("roomSequence", 0);
+      await this.state.storage.put("recentStrokeEvents", []);
+      await this.state.storage.put("lastStrokeApplyAt", 0);
+      await this.state.storage.put("previewSequences", {});
       await this.state.storage.setAlarm(Date.now() + 2 * 60 * 60 * 1000);
       return Response.json({ hostToken }, { status: 201 });
     }
@@ -121,7 +128,7 @@ export class MultiplayerRoom {
   }
 
   async webSocketMessage(socket, message) {
-    if (typeof message !== "string" || message.length > 2048) {
+    if (typeof message !== "string" || message.length > 32768) {
       socket.close(1009, "Message too large");
       return;
     }
@@ -146,6 +153,21 @@ export class MultiplayerRoom {
     }
 
     const player = socket.deserializeAttachment();
+    if (payload?.type === "stroke-preview") {
+      await this.handleStrokePreview(socket, player, payload);
+      return;
+    }
+
+    if (payload?.type === "stroke-preview-cancel") {
+      await this.handleStrokePreviewCancel(player, payload);
+      return;
+    }
+
+    if (payload?.type === "stroke") {
+      await this.handleStrokeMessage(socket, player, payload);
+      return;
+    }
+
     if (!player?.isHost) {
       socket.send(JSON.stringify({ type: "error", message: "Only the host can do that." }));
       return;
@@ -159,6 +181,10 @@ export class MultiplayerRoom {
       await this.state.storage.put("status", "waiting");
       await this.state.storage.delete("startedAt");
       await this.state.storage.delete("selectedStage");
+      await this.state.storage.put("roomSequence", 0);
+      await this.state.storage.put("recentStrokeEvents", []);
+      await this.state.storage.put("lastStrokeApplyAt", 0);
+      await this.state.storage.put("previewSequences", {});
       await this.broadcastRoomState();
       this.broadcast({ type: "room-lobby", serverTime: Date.now() });
       return;
@@ -188,6 +214,10 @@ export class MultiplayerRoom {
       }
       await this.state.storage.put("selectedStage", stageNumber);
       const startAt = Date.now() + 2500;
+      await this.state.storage.put("roomSequence", 0);
+      await this.state.storage.put("recentStrokeEvents", []);
+      await this.state.storage.put("lastStrokeApplyAt", 0);
+      await this.state.storage.put("previewSequences", {});
       await this.state.storage.put("status", "started");
       await this.state.storage.put("startedAt", startAt);
       this.broadcast({
@@ -201,6 +231,153 @@ export class MultiplayerRoom {
     }
 
     socket.send(JSON.stringify({ type: "error", message: "Unsupported message type." }));
+  }
+
+  async handleStrokeMessage(socket, player, payload) {
+    if (!player?.playerId || (await this.state.storage.get("status")) !== "started") {
+      socket.send(JSON.stringify({ type: "error", message: "The room is not in a game." }));
+      return;
+    }
+
+    const { eventId, points, width, color } = payload;
+    const validStroke =
+      typeof eventId === "string" &&
+      /^[\da-f-]{8,64}$/i.test(eventId) &&
+      Array.isArray(points) &&
+      points.length >= 2 &&
+      points.length <= MAX_STROKE_POINTS &&
+      points.every(
+        (point) =>
+          point &&
+          Number.isFinite(point.x) &&
+          Number.isFinite(point.y) &&
+          point.x >= 0 &&
+          point.x <= 1600 &&
+          point.y >= 0 &&
+          point.y <= 900
+      ) &&
+      Number.isFinite(width) &&
+      width >= 1 &&
+      width <= 24 &&
+      typeof color === "string" &&
+      /^#[\da-f]{6}$/i.test(color);
+
+    if (!validStroke) {
+      socket.send(JSON.stringify({ type: "error", message: "Invalid stroke." }));
+      return;
+    }
+
+    const eventKey = `${player.playerId}:${eventId}`;
+    const recentEvents = (await this.state.storage.get("recentStrokeEvents")) || [];
+    if (recentEvents.includes(eventKey)) {
+      socket.send(JSON.stringify({ type: "stroke-duplicate", eventId }));
+      return;
+    }
+
+    const now = Date.now();
+    const requestedLead = Number.isFinite(payload.leadTimeMs) ? payload.leadTimeMs : 1000;
+    const leadTimeMs = Math.min(MAX_STROKE_LEAD_MS, Math.max(MIN_STROKE_LEAD_MS, requestedLead));
+    const previousApplyAt = (await this.state.storage.get("lastStrokeApplyAt")) || 0;
+    const applyAt = Math.max(now + leadTimeMs, previousApplyAt + 1);
+    const roomSequence = ((await this.state.storage.get("roomSequence")) || 0) + 1;
+
+    await this.state.storage.put("roomSequence", roomSequence);
+    await this.state.storage.put("lastStrokeApplyAt", applyAt);
+    await this.state.storage.put("recentStrokeEvents", [...recentEvents, eventKey].slice(-512));
+    if (typeof payload.strokeId === "string") {
+      const previewSequences = (await this.state.storage.get("previewSequences")) || {};
+      delete previewSequences[`${player.playerId}:${payload.strokeId}`];
+      await this.state.storage.put("previewSequences", previewSequences);
+    }
+    this.broadcast({
+      type: "stroke",
+      eventId,
+      strokeId: typeof payload.strokeId === "string" ? payload.strokeId : null,
+      roomSequence,
+      applyAt,
+      serverTime: now,
+      stageNumber: await this.state.storage.get("selectedStage"),
+      playerId: player.playerId,
+      playerName: player.name,
+      points,
+      width,
+      color,
+    });
+  }
+
+  async handleStrokePreview(socket, player, payload) {
+    if (!player?.playerId || (await this.state.storage.get("status")) !== "started") {
+      socket.send(JSON.stringify({ type: "error", message: "The room is not in a game." }));
+      return;
+    }
+
+    const { strokeId, sequence, points } = payload;
+    const validPreview =
+      typeof strokeId === "string" &&
+      /^[\da-f-]{8,64}$/i.test(strokeId) &&
+      Number.isInteger(sequence) &&
+      sequence >= 0 &&
+      Array.isArray(points) &&
+      points.length >= 1 &&
+      points.length <= 32 &&
+      points.every(
+        (point) =>
+          point &&
+          Number.isFinite(point.x) &&
+          Number.isFinite(point.y) &&
+          point.x >= 0 &&
+          point.x <= 1600 &&
+          point.y >= 0 &&
+          point.y <= 900
+      );
+
+    if (!validPreview) {
+      socket.send(JSON.stringify({ type: "error", message: "Invalid stroke preview." }));
+      return;
+    }
+
+    const previewSequences = (await this.state.storage.get("previewSequences")) || {};
+    const previewKey = `${player.playerId}:${strokeId}`;
+    const previousSequence = previewSequences[previewKey] ?? -1;
+    if (sequence !== previousSequence + 1) {
+      socket.send(JSON.stringify({ type: "error", message: "Out-of-order stroke preview." }));
+      return;
+    }
+
+    previewSequences[previewKey] = sequence;
+    const activePreviewKeys = Object.keys(previewSequences);
+    if (activePreviewKeys.length > 128) {
+      for (const staleKey of activePreviewKeys.slice(0, activePreviewKeys.length - 128)) {
+        delete previewSequences[staleKey];
+      }
+    }
+    await this.state.storage.put("previewSequences", previewSequences);
+    this.broadcast(
+      {
+        type: "stroke-preview",
+        strokeId,
+        sequence,
+        playerId: player.playerId,
+        points,
+      },
+      socket
+    );
+  }
+
+  async handleStrokePreviewCancel(player, payload) {
+    if (!player?.playerId || typeof payload.strokeId !== "string") return;
+
+    const previewSequences = (await this.state.storage.get("previewSequences")) || {};
+    const previewKey = `${player.playerId}:${payload.strokeId}`;
+    if (!(previewKey in previewSequences)) return;
+
+    delete previewSequences[previewKey];
+    await this.state.storage.put("previewSequences", previewSequences);
+    this.broadcast({
+      type: "stroke-preview-end",
+      strokeId: payload.strokeId,
+      playerId: player.playerId,
+    });
   }
 
   async webSocketClose(socket) {
@@ -259,9 +436,10 @@ export class MultiplayerRoom {
     });
   }
 
-  broadcast(payload) {
+  broadcast(payload, excludedSocket = null) {
     const message = JSON.stringify(payload);
     for (const socket of this.state.getWebSockets()) {
+      if (socket === excludedSocket) continue;
       try {
         socket.send(message);
       } catch {

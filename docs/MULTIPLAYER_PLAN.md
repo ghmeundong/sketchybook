@@ -64,6 +64,17 @@ For a first cooperative prototype, accept small physics divergence and use perio
 4. **Room recovery:** add snapshots, reconnect/resync behavior, room cleanup, and limits for payload size, point count, message rate, and room membership.
 5. **Consistency decision:** test across devices and networks. If physics divergence is unacceptable, prototype an authoritative simulation and snapshot interpolation before expanding multiplayer features.
 
+## Implemented Prototype
+
+The current prototype streams visual previews while drawing and retains release-time collision activation:
+
+- Pointer movement sends small, sequenced logical-coordinate preview batches at up to 20 updates per second. These are visual-only and never collidable. The Durable Object validates batch order and coordinates, then relays previews to peers without echoing them to the author. Cancelled previews are removed for everyone.
+- On pointer release, the client sends the completed stroke, capped at 256 points. The Durable Object validates the payload, derives player identity from the socket, deduplicates recent event IDs, and assigns the room sequence, stage number, and future `applyAt` server timestamp. The accepted event replaces the matching live preview.
+- Clients estimate clock offset and a rolling RTT percentile from ping/pong. The client requests a lead time based on that RTT; the server clamps it to 700-3000 ms and keeps `applyAt` ordered with room sequence.
+- Every client displays the live stroke as it is drawn. On release, it keeps the accepted stroke visible as a non-collidable preview until creating its local physics body at `applyAt`. The author does not get an earlier collision than peers under normal delivery conditions.
+
+This remains a cooperative prototype, not an authoritative simulation. A backgrounded or delayed client can activate late, and independent Planck worlds can diverge after collisions. Reconnect snapshots, late-event recovery, rate limiting beyond payload/point limits, host handoff, and identical physics outcomes remain future work.
+
 ## Validation Plan
 
 - Unit-test logical coordinate conversion at different viewport sizes.
