@@ -230,6 +230,17 @@
   cursor: pointer;
 }
 
+.room-copy-link-button {
+  display: inline-grid;
+  width: 1.9rem;
+  min-width: 1.9rem;
+  height: 1.9rem;
+  min-height: 1.9rem;
+  padding: 0;
+  background: transparent;
+  place-items: center;
+}
+
 .room-action-button:disabled {
   cursor: wait;
   opacity: 0.6;
@@ -243,6 +254,10 @@
 .room-action-button:hover:not(:disabled) {
   outline: none;
   background: #f3e2b9;
+}
+
+.room-copy-link-button:hover:not(:disabled) {
+  background: transparent;
 }
 
 .room-join-form {
@@ -294,7 +309,15 @@
   justify-items: center;
 }
 
+.room-code-share {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
 .room-code-display {
+  margin: 0;
   color: var(--ink-soft);
   font-size: 0.75rem;
   font-weight: 800;
@@ -336,26 +359,29 @@
 }
 
 .multiplayer-selection-status {
-  position: absolute;
-  top: clamp(0.6rem, 2vh, 1.1rem);
-  left: 50%;
+  position: relative;
+  align-self: center;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 0.65rem;
+  gap: 0.3rem;
   width: max-content;
   max-width: calc(100% - 7.5rem);
+  margin: 0 0 1rem;
   padding: 0.45rem 0.7rem;
   background: rgb(255 248 232 / 92%);
   color: var(--ink-soft);
   font-size: 0.72rem;
   line-height: 1.3;
-  transform: translateX(-50%);
 }
 
 .multiplayer-selection-status[hidden] {
   display: none;
+}
+
+.multiplayer-selection-status > p {
+  margin: 0;
 }
 
 .multiplayer-room-label {
@@ -1428,11 +1454,9 @@ body.settings-is-open .global-app-toolbar {
   }
 
   .multiplayer-selection-status {
-    left: 50%;
-    top: 0.35rem;
     justify-content: center;
     flex-wrap: wrap;
-    gap: 0.4rem;
+    gap: 0.25rem;
     max-width: calc(100% - 6.5rem);
     padding: 0.35rem;
     font-size: 0.65rem;
@@ -1646,4 +1670,9 @@ body.settings-is-open .global-app-toolbar {
 .selection-screen-title {
   font-size: clamp(1.8rem, min(6vw, 7vh), 4.2rem);
   letter-spacing: 0.12em;
+}
+
+.selection-screen:has(.multiplayer-selection-status:not([hidden])) .selection-screen-title {
+  margin-top: 0;
+  transform: none;
 }

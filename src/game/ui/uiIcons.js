@@ -110,6 +110,14 @@ export function createActionIconCanvas(
     rc.line(50, 20, 24, 20, lineOptions);
     rc.line(23, 21, 30, 14, lineOptions);
     rc.line(23, 19, 30, 26, lineOptions);
+  } else if (type === "copy") {
+    const size = Math.min(w, h);
+    const offset = size * 0.08;
+    const frontX = size * 0.25;
+    const frontY = size * 0.25;
+    const squareSize = size * 0.6;
+    rc.rectangle(frontX - offset, frontY - offset, squareSize, squareSize, lineOptions);
+    rc.rectangle(frontX + offset, frontY + offset, squareSize, squareSize, lineOptions);
   } else if (type === "settings") {
     const centerX = w / 2;
     const centerY = h / 2;

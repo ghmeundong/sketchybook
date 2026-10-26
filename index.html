@@ -126,7 +126,16 @@
                 </form>
               </div>
               <div class="room-connected-state" data-room-connected hidden>
-                <p class="room-code-display">ROOM <strong data-room-code-display></strong></p>
+                <div class="room-code-share">
+                  <p class="room-code-display">ROOM <strong data-room-code-display></strong></p>
+                  <button
+                    class="room-action-button room-copy-link-button"
+                    type="button"
+                    data-room-copy-link
+                    aria-label="Copy invite link"
+                    title="Copy invite link"
+                  ></button>
+                </div>
                 <p class="room-player-count" data-room-player-count aria-live="polite"></p>
                 <ul class="room-player-list" data-room-player-list></ul>
                 <p class="guest-waiting-message" data-guest-waiting hidden>
@@ -320,6 +329,14 @@
             <h1 class="brand-title selection-screen-title">SKETCHYBOOK</h1>
             <div class="multiplayer-selection-status" data-multiplayer-selection-status hidden>
               <p class="multiplayer-room-label">ROOM <strong data-selection-room-code></strong></p>
+              <button
+                class="room-action-button room-copy-link-button"
+                type="button"
+                data-selection-copy-link
+                aria-label="Copy invite link"
+                title="Copy invite link"
+              >
+              </button>
               <p data-selection-player-count></p>
               <p data-multiplayer-selection-message></p>
               <ul class="multiplayer-selection-players" data-selection-player-list></ul>
