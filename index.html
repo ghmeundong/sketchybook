@@ -2,14 +2,35 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta
       name="description"
       content="Sketchybook main screen with a hand-drawn style start experience."
     />
+    <meta name="theme-color" content="#f5ebcf" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Sketchybook" />
     <link rel="icon" type="image/x-icon" href="/sketchybook/favicon.ico" />
+    <link rel="manifest" href="/sketchybook/manifest.json" />
     <title>Sketchybook</title>
     <style>
+      html {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+
       #page-loader {
         position: fixed;
         inset: 0;
@@ -38,23 +59,381 @@
         opacity: 1;
       }
     </style>
-    <script type="module" crossorigin src="/sketchybook/assets/main-C0nJzeZ6.js"></script>
-    <link rel="modulepreload" crossorigin href="/sketchybook/assets/paper-texture-Bgow5jY0.js">
-    <link rel="stylesheet" crossorigin href="/sketchybook/assets/paper-texture-D0yaCI9w.css">
+    <script type="module" crossorigin src="/sketchybook/assets/main-Dz1O72pv.js"></script>
+    <link rel="stylesheet" crossorigin href="/sketchybook/assets/main-DY8RFAPH.css">
   </head>
   <body>
     <div id="page-loader">Loading Sketchybook…</div>
     <main id="page-content">
       <div id="book" class="book">
-        <div class="page page-start is-active">
+        <div class="global-app-toolbar" data-global-app-toolbar aria-label="Game tools"></div>
+        <button
+          class="game-exit-btn multiplayer-global-back"
+          type="button"
+          data-room-back
+          aria-label="Back to game modes"
+          title="Back"
+          hidden
+        ></button>
+        <div class="page page-mode is-active">
+          <section class="mode-screen" aria-labelledby="mode-screen-title">
+            <h1 class="mode-screen-title" id="mode-screen-title">SKETCHYBOOK</h1>
+            <div class="mode-options">
+              <button class="mode-card mode-card--single" type="button" data-select-single>
+                <canvas class="mode-card-art" data-mode-art="single" aria-hidden="true"></canvas>
+                <span class="mode-card-title">Singleplayer</span>
+                <span class="mode-card-description">Draw, guide, and solve at your own pace.</span>
+                <span class="mode-card-action"
+                  >PLAY SOLO <span aria-hidden="true">&#8594;</span></span
+                >
+              </button>
+              <button
+                class="mode-card mode-multiplayer-card"
+                type="button"
+                data-select-multiplayer
+                aria-pressed="false"
+              >
+                <canvas class="mode-card-art" data-mode-art="multi" aria-hidden="true"></canvas>
+                <span class="mode-card-title">Multiplayer</span>
+                <span class="mode-card-description">Draw together from different devices.</span>
+                <span class="mode-card-action"
+                  >PLAY TOGETHER <span aria-hidden="true">&#8594;</span></span
+                >
+              </button>
+            </div>
+            <p class="mode-screen-status" data-mode-status aria-live="polite"></p>
+            <section class="room-panel" data-room-panel aria-label="Multiplayer room" hidden>
+              <h2 class="room-panel-title">Play together</h2>
+              <div class="room-entry-actions" data-room-entry-actions>
+                <button class="room-action-button" type="button" data-room-create>
+                  Create a room
+                </button>
+                <form class="room-join-form" data-room-join-form>
+                  <label class="room-code-label" for="room-code-input">Have a room code?</label>
+                  <div class="room-code-entry">
+                    <input
+                      class="room-code-input"
+                      id="room-code-input"
+                      name="roomCode"
+                      type="text"
+                      inputmode="text"
+                      autocomplete="off"
+                      maxlength="6"
+                      placeholder="ABC234"
+                      aria-label="Room code"
+                      required
+                    />
+                    <button class="room-action-button room-join-button" type="submit">Join</button>
+                  </div>
+                </form>
+              </div>
+              <div class="room-connected-state" data-room-connected hidden>
+                <p class="room-code-display">ROOM <strong data-room-code-display></strong></p>
+                <p class="room-player-count" data-room-player-count aria-live="polite"></p>
+                <ul class="room-player-list" data-room-player-list></ul>
+                <p class="guest-waiting-message" data-guest-waiting hidden>
+                  Waiting for the host to choose a stage…
+                </p>
+                <p class="room-selected-stage" data-room-selected-stage hidden></p>
+                <button
+                  class="room-action-button room-select-stage-button"
+                  type="button"
+                  data-room-select-stage
+                  hidden
+                >
+                  Select stage
+                </button>
+                <button class="room-action-button room-leave-button" type="button" data-room-leave>
+                  Leave room
+                </button>
+              </div>
+              <p class="room-status" data-room-status role="status" aria-live="polite"></p>
+            </section>
+          </section>
+        </div>
+
+        <div class="page page-start">
           <section class="start-screen" aria-label="Game start screen">
+            <div class="start-screen-login">
+              <button
+                class="game-exit-btn start-mode-back"
+                type="button"
+                data-start-mode-back
+                aria-label="Back to game modes"
+                title="Back"
+              ></button>
+              <div id="google-signin" class="google-signin-container"></div>
+            </div>
+            <div class="start-screen-actions" data-shared-toolbar-content>
+              <div class="start-screen-tools">
+                <button
+                  class="playground-toggle"
+                  type="button"
+                  data-playground-button
+                  aria-label="Open playground"
+                  title="Playground"
+                ></button>
+                <button
+                  class="settings-toggle game-exit-btn"
+                  type="button"
+                  data-settings-toggle
+                  aria-expanded="false"
+                  aria-controls="start-settings-panel"
+                  aria-label="Open settings"
+                ></button>
+                <button
+                  class="help-toggle"
+                  type="button"
+                  data-help-toggle
+                  aria-expanded="false"
+                  aria-controls="start-help-panel"
+                  aria-label="How to play"
+                >
+                  ?
+                </button>
+              </div>
+              <div class="settings-panel" id="start-settings-panel" hidden>
+                <p class="settings-panel-title">Settings</p>
+                <div class="settings-option">
+                  <div class="settings-option-text">
+                    <strong>Challenge mode:</strong>
+                    <span id="challenge-mode-status">draw only one line <br />no clicks</span>
+                  </div>
+                  <button
+                    class="settings-toggle-switch"
+                    type="button"
+                    data-challenge-mode-toggle
+                    aria-pressed="false"
+                    id="challenge-mode-toggle-btn"
+                  >
+                    <span class="settings-toggle-switch-thumb"></span>
+                  </button>
+                </div>
+                <div class="settings-volume-option">
+                  <div class="settings-volume-label">
+                    <span class="settings-volume-icon" data-audio-icon="music"></span>
+                    <strong class="settings-volume-name">Music</strong>
+                    <output data-audio-value="music">100%</output>
+                  </div>
+                  <div class="settings-volume-slider-wrap">
+                    <canvas
+                      class="settings-volume-track"
+                      data-audio-track="music"
+                      aria-hidden="true"
+                    ></canvas>
+                    <canvas
+                      class="settings-volume-thumb"
+                      data-audio-thumb="music"
+                      aria-hidden="true"
+                    ></canvas>
+                    <input
+                      class="settings-volume-slider"
+                      type="range"
+                      min="0"
+                      max="100"
+                      value="100"
+                      data-audio-volume="music"
+                      aria-label="Music volume"
+                    />
+                  </div>
+                </div>
+                <div class="settings-volume-option">
+                  <div class="settings-volume-label">
+                    <span class="settings-volume-icon" data-audio-icon="sfx"></span>
+                    <strong class="settings-volume-name">SFX</strong>
+                    <output data-audio-value="sfx">100%</output>
+                  </div>
+                  <div class="settings-volume-slider-wrap">
+                    <canvas
+                      class="settings-volume-track"
+                      data-audio-track="sfx"
+                      aria-hidden="true"
+                    ></canvas>
+                    <canvas
+                      class="settings-volume-thumb"
+                      data-audio-thumb="sfx"
+                      aria-hidden="true"
+                    ></canvas>
+                    <input
+                      class="settings-volume-slider"
+                      type="range"
+                      min="0"
+                      max="100"
+                      value="100"
+                      data-audio-volume="sfx"
+                      aria-label="Sound effects volume"
+                    />
+                  </div>
+                </div>
+                <button class="settings-panel-close" type="button" data-settings-close>
+                  Close
+                </button>
+              </div>
+              <div class="help-panel" id="start-help-panel" hidden>
+                <p class="help-panel-title">How to play</p>
+                <p><strong>Click:</strong> Launch the ball</p>
+                <p><strong>Spacebar:</strong> Launch the ball</p>
+                <p><strong>Drag:</strong> Draw a line to guide the ball</p>
+                <p><strong>R:</strong> Retry the stage</p>
+              </div>
+            </div>
             <div class="title-stack">
               <h1 class="brand-title">SKETCHYBOOK</h1>
+              <!-- Difficulty Selector -->
+              <div class="difficulty-selector" id="difficulty-selector">
+                <button
+                  class="difficulty-nav-btn difficulty-prev-btn"
+                  type="button"
+                  data-difficulty-prev
+                  aria-label="Previous difficulty"
+                >
+                  &lt;
+                </button>
+                <div class="difficulty-display">
+                  <span class="difficulty-name" id="difficulty-name">Normal</span>
+                </div>
+                <button
+                  class="difficulty-nav-btn difficulty-next-btn"
+                  type="button"
+                  data-difficulty-next
+                  aria-label="Next difficulty"
+                >
+                  &gt;
+                </button>
+              </div>
+              <p class="difficulty-description" id="difficulty-description" aria-live="polite">
+                Floor on / easy draw / no challenge
+              </p>
               <button class="game-title" type="button" data-start-button>Loading...</button>
             </div>
           </section>
         </div>
+
+        <div class="page page-selection">
+          <section class="selection-screen" aria-label="Game selection screen">
+            <button
+              class="game-exit-btn selection-exit-btn"
+              type="button"
+              data-back-home-button
+              aria-label="Back to start screen"
+            >
+              <span class="selection-back-button__icon" data-back-home-icon></span>
+            </button>
+            <h1 class="brand-title selection-screen-title">SKETCHYBOOK</h1>
+            <div class="multiplayer-selection-status" data-multiplayer-selection-status hidden>
+              <p class="multiplayer-room-label">ROOM <strong data-selection-room-code></strong></p>
+              <p data-selection-player-count></p>
+              <p data-multiplayer-selection-message></p>
+              <ul class="multiplayer-selection-players" data-selection-player-list></ul>
+              <button
+                class="room-action-button multiplayer-leave-button"
+                type="button"
+                data-selection-room-leave
+              >
+                Leave room
+              </button>
+            </div>
+            <div class="selection-stage-shell">
+              <button
+                class="selection-nav-btn selection-nav-btn--prev"
+                type="button"
+                data-stage-page="prev"
+                aria-label="Show previous stages"
+              ></button>
+              <div class="selection-grid" aria-label="Stage selection grid">
+                <button class="stage-card" type="button" data-stage="1" aria-label="Stage 1">
+                  Stage 1
+                </button>
+                <button class="stage-card" type="button" data-stage="2" aria-label="Stage 2">
+                  Stage 2
+                </button>
+                <button class="stage-card" type="button" data-stage="3" aria-label="Stage 3">
+                  Stage 3
+                </button>
+                <button class="stage-card" type="button" data-stage="4" aria-label="Stage 4">
+                  Stage 4
+                </button>
+                <button class="stage-card" type="button" data-stage="5" aria-label="Stage 5">
+                  Stage 5
+                </button>
+                <button class="stage-card" type="button" data-stage="6" aria-label="Stage 6">
+                  Stage 6
+                </button>
+                <button class="stage-card" type="button" data-stage="7" aria-label="Stage 7">
+                  Stage 7
+                </button>
+                <button class="stage-card" type="button" data-stage="8" aria-label="Stage 8">
+                  Stage 8
+                </button>
+                <button class="stage-card" type="button" data-stage="9" aria-label="Stage 9">
+                  Stage 9
+                </button>
+                <button class="stage-card" type="button" data-stage="10" aria-label="Stage 10">
+                  Stage 10
+                </button>
+                <button class="stage-card" type="button" data-stage="11" aria-label="Stage 11">
+                  Stage 11
+                </button>
+                <button class="stage-card" type="button" data-stage="12" aria-label="Stage 12">
+                  Stage 12
+                </button>
+                <button class="stage-card" type="button" data-stage="13" aria-label="Stage 13">
+                  Stage 13
+                </button>
+                <button class="stage-card" type="button" data-stage="14" aria-label="Stage 14">
+                  Stage 14
+                </button>
+                <button class="stage-card" type="button" data-stage="15" aria-label="Stage 15">
+                  Stage 15
+                </button>
+                <button class="stage-card" type="button" data-stage="16" aria-label="Stage 16">
+                  Stage 16
+                </button>
+                <button class="stage-card" type="button" data-stage="17" aria-label="Stage 17">
+                  Stage 17
+                </button>
+                <button class="stage-card" type="button" data-stage="18" aria-label="Stage 18">
+                  Stage 18
+                </button>
+              </div>
+              <button
+                class="selection-nav-btn selection-nav-btn--next"
+                type="button"
+                data-stage-page="next"
+                aria-label="Show next stages"
+              ></button>
+            </div>
+          </section>
+        </div>
+
+        <div class="page page-play">
+          <div class="game-board" id="game-board">
+            <div
+              class="draw-limit-progress"
+              id="draw-limit-progress"
+              aria-live="polite"
+              aria-label="Draw limit progress"
+            >
+              <canvas id="draw-limit-progress-track-canvas"></canvas>
+              <canvas id="draw-limit-progress-fill-canvas"></canvas>
+            </div>
+            <div class="game-grid"></div>
+            <canvas id="game-canvas"></canvas>
+            <button
+              class="mobile-launch-btn"
+              type="button"
+              data-mobile-launch
+              aria-label="Launch ball"
+            >
+              <span class="mobile-launch-mark" aria-hidden="true">
+                <span class="mobile-launch-trail"></span>
+                <span class="mobile-launch-ball"></span>
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
     </main>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
   </body>
 </html>
