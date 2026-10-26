@@ -504,6 +504,23 @@ describe("backend CORS handling", () => {
     expect(guest.sent.at(-1)).toMatchObject({ type: "room-start", stageNumber: 2 });
   });
 
+  it("removes a disconnected guest from the lobby player list", async () => {
+    const host = createTestSocket({ isHost: true, playerId: "host" });
+    const guest = createTestSocket({ isHost: false, playerId: "guest" });
+    const room = new MultiplayerRoom({
+      storage: createTestStorage({ status: "waiting" }),
+      getWebSockets: () => [host, guest],
+    });
+    guest.readyState = 3;
+
+    await room.webSocketClose(guest);
+
+    expect(host.sent.at(-1)).toMatchObject({
+      type: "room-state",
+      players: [{ playerId: "host", isHost: true }],
+    });
+  });
+
   it("rejects invalid stage numbers and prevents stage changes after start", async () => {
     const host = createTestSocket({ isHost: true });
     const storage = createTestStorage({ selectedStage: 1, status: "waiting" });
@@ -523,6 +540,7 @@ describe("backend CORS handling", () => {
 function createTestSocket(attachment) {
   return {
     sent: [],
+    readyState: 1,
     deserializeAttachment: () => attachment,
     send(message) {
       this.sent.push(JSON.parse(message));

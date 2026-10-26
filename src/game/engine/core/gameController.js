@@ -30,6 +30,7 @@ import {
 import { createPhysicsBodiesForGameObjects } from "../physics/bodySetup.js";
 import { Rotor } from "../../objects/index.js";
 import { syncProgressForMode } from "../../../services/auth.js";
+import { fetchSharedMaps } from "../../../services/sharedMaps.js";
 import { createGameObjects } from "../../stages/gameObjectFactory.js";
 import { DIFFICULTY_LEVELS, getDifficultyRules } from "../config/difficultyLevels.js";
 import { dom, stagePageSize, totalStageCount, totalStagePages } from "./domRefs.js";
@@ -326,7 +327,7 @@ export function updateStageUrl(stageNumber = null) {
 }
 
 export function setActivePage(page) {
-  [dom.modePage, dom.mapEditorPage, dom.startPage, dom.selectionPage, dom.playPage].forEach(
+  [dom.modePage, dom.mapBoardPage, dom.mapEditorPage, dom.startPage, dom.selectionPage, dom.playPage].forEach(
     (item) => {
       if (!item) return;
       item.classList.toggle("is-active", item === page);
@@ -334,7 +335,7 @@ export function setActivePage(page) {
   );
   dom.globalToolbar?.classList.toggle(
     "is-hidden",
-    page === dom.playPage || page === dom.mapEditorPage
+    page === dom.playPage || page === dom.mapBoardPage || page === dom.mapEditorPage
   );
   setActiveAudioPage(page);
   if (page === dom.selectionPage) {
@@ -376,6 +377,21 @@ export async function tryEnterFullscreen() {
   }
 }
 
+function returnFromMapTest() {
+  const isSharedMap = Boolean(state.mapTestDefinition?.id);
+  state.isMapTest = false;
+  state.mapTestDefinition = null;
+  hideStageClearOverlay();
+  setActivePage(isSharedMap ? dom.mapBoardPage : dom.mapEditorPage);
+  if (isSharedMap) {
+    window.dispatchEvent(new Event("sketchybook:map-board-open"));
+  }
+  if (state.animationFrameId) {
+    cancelAnimationFrame(state.animationFrameId);
+    state.animationFrameId = null;
+  }
+}
+
 export function createStageClearOverlay() {
   if (!dom.board || state.stageClearOverlay) return;
   const stageClearOverlayRef = { current: null };
@@ -384,25 +400,40 @@ export function createStageClearOverlay() {
     board: dom.board,
     stageClearOverlayRef,
     stageClearMessageRef,
+    disableNext: state.isMapTest && !state.mapTestDefinition?.id,
     onExit: () => {
       const exitEvent = new CustomEvent("sketchybook:game-exit", { cancelable: true });
       if (!window.dispatchEvent(exitEvent)) return false;
-      hideStageClearOverlay();
-      setActivePage(state.isPlayground ? dom.startPage : dom.selectionPage);
-      if (state.isPlayground) {
-        window.dispatchEvent(new Event("sketchybook:show-start"));
+      if (state.isMapTest) {
+        returnFromMapTest();
+        return true;
       }
+      hideStageClearOverlay();
+      setActivePage(state.isPlayground ? dom.modePage : dom.selectionPage);
       if (state.animationFrameId) cancelAnimationFrame(state.animationFrameId);
       return true;
     },
     onRetry: async () => {
       if (!dispatchStageRetryRequest()) return false;
       hideStageClearOverlay();
-      await initializeStage(state.currentStageNumber);
-      resizeCanvas();
+      if (state.isMapTest && state.mapTestDefinition) {
+        await startMapTest(state.mapTestDefinition);
+      } else {
+        await initializeStage(state.currentStageNumber);
+        resizeCanvas();
+      }
       return true;
     },
     onNext: async () => {
+      if (state.isMapTest) {
+        const maps = await fetchSharedMaps();
+        if (!maps.length) return false;
+        const currentIndex = maps.findIndex((map) => map.id === state.mapTestDefinition?.id);
+        const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % maps.length;
+        await startMapTest(maps[nextIndex]);
+        return true;
+      }
+
       const next = Math.min((state.currentStageNumber || 1) + 1, totalStageCount);
       const nextEvent = new CustomEvent("sketchybook:stage-next", {
         cancelable: true,
@@ -440,8 +471,9 @@ export function showStageClearOverlay(message = "Stage Cleared!") {
     },
     stageButtons: dom.stageButtons,
     canvas: dom.canvas,
-    stageNumber: state.currentStageNumber,
+    stageNumber: state.isMapTest ? null : state.currentStageNumber,
     difficulty: state.currentDifficulty,
+    showScore: !state.isMapTest,
     onAfterSave: () => {
       refreshStageSelectionButtons();
     },
@@ -515,10 +547,12 @@ export function createGameExitButton() {
   gameExitButton.addEventListener("click", async () => {
     const exitEvent = new CustomEvent("sketchybook:game-exit", { cancelable: true });
     if (!window.dispatchEvent(exitEvent)) return;
-    hideStageClearOverlay();
-    setActivePage(state.isPlayground ? dom.startPage : dom.selectionPage);
-    if (state.isPlayground) {
-      window.dispatchEvent(new Event("sketchybook:show-start"));
+    const wasMapTest = state.isMapTest;
+    if (wasMapTest) {
+      returnFromMapTest();
+    } else {
+      hideStageClearOverlay();
+      setActivePage(state.isPlayground ? dom.modePage : dom.selectionPage);
     }
     if (state.animationFrameId) cancelAnimationFrame(state.animationFrameId);
   });
@@ -543,7 +577,9 @@ export function createGameRetryButton() {
   gameRetryButton.addEventListener("click", async () => {
     if (!dispatchStageRetryRequest()) return;
     hideStageClearOverlay();
-    if (state.isPlayground) {
+    if (state.isMapTest && state.mapTestDefinition) {
+      await startMapTest(state.mapTestDefinition);
+    } else if (state.isPlayground) {
       await startPlayground();
     } else {
       await initializeStage(state.currentStageNumber);
@@ -588,8 +624,10 @@ export async function startStage(stageNumber) {
   resizeCanvas();
 }
 
-export async function startPlayground() {
+export async function startPlayground({ mapTestDefinition = null } = {}) {
   state.isPlayground = true;
+  state.isMapTest = Boolean(mapTestDefinition);
+  state.mapTestDefinition = mapTestDefinition;
   state.currentDifficulty = DIFFICULTY_LEVELS.EASY;
   state.difficultyRules = getDifficultyRules(DIFFICULTY_LEVELS.EASY);
   state.currentStageNumber = 1;
@@ -605,6 +643,28 @@ export async function startPlayground() {
   createGameRetryButton();
   initPlaygroundHistoryButtons();
   updateDrawLimitProgressUI();
+  resizeCanvas();
+}
+
+export async function startMapTest(mapDefinition) {
+  if (!mapDefinition || !Array.isArray(mapDefinition.objects)) return;
+  const mapTestDefinition = {
+    id: mapDefinition.id,
+    name: String(mapDefinition.name || "Untitled map"),
+    objects: mapDefinition.objects.map((object) => ({ ...object })),
+  };
+  await startPlayground({ mapTestDefinition });
+  const playableObjects = [
+    ...mapTestDefinition.objects,
+    { type: "text", x: 0.5, y: 0.12, text: mapTestDefinition.name },
+  ];
+  state.stageMinEvents = 1;
+  state.currentStage = {
+    title: mapTestDefinition.name,
+    minEvents: 1,
+    objects: playableObjects,
+  };
+  state.gameObjects = createGameObjects(playableObjects);
   resizeCanvas();
 }
 

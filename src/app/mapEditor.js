@@ -1,9 +1,15 @@
 import rough from "roughjs";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
 import { dom } from "../game/engine/core/domRefs.js";
-import { setActivePage } from "../game/engine/core/gameController.js";
+import { setActivePage, startMapTest } from "../game/engine/core/gameController.js";
 import { attachRoughFrame } from "../game/ui/roughFrame.js";
 import { createActionIconCanvas } from "../game/ui/uiIcons.js";
 import { GOLD, INK, INK_SOFT } from "../theme.js";
+import objectsReference from "../../docs/OBJECTS.md?raw";
+import { fetchAccountMaps, saveAccountMap } from "../services/accountMaps.js";
+import { isUserLoggedIn } from "../services/auth.js";
+import { fetchSharedMap, fetchSharedMaps, publishSharedMap } from "../services/sharedMaps.js";
 
 const STORAGE_KEY = "sketchybook.customMaps";
 const canvas = document.querySelector("[data-map-canvas]");
@@ -26,9 +32,18 @@ const jsonStatus = document.querySelector("[data-json-status]");
 const jsonWorkspace = document.querySelector("[data-json-workspace]");
 const jsonSuggestions = document.querySelector("[data-json-suggestions]");
 const viewTabs = Array.from(document.querySelectorAll("[data-editor-view]"));
-const jsonApplyButton = document.querySelector("[data-json-apply]");
 const toolPalette = document.querySelector(".map-editor-tools");
 const propertiesPanel = document.querySelector(".map-editor-properties");
+const mapBoardGrid = document.querySelector("[data-map-board-grid]");
+const mapBoardStatus = document.querySelector("[data-map-board-status]");
+const mapBoardBackButton = document.querySelector("[data-map-board-back]");
+const mapBoardRefreshButton = document.querySelector("[data-map-board-refresh]");
+const mapCreateButton = document.querySelector("[data-map-create]");
+const mapPlayButton = document.querySelector("[data-map-play]");
+const mapShareButton = document.querySelector("[data-map-share]");
+const referenceButton = document.querySelector("[data-map-reference]");
+const referencePanel = document.querySelector("[data-map-reference-panel]");
+const referenceContent = document.querySelector("[data-map-reference-content]");
 let objects = [];
 let history = [];
 let activeTool = "select";
@@ -37,9 +52,14 @@ let pointerAction = null;
 let polygonDraft = null;
 let propertySnapshot = null;
 let editorView = "canvas";
+let jsonSessionSnapshot = null;
 let activeSuggestions = [];
 let selectedSuggestionIndex = 0;
 let currentMapId = createMapId();
+let savedMapsCache = [];
+let mapToast = null;
+let mapToastTimer = null;
+let mapToastHideTimer = null;
 const objectRenderCache = new WeakMap();
 const objectSeeds = new WeakMap();
 let nextObjectSeed = 1;
@@ -50,6 +70,185 @@ function createMapId() {
 
 function setStatus(message) {
   if (status) status.textContent = message;
+}
+
+function showMapToast(message) {
+  if (!mapToast) return;
+  window.clearTimeout(mapToastTimer);
+  window.clearTimeout(mapToastHideTimer);
+  mapToast.querySelector(".multiplayer-toast-message").textContent = message;
+  mapToast.hidden = false;
+  mapToast.classList.add("is-visible");
+  mapToastTimer = window.setTimeout(() => {
+    mapToast.classList.remove("is-visible");
+    mapToastHideTimer = window.setTimeout(() => {
+      mapToast.hidden = true;
+    }, 180);
+  }, 1800);
+}
+
+function drawSharedMapPreview(previewCanvas, map) {
+  const width = 280;
+  const height = 160;
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  previewCanvas.width = width * dpr;
+  previewCanvas.height = height * dpr;
+  const context = previewCanvas.getContext("2d");
+  context.setTransform(dpr, 0, 0, dpr, 0, 0);
+  context.fillStyle = "#fffdf5";
+  context.fillRect(0, 0, width, height);
+  context.strokeStyle = "rgba(61, 53, 43, 0.08)";
+  context.lineWidth = 1;
+  for (let x = 20; x < width; x += 20) {
+    context.beginPath();
+    context.moveTo(x, 0);
+    context.lineTo(x, height);
+    context.stroke();
+  }
+  const rc = rough.canvas(previewCanvas);
+  (map.objects || []).forEach((object, index) => {
+    let centerX = object.x ?? 0.5;
+    let centerY = object.y ?? 0.5;
+    if (object.type === "segment") {
+      centerX = (object.x1 + object.x2) / 2;
+      centerY = (object.y1 + object.y2) / 2;
+    } else if (Array.isArray(object.points) && object.points.length) {
+      centerX = object.points.reduce((sum, point) => sum + point.x, 0) / object.points.length;
+      centerY = object.points.reduce((sum, point) => sum + point.y, 0) / object.points.length;
+    }
+    const x = centerX * width;
+    const y = centerY * height;
+    const options = { stroke: INK, strokeWidth: 2, roughness: 1.5, seed: index + 1 };
+    if (object.type === "platform") {
+      rc.rectangle(x - (object.width * width) / 2, y - (object.height * height) / 2,
+        object.width * width, object.height * height, options);
+    } else if (object.type === "star") {
+      const radius = Math.max(5, (object.radius || 0.025) * height);
+      const points = Array.from({ length: 10 }, (_, pointIndex) => {
+        const angle = -Math.PI / 2 + pointIndex * Math.PI / 5;
+        const size = pointIndex % 2 ? radius * 0.45 : radius;
+        return [x + Math.cos(angle) * size, y + Math.sin(angle) * size];
+      });
+      rc.polygon(points, { ...options, stroke: "#a27a28", fill: GOLD, fillStyle: "solid" });
+    } else if (object.type === "segment") {
+      rc.line(object.x1 * width, object.y1 * height, object.x2 * width, object.y2 * height, options);
+    } else if (["complex", "poly", "rotor"].includes(object.type) && Array.isArray(object.points)) {
+      const points = object.points.map((point) => [point.x * width, point.y * height]);
+      if (points.length > 2 && object.closed !== false) rc.polygon(points, options);
+      else for (let pointIndex = 0; pointIndex < points.length - 1; pointIndex += 1) {
+        rc.line(...points[pointIndex], ...points[pointIndex + 1], options);
+      }
+    } else if (object.type === "portal") {
+      rc.ellipse(x, y, object.width * width, object.height * height,
+        { ...options, stroke: object.portalId === "blue" ? "#4387c4" : "#e88936" });
+    } else if (object.type === "stripedRect") {
+      rc.rectangle(x - (object.width * width) / 2, y - (object.height * height) / 2,
+        object.width * width, object.height * height,
+        { ...options, stroke: "#d84335", fill: "#e74c3c", fillStyle: "hachure", hachureGap: 8 });
+    } else {
+      rc.circle(x, y, Math.max(8, (object.radius || 0.025) * height * 2), {
+        ...options,
+        fill: object.type === "circle" ? "#dce8d5" : INK,
+        fillStyle: "hachure",
+      });
+    }
+  });
+}
+
+function createSharedMapCard(map) {
+  const card = document.createElement("article");
+  card.className = "map-shared-card";
+  card.dataset.sharedMapCard = map.id;
+  const openButton = document.createElement("button");
+  openButton.type = "button";
+  openButton.className = "map-shared-open";
+  openButton.setAttribute("aria-label", `Open ${map.name} by ${map.authorName}`);
+  const preview = document.createElement("canvas");
+  preview.className = "map-shared-preview";
+  preview.setAttribute("aria-hidden", "true");
+  const title = document.createElement("span");
+  title.className = "map-card-name";
+  title.textContent = map.name;
+  const author = document.createElement("span");
+  author.className = "map-card-author";
+  author.textContent = `by ${map.authorName || "Sketchybook player"}`;
+  openButton.append(preview, title, author);
+  card.appendChild(openButton);
+  drawSharedMapPreview(preview, map);
+  attachRoughFrame(card, { inset: 0, outside: 3, strokeWidth: 1.5, roughness: 1.6 });
+  openButton.addEventListener("click", () => void openSharedMap(map.id));
+  const playButton = document.createElement("button");
+  playButton.type = "button";
+  playButton.className = "map-preview-play";
+  playButton.setAttribute("aria-label", `Play ${map.name}`);
+  playButton.title = "Play map";
+  playButton.appendChild(createActionIconCanvas("next", { w: 24, h: 24, strokeWidth: 2.2 }));
+  attachRoughFrame(playButton, { inset: 1, outside: 2, strokeWidth: 1.3, roughness: 1.4 });
+  playButton.addEventListener("click", () => void startMapTest(map));
+  card.appendChild(playButton);
+  return card;
+}
+
+async function refreshMapBoard() {
+  mapBoardStatus.textContent = "Loading shared maps…";
+  mapBoardGrid.querySelectorAll("[data-shared-map-card], .map-board-empty").forEach((card) => card.remove());
+  try {
+    const maps = await fetchSharedMaps();
+    maps.forEach((map) => mapBoardGrid.appendChild(createSharedMapCard(map)));
+    mapBoardStatus.textContent = `${maps.length} shared map${maps.length === 1 ? "" : "s"}`;
+    if (maps.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "map-board-empty";
+      empty.textContent = "No shared maps yet. Create one and share it with the community.";
+      mapBoardGrid.appendChild(empty);
+    }
+  } catch (error) {
+    mapBoardStatus.textContent = error.message || "Could not load shared maps.";
+  }
+}
+
+async function openSharedMap(mapId) {
+  mapBoardStatus.textContent = "Opening shared map…";
+  try {
+    const map = await fetchSharedMap(mapId);
+    objects = map.objects.map((object) => ({ ...object }));
+    nameInput.value = map.name || "Untitled map";
+    currentMapId = createMapId();
+    history = [];
+    selectedIndex = -1;
+    undoButton.disabled = true;
+    if (editorView !== "canvas") setEditorView("canvas");
+    setActivePage(dom.mapEditorPage);
+    render();
+    syncProperties();
+    setStatus(`Opened shared map by ${map.authorName || "Sketchybook player"}. Save to keep your own copy.`);
+  } catch (error) {
+    mapBoardStatus.textContent = error.message || "Could not open this map.";
+  }
+}
+
+async function shareMap() {
+  const hasBall = objects.some((object) => object.type === "ball");
+  const hasStar = objects.some((object) => object.type === "star");
+  if (!hasBall || !hasStar) {
+    const missing = [!hasBall && "ball", !hasStar && "star"].filter(Boolean);
+    showMapToast(`Add at least one ${missing.join(" and ")} before sharing.`);
+    return;
+  }
+  mapShareButton.disabled = true;
+  try {
+    const result = await publishSharedMap(currentMapId, {
+      version: 1,
+      name: nameInput.value.trim() || "Untitled map",
+      objects,
+    });
+    showMapToast("Map shared with the community.");
+    if (result.id) setStatus("Map is now visible on the community board.");
+  } catch (error) {
+    showMapToast(error.message || "Could not share this map.");
+  } finally {
+    mapShareButton.disabled = false;
+  }
 }
 
 const objectFields = {
@@ -229,6 +428,7 @@ function serializeCurrentMap() {
 }
 
 function setEditorView(view) {
+  if (editorView === "json" && view !== "json") commitJsonSession();
   editorView = view;
   const showJson = view === "json";
   toolPalette.hidden = showJson;
@@ -238,12 +438,23 @@ function setEditorView(view) {
     tab.setAttribute("aria-selected", String(tab.dataset.editorView === view));
   });
   if (showJson) {
+    jsonSessionSnapshot = JSON.stringify(objects);
     jsonEditor.value = JSON.stringify(serializeCurrentMap(), null, 2);
-    jsonStatus.textContent = "Edit the map data, then apply your changes.";
+    jsonStatus.textContent = "Changes apply automatically when the JSON is valid.";
     jsonEditor.focus();
   } else {
     requestAnimationFrame(render);
   }
+}
+
+function commitJsonSession() {
+  if (jsonSessionSnapshot == null) return;
+  if (jsonSessionSnapshot !== JSON.stringify(objects)) {
+    history.push(jsonSessionSnapshot);
+    if (history.length > 50) history.shift();
+    undoButton.disabled = false;
+  }
+  jsonSessionSnapshot = null;
 }
 
 function validateMapJson(value) {
@@ -320,18 +531,25 @@ function validateMapJson(value) {
 function applyMapJson() {
   try {
     const data = validateMapJson(jsonEditor.value);
-    saveHistory();
-    objects = data.objects.map((object) => ({
+    const nextObjects = data.objects.map((object) => ({
       ...object,
       type: object.type === "poly" ? "complex" : object.type,
     }));
+    objects = nextObjects.map((nextObject, index) => {
+      const currentObject = objects[index];
+      if (currentObject && JSON.stringify(currentObject) === JSON.stringify(nextObject)) {
+        return currentObject;
+      }
+      const seed = currentObject && objectSeeds.get(currentObject);
+      if (seed) objectSeeds.set(nextObject, seed);
+      return nextObject;
+    });
     if (typeof data.name === "string" && data.name.trim()) nameInput.value = data.name.slice(0, 40);
     selectedIndex = -1;
     syncProperties();
-    jsonEditor.value = JSON.stringify(serializeCurrentMap(), null, 2);
-    jsonStatus.textContent = `${objects.length} object${objects.length === 1 ? "" : "s"} applied.`;
+    jsonStatus.textContent = `${objects.length} object${objects.length === 1 ? "" : "s"} applied live.`;
     render();
-    setStatus("JSON changes applied to the canvas.");
+    setStatus("Valid JSON applied to the canvas.");
   } catch (error) {
     jsonStatus.textContent =
       error instanceof SyntaxError ? `JSON syntax error: ${error.message}` : error.message;
@@ -912,17 +1130,41 @@ function readSavedMaps() {
   }
 }
 
-function refreshLibrary(selectedId = currentMapId) {
-  const maps = readSavedMaps().sort((first, second) =>
-    second.updatedAt.localeCompare(first.updatedAt)
+async function refreshLibrary(selectedId = currentMapId) {
+  let maps;
+  if (isUserLoggedIn()) {
+    try {
+      maps = await fetchAccountMaps();
+      const accountMapIds = new Set(maps.map((map) => map.id));
+      const legacyMaps = readSavedMaps().filter((map) => !accountMapIds.has(map.id));
+      for (const map of legacyMaps) {
+        try {
+          await saveAccountMap(map.id, map);
+          accountMapIds.add(map.id);
+        } catch (error) {
+          console.warn("Could not migrate a locally saved map:", error);
+        }
+      }
+      if (legacyMaps.length) maps = await fetchAccountMaps();
+    } catch (error) {
+      setStatus(error.message || "Could not load your account maps.");
+      maps = readSavedMaps();
+    }
+  } else {
+    maps = readSavedMaps();
+  }
+  savedMapsCache = [...maps].sort((first, second) =>
+    String(second.updatedAt || "").localeCompare(String(first.updatedAt || ""))
   );
   librarySelect.replaceChildren(new Option("Saved maps", ""));
-  maps.forEach((map) => librarySelect.add(new Option(map.name || "Untitled map", map.id)));
-  librarySelect.value = maps.some((map) => map.id === selectedId) ? selectedId : "";
+  savedMapsCache.forEach((map) =>
+    librarySelect.add(new Option(map.name || "Untitled map", map.id))
+  );
+  librarySelect.value = savedMapsCache.some((map) => map.id === selectedId) ? selectedId : "";
 }
 
 function loadMap(mapId) {
-  const map = readSavedMaps().find((savedMap) => savedMap.id === mapId);
+  const map = savedMapsCache.find((savedMap) => savedMap.id === mapId);
   if (!map) return;
   currentMapId = map.id;
   nameInput.value = map.name || "Untitled map";
@@ -950,7 +1192,20 @@ function startNewMap() {
   setStatus("New map ready.");
 }
 
-function saveMap() {
+async function saveMap() {
+  if (!isUserLoggedIn()) {
+    showMapToast("Sign in to save maps to your account.");
+    return;
+  }
+
+  const hasBall = objects.some((object) => object.type === "ball");
+  const hasStar = objects.some((object) => object.type === "star");
+  if (!hasBall || !hasStar) {
+    const missing = [!hasBall && "ball", !hasStar && "star"].filter(Boolean);
+    showMapToast(`Add at least one ${missing.join(" and ")} before saving.`);
+    return;
+  }
+
   const map = {
     id: currentMapId,
     name: nameInput.value.trim() || "Untitled map",
@@ -958,11 +1213,13 @@ function saveMap() {
     objects,
     updatedAt: new Date().toISOString(),
   };
-  const maps = readSavedMaps().filter((savedMap) => savedMap.id !== currentMapId);
-  maps.push(map);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(maps));
-  refreshLibrary(currentMapId);
-  setStatus(`Saved “${map.name}” on this device.`);
+  try {
+    await saveAccountMap(currentMapId, map);
+    await refreshLibrary(currentMapId);
+    setStatus(`Saved “${map.name}” to your account.`);
+  } catch (error) {
+    showMapToast(error.message || "Could not save map to your account.");
+  }
 }
 
 function exportMap() {
@@ -984,13 +1241,33 @@ function exportMap() {
 function initializeMapEditor() {
   if (!canvas || !dom.mapEditorPage) return;
   const backButton = document.querySelector("[data-map-editor-back]");
+  mapToast = document.createElement("div");
+  mapToast.className = "multiplayer-toast map-editor-toast";
+  mapToast.setAttribute("role", "status");
+  mapToast.setAttribute("aria-live", "polite");
+  mapToast.hidden = true;
+  const mapToastMessage = document.createElement("span");
+  mapToastMessage.className = "multiplayer-toast-message";
+  mapToast.appendChild(mapToastMessage);
+  document.body.appendChild(mapToast);
+  attachRoughFrame(mapToast, {
+    inset: 4,
+    outside: 0,
+    strokeWidth: 2,
+    roughness: 2,
+    fill: "rgba(250, 244, 216, 0.96)",
+  });
   const framedControls = [
     ...document.querySelectorAll(".map-editor-button, .map-editor-tool"),
     ...viewTabs,
+    mapCreateButton,
+    mapPlayButton,
+    mapShareButton,
     document.querySelector(".map-editor-select-wrap"),
-    document.querySelector(".map-editor-properties"),
     document.querySelector(".map-editor-canvas-wrap"),
     document.querySelector(".map-editor-json-source"),
+    document.querySelector(".map-property-range-frame"),
+    document.querySelector(".map-reference-content"),
   ];
 
   framedControls.forEach((control) => {
@@ -1002,15 +1279,57 @@ function initializeMapEditor() {
     });
   });
   backButton.appendChild(createActionIconCanvas("exit", { w: 56, h: 40, strokeWidth: 2.4 }));
-  backButton.addEventListener("click", () => setActivePage(dom.modePage));
+  mapBoardBackButton.appendChild(
+    createActionIconCanvas("exit", { w: 56, h: 40, strokeWidth: 2.4 })
+  );
+  mapBoardRefreshButton.appendChild(
+    createActionIconCanvas("retry", { w: 48, h: 40, strokeWidth: 2.5 })
+  );
+  const closeReference = () => {
+    referencePanel.hidden = true;
+    referenceButton.setAttribute("aria-expanded", "false");
+    backButton.setAttribute("aria-label", "Back to map board");
+    backButton.dataset.tooltip = "Back to map board";
+    backButton.focus();
+  };
+  backButton.addEventListener("click", () => {
+    if (!referencePanel.hidden) {
+      closeReference();
+      return;
+    }
+    setActivePage(dom.mapBoardPage);
+    void refreshMapBoard();
+  });
   document.querySelector("[data-map-save]").addEventListener("click", saveMap);
+  mapPlayButton.addEventListener("click", () => {
+    void startMapTest({ name: nameInput.value, objects });
+  });
+  mapShareButton.addEventListener("click", () => void shareMap());
   document.querySelector("[data-map-export]").addEventListener("click", exportMap);
   document.querySelector("[data-map-new]").addEventListener("click", startNewMap);
+  mapBoardBackButton.addEventListener("click", () => setActivePage(dom.modePage));
+  mapBoardRefreshButton.addEventListener("click", () => void refreshMapBoard());
+  mapCreateButton.addEventListener("click", () => {
+    startNewMap();
+    setActivePage(dom.mapEditorPage);
+  });
+  void refreshMapBoard();
+  window.addEventListener("sketchybook:map-board-open", () => void refreshMapBoard());
+  window.addEventListener("sketchybook:map-board-open", () => {
+    void refreshLibrary(librarySelect.value || "");
+  });
+  referenceContent.innerHTML = DOMPurify.sanitize(marked.parse(objectsReference));
+  referenceButton.addEventListener("click", () => {
+    referencePanel.hidden = false;
+    referenceButton.setAttribute("aria-expanded", "true");
+    backButton.setAttribute("aria-label", "Close JSON Guide");
+    backButton.dataset.tooltip = "Close JSON Guide";
+    backButton.focus();
+  });
   librarySelect.addEventListener("change", () => loadMap(librarySelect.value));
   viewTabs.forEach((tab) => {
     tab.addEventListener("click", () => setEditorView(tab.dataset.editorView));
   });
-  jsonApplyButton.addEventListener("click", applyMapJson);
   undoButton.addEventListener("click", undo);
   undoButton.disabled = true;
 
@@ -1062,7 +1381,10 @@ function initializeMapEditor() {
     object.motorSpeed = object.spinMode === "auto" ? 1.5 : 0;
   });
 
-  jsonEditor.addEventListener("input", refreshJsonSuggestions);
+  jsonEditor.addEventListener("input", () => {
+    refreshJsonSuggestions();
+    applyMapJson();
+  });
   jsonEditor.addEventListener("click", refreshJsonSuggestions);
   jsonEditor.addEventListener("keyup", refreshJsonSuggestions);
   jsonEditor.addEventListener("keydown", handleJsonEditorKeydown);
@@ -1078,7 +1400,9 @@ function initializeMapEditor() {
   window.addEventListener("resize", render);
   window.addEventListener("keydown", (event) => {
     if (!dom.mapEditorPage.classList.contains("is-active")) return;
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+    if (event.key === "Escape" && !referencePanel.hidden) {
+      closeReference();
+    } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
       event.preventDefault();
       undo();
     } else if (event.key === "Enter" && polygonDraft) {
@@ -1095,15 +1419,12 @@ function initializeMapEditor() {
 
   if (typeof ResizeObserver === "function")
     new ResizeObserver(render).observe(canvas.parentElement);
-  const savedMaps = readSavedMaps().sort((first, second) =>
-    second.updatedAt.localeCompare(first.updatedAt)
-  );
-  if (savedMaps.length) {
-    refreshLibrary(savedMaps[0].id);
-    loadMap(savedMaps[0].id);
-  } else {
-    refreshLibrary("");
-  }
+  void refreshLibrary("").then(() => {
+    if (savedMapsCache.length) {
+      librarySelect.value = savedMapsCache[0].id;
+      loadMap(savedMapsCache[0].id);
+    }
+  });
   requestAnimationFrame(render);
 }
 

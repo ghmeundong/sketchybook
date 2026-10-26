@@ -164,7 +164,6 @@
                   class="room-action-button room-select-stage-button"
                   type="button"
                   data-room-select-stage
-                  hidden
                 >
                   Select stage
                 </button>
@@ -352,8 +351,7 @@
                 data-selection-copy-link
                 aria-label="Copy invite link"
                 data-tooltip="Copy invite link"
-              >
-              </button>
+              ></button>
               <p data-selection-player-count></p>
               <p data-multiplayer-selection-message></p>
               <ul class="multiplayer-selection-players" data-selection-player-list></ul>
@@ -464,19 +462,59 @@
             </button>
           </div>
         </div>
+        <div class="page page-map-board">
+          <section class="map-board" aria-labelledby="map-board-title">
+            <button
+              class="game-exit-btn game-hud-corner-btn map-editor-exit"
+              type="button"
+              data-map-board-back
+              aria-label="Back to game modes"
+              data-tooltip="Back to game modes"
+            ></button>
+            <header class="map-board-header">
+              <div>
+                <p class="map-board-kicker">COMMUNITY MAPS</p>
+                <h1 id="map-board-title">Map Maker</h1>
+              </div>
+              <button
+                class="game-retry-btn map-board-refresh"
+                type="button"
+                data-map-board-refresh
+                aria-label="Refresh maps"
+                title="Refresh maps"
+              ></button>
+            </header>
+            <p class="map-board-status" data-map-board-status role="status" aria-live="polite">
+              Browse maps shared by the community.
+            </p>
+            <div class="map-board-grid" data-map-board-grid>
+              <button class="map-create-card" type="button" data-map-create>
+                <span class="map-create-preview"><span class="map-create-plus" aria-hidden="true">+</span></span>
+                <span>Create a map</span>
+              </button>
+            </div>
+          </section>
+        </div>
+
         <div class="page page-map-editor">
           <section class="map-editor" aria-label="Map editor">
             <button
               class="game-exit-btn game-hud-corner-btn map-editor-exit"
               type="button"
               data-map-editor-back
-              aria-label="Back to game modes"
-              data-tooltip="Back to game modes"
+              aria-label="Back to map board"
+              data-tooltip="Back to map board"
             ></button>
             <header class="map-editor-header">
               <label class="map-editor-name-label">
                 <span>MAP NAME</span>
-                <input class="map-editor-name-input" data-map-name maxlength="40" value="Untitled map" aria-label="Map name" />
+                <input
+                  class="map-editor-name-input"
+                  data-map-name
+                  maxlength="40"
+                  value="Untitled map"
+                  aria-label="Map name"
+                />
               </label>
               <div class="map-editor-select-wrap">
                 <select class="map-editor-select" data-map-library aria-label="Saved maps">
@@ -485,40 +523,174 @@
               </div>
               <div class="map-editor-actions">
                 <button class="map-editor-button" type="button" data-map-new>New</button>
-                <button class="map-editor-button" type="button" data-map-undo aria-label="Undo" title="Undo">Undo</button>
+                <button
+                  class="map-editor-button"
+                  type="button"
+                  data-map-undo
+                  aria-label="Undo"
+                  title="Undo"
+                >
+                  Undo
+                </button>
+                <button class="map-editor-button" type="button" data-map-play>Play</button>
                 <button class="map-editor-button" type="button" data-map-save>Save</button>
+                <button class="map-editor-button" type="button" data-map-share>Share</button>
                 <button class="map-editor-button" type="button" data-map-export>Export JSON</button>
+                <button
+                  class="map-editor-button"
+                  type="button"
+                  data-map-reference
+                  aria-haspopup="dialog"
+                >
+                  JSON Guide
+                </button>
               </div>
             </header>
             <div class="map-editor-view-switch" role="tablist" aria-label="Editor mode">
-              <button class="map-editor-view-tab" type="button" role="tab" data-editor-view="canvas" aria-selected="true">Canvas</button>
-              <button class="map-editor-view-tab" type="button" role="tab" data-editor-view="json" aria-selected="false">JSON</button>
+              <button
+                class="map-editor-view-tab"
+                type="button"
+                role="tab"
+                data-editor-view="canvas"
+                aria-selected="true"
+              >
+                Canvas
+              </button>
+              <button
+                class="map-editor-view-tab"
+                type="button"
+                role="tab"
+                data-editor-view="json"
+                aria-selected="false"
+              >
+                JSON
+              </button>
             </div>
             <div class="map-editor-workspace" data-canvas-workspace>
               <div class="map-editor-sidebar">
                 <div class="map-editor-tools" role="toolbar" aria-label="Map tools">
-                  <button class="map-editor-tool" type="button" data-map-tool="select" aria-pressed="true">Select</button>
-                  <button class="map-editor-tool" type="button" data-map-tool="platform" aria-pressed="false">Platform</button>
-                  <button class="map-editor-tool" type="button" data-map-tool="circle" aria-pressed="false">Circle</button>
-                  <button class="map-editor-tool" type="button" data-map-tool="ball" aria-pressed="false">Ball</button>
-                  <button class="map-editor-tool" type="button" data-map-tool="star" aria-pressed="false">Star</button>
-                  <button class="map-editor-tool" type="button" data-map-tool="stripedRect" aria-pressed="false">Hazard</button>
-                  <button class="map-editor-tool" type="button" data-map-tool="portal" aria-pressed="false">Portal</button>
-                  <button class="map-editor-tool" type="button" data-map-tool="segment" aria-pressed="false">Line</button>
-                  <button class="map-editor-tool" type="button" data-map-tool="complex" aria-pressed="false">Polygon</button>
-                  <button class="map-editor-tool" type="button" data-map-tool="rotor" aria-pressed="false">Rotor</button>
-                  <button class="map-editor-tool" type="button" data-map-tool="text" aria-pressed="false">Text</button>
-                  <button class="map-editor-tool" type="button" data-map-tool="erase" aria-pressed="false">Erase</button>
+                  <button
+                    class="map-editor-tool"
+                    type="button"
+                    data-map-tool="select"
+                    aria-pressed="true"
+                  >
+                    Select
+                  </button>
+                  <button
+                    class="map-editor-tool"
+                    type="button"
+                    data-map-tool="platform"
+                    aria-pressed="false"
+                  >
+                    Platform
+                  </button>
+                  <button
+                    class="map-editor-tool"
+                    type="button"
+                    data-map-tool="circle"
+                    aria-pressed="false"
+                  >
+                    Circle
+                  </button>
+                  <button
+                    class="map-editor-tool"
+                    type="button"
+                    data-map-tool="ball"
+                    aria-pressed="false"
+                  >
+                    Ball
+                  </button>
+                  <button
+                    class="map-editor-tool"
+                    type="button"
+                    data-map-tool="star"
+                    aria-pressed="false"
+                  >
+                    Star
+                  </button>
+                  <button
+                    class="map-editor-tool"
+                    type="button"
+                    data-map-tool="stripedRect"
+                    aria-pressed="false"
+                  >
+                    Hazard
+                  </button>
+                  <button
+                    class="map-editor-tool"
+                    type="button"
+                    data-map-tool="portal"
+                    aria-pressed="false"
+                  >
+                    Portal
+                  </button>
+                  <button
+                    class="map-editor-tool"
+                    type="button"
+                    data-map-tool="segment"
+                    aria-pressed="false"
+                  >
+                    Line
+                  </button>
+                  <button
+                    class="map-editor-tool"
+                    type="button"
+                    data-map-tool="complex"
+                    aria-pressed="false"
+                  >
+                    Polygon
+                  </button>
+                  <button
+                    class="map-editor-tool"
+                    type="button"
+                    data-map-tool="rotor"
+                    aria-pressed="false"
+                  >
+                    Rotor
+                  </button>
+                  <button
+                    class="map-editor-tool"
+                    type="button"
+                    data-map-tool="text"
+                    aria-pressed="false"
+                  >
+                    Text
+                  </button>
+                  <button
+                    class="map-editor-tool"
+                    type="button"
+                    data-map-tool="erase"
+                    aria-pressed="false"
+                  >
+                    Erase
+                  </button>
                 </div>
-                <section class="map-editor-properties" data-map-properties aria-label="Object properties">
-                  <h2>Object</h2>
+                <section
+                  class="map-editor-properties"
+                  data-map-properties
+                  aria-label="Object properties"
+                >
                   <label data-property-text-wrap hidden>
                     <span>Text</span>
-                    <input class="map-property-text" data-property-text maxlength="80" value="Text" />
+                    <input
+                      class="map-property-text"
+                      data-property-text
+                      maxlength="80"
+                      value="Text"
+                    />
                   </label>
                   <label data-property-radius-wrap hidden>
                     <span>Radius</span>
-                    <input data-property-radius type="range" min="0.015" max="0.12" step="0.005" />
+                    <div class="map-property-range-frame">
+                      <input
+                        data-property-radius
+                        type="range"
+                        min="0.015"
+                        max="0.12"
+                        step="0.005"
+                      />
+                    </div>
                   </label>
                   <label data-property-closed-wrap hidden>
                     <input data-property-closed type="checkbox" />
@@ -533,14 +705,31 @@
                   </label>
                   <p data-property-empty>Select an object to edit its properties.</p>
                 </section>
-                <section class="map-editor-json-workspace" data-json-workspace aria-label="Map JSON editor" hidden>
+                <section
+                  class="map-editor-json-workspace"
+                  data-json-workspace
+                  aria-label="Map JSON editor"
+                  hidden
+                >
                   <div class="map-editor-json-source">
-                    <textarea data-map-json spellcheck="false" aria-label="Map JSON source" autocomplete="off"></textarea>
-                    <div class="map-json-suggestions" data-json-suggestions role="listbox" aria-label="JSON suggestions" hidden></div>
+                    <textarea
+                      data-map-json
+                      spellcheck="false"
+                      aria-label="Map JSON source"
+                      autocomplete="off"
+                    ></textarea>
+                    <div
+                      class="map-json-suggestions"
+                      data-json-suggestions
+                      role="listbox"
+                      aria-label="JSON suggestions"
+                      hidden
+                    ></div>
                   </div>
                   <div class="map-editor-json-actions">
-                    <span data-json-status role="status" aria-live="polite">Edit the map data, then apply your changes.</span>
-                    <button class="map-editor-button" type="button" data-json-apply>Apply JSON</button>
+                    <span data-json-status role="status" aria-live="polite"
+                      >Changes apply automatically when the JSON is valid.</span
+                    >
                   </div>
                 </section>
               </div>
@@ -551,6 +740,19 @@
             <p class="map-editor-status" data-map-status role="status" aria-live="polite">
               Select an object to move it, or choose a tool to build your map.
             </p>
+            <aside
+              class="map-reference-panel"
+              data-map-reference-panel
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="map-reference-title"
+              hidden
+            >
+              <header class="map-reference-header">
+                <h2 id="map-reference-title">JSON Guide</h2>
+              </header>
+              <article class="map-reference-content" data-map-reference-content></article>
+            </aside>
           </section>
         </div>
       </div>

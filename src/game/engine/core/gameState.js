@@ -16,6 +16,8 @@ export const state = {
   currentStage: null,
   currentStageNumber: 1,
   isPlayground: false,
+  isMapTest: false,
+  mapTestDefinition: null,
   stageCleared: false,
   stageClearRequestPending: false,
   stageHasSimulated: false,
