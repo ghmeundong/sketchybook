@@ -1,11 +1,12 @@
 import rough from "roughjs";
 import { attachRoughFrame } from "../game/ui/roughFrame.js";
-import { setActivePage, startStage } from "../game/engine/core/gameController.js";
+import { setActivePage, startStage, updateStageUrl } from "../game/engine/core/gameController.js";
 import { createActionIconCanvas } from "../game/ui/uiIcons.js";
 import { dom } from "../game/engine/core/domRefs.js";
-import { state } from "../game/engine/core/gameState.js";
+import { getChallengeModePreference } from "../game/engine/config/challengeMode.js";
 import { GOLD, INK, INK_SOFT } from "../theme.js";
 import { connectToRoom, createRoom } from "../services/multiplayer.js";
+import { getStoredUser } from "../services/auth.js";
 
 const singleButton = document.querySelector("[data-select-single]");
 const multiplayerButton = document.querySelector("[data-select-multiplayer]");
@@ -26,6 +27,7 @@ const roomPlayerCount = document.querySelector("[data-room-player-count]");
 const roomPlayerList = document.querySelector("[data-room-player-list]");
 const roomLeaveButton = document.querySelector("[data-room-leave]");
 const roomSelectStageButton = document.querySelector("[data-room-select-stage]");
+const roomDifficultySelect = document.querySelector("[data-room-difficulty]");
 const guestWaitingMessage = document.querySelector("[data-guest-waiting]");
 const roomSelectedStage = document.querySelector("[data-room-selected-stage]");
 const selectionStatus = document.querySelector("[data-multiplayer-selection-status]");
@@ -40,6 +42,8 @@ let roomSocket = null;
 let isConnecting = false;
 let roomRole = "guest";
 let selectedRoomStage = null;
+let selectedRoomDifficulty = "normal";
+let selectedRoomChallengeMode = false;
 let roomStartTimer = null;
 let serverClockOffset = 0;
 let selfPlayerId = null;
@@ -140,7 +144,17 @@ function initializeModeSelection() {
   roomToast.setAttribute("role", "status");
   roomToast.setAttribute("aria-live", "polite");
   roomToast.hidden = true;
+  const roomToastMessage = document.createElement("span");
+  roomToastMessage.className = "multiplayer-toast-message";
+  roomToast.appendChild(roomToastMessage);
   document.body.appendChild(roomToast);
+  attachRoughFrame(roomToast, {
+    inset: 4,
+    outside: 0,
+    strokeWidth: 2,
+    roughness: 2,
+    fill: "rgba(250, 244, 216, 0.96)",
+  });
   document.addEventListener("pointerdown", (event) => {
     if (!roomToast?.hidden && !roomToast?.contains(event.target)) {
       dismissRoomToast();
@@ -178,12 +192,20 @@ function initializeModeSelection() {
     setActivePage(dom.modePage);
   });
 
-  roomGlobalBackButton?.addEventListener("click", closeRoomPanel);
+  roomGlobalBackButton?.addEventListener("click", handleRoomGlobalBack);
   roomCopyLinkButton?.addEventListener("click", copyRoomInviteLink);
   selectionCopyLinkButton?.addEventListener("click", copyRoomInviteLink);
   roomCreateButton?.addEventListener("click", async () => {
     await withRoomConnection(async () => {
-      const room = await createRoom();
+      const storedDifficulty = sessionStorage.getItem("selectedDifficulty");
+      const difficulty = ["easy", "normal", "hard", "insane"].includes(storedDifficulty)
+        ? storedDifficulty
+        : "normal";
+      const room = await createRoom({
+        difficulty,
+        challengeModeEnabled:
+          difficulty === "insane" || (difficulty === "hard" && getChallengeModePreference()),
+      });
       const socket = await connectToRoom(
         room.roomCode,
         getPlayerName(),
@@ -206,13 +228,26 @@ function initializeModeSelection() {
   });
 
   roomLeaveButton?.addEventListener("click", () => {
-    closeRoomPanel();
-    setActivePage(dom.modePage);
+    leaveRoom();
   });
 
   roomSelectStageButton?.addEventListener("click", () => {
     if (roomRole !== "host" || !roomSocket || roomSocket.readyState !== WebSocket.OPEN) return;
     showHostStageSelection();
+  });
+
+  roomDifficultySelect?.addEventListener("change", () => {
+    if (roomRole !== "host" || roomSocket?.readyState !== WebSocket.OPEN) {
+      if (roomDifficultySelect) roomDifficultySelect.value = selectedRoomDifficulty;
+      return;
+    }
+    roomSocket.send(
+      JSON.stringify({
+        type: "select-difficulty",
+        difficulty: roomDifficultySelect.value,
+        challengeModeEnabled: roomDifficultySelect.value === "hard" && getChallengeModePreference(),
+      })
+    );
   });
 
   selectionLeaveButton?.addEventListener("click", leaveRoom);
@@ -229,8 +264,8 @@ function initializeModeSelection() {
       JSON.stringify({
         type: "start-game",
         stageNumber: selectedRoomStage,
-        difficulty: state.currentDifficulty,
-        challengeModeEnabled: state.challengeModeEnabled,
+        difficulty: selectedRoomDifficulty,
+        challengeModeEnabled: selectedRoomChallengeMode,
       })
     );
     if (selectionMessage) {
@@ -241,12 +276,7 @@ function initializeModeSelection() {
   window.addEventListener("sketchybook:selection-back", (event) => {
     if (roomRole !== "host" || !roomSocket) return;
     event.preventDefault();
-    setActivePage(dom.modePage);
-    selectionStatus.hidden = true;
-    roomPanel.hidden = false;
-    roomEntryActions.hidden = true;
-    roomConnectedState.hidden = false;
-    modeScreen?.classList.add("is-room-open");
+    returnHostToRoomLobby();
   });
 
   window.addEventListener("sketchybook:game-exit", (event) => {
@@ -302,7 +332,7 @@ function showRoomToast(message) {
   if (!roomToast) return;
   window.clearTimeout(toastTimer);
   window.clearTimeout(toastHideTimer);
-  roomToast.textContent = message;
+  roomToast.querySelector(".multiplayer-toast-message").textContent = message;
   roomToast.hidden = false;
   roomToast.classList.add("is-visible");
   toastTimer = window.setTimeout(() => {
@@ -337,6 +367,10 @@ function handleHostStageTransition(event, type, stageNumber = event.detail?.stag
 }
 
 function getPlayerName() {
+  const accountName = getStoredUser()?.name;
+  if (typeof accountName === "string" && accountName.trim()) {
+    return accountName.trim();
+  }
   let name = sessionStorage.getItem("multiplayerPlayerName");
   if (!name) {
     name = `Player ${Math.floor(1000 + Math.random() * 9000)}`;
@@ -355,6 +389,7 @@ async function withRoomConnection(connect) {
     roomSocket = connection.socket ?? connection;
     roomCode = connection.roomCode ?? roomCodeInput?.value.trim().toUpperCase();
     roomRole = connection.isHost ? "host" : "guest";
+    syncHostOnlyInteractionTooltips();
     const currentUrl = new URL(window.location.href);
     if (currentUrl.searchParams.get("room")?.toUpperCase() === roomCode) {
       currentUrl.searchParams.delete("room");
@@ -367,10 +402,7 @@ async function withRoomConnection(connect) {
     roomCodeDisplay.textContent = roomCode;
     roomEntryActions.hidden = true;
     roomConnectedState.hidden = false;
-    roomStatus.textContent = "Connected. Share this code with a friend.";
-    if (roomRole === "host") {
-      showHostStageSelection();
-    }
+    updateRoomRoleUI(null);
   } catch (error) {
     roomStatus.textContent = error.message || "Could not connect to the room.";
     if (error.code === "ROOM_IN_PROGRESS") {
@@ -409,17 +441,13 @@ async function copyRoomInviteLink() {
       return;
     }
   }
-  roomStatus.textContent = "Invite link copied.";
-  if (selectionMessage && dom.selectionPage.classList.contains("is-active")) {
-    selectionMessage.textContent = "Invite link copied.";
-  }
   showRoomToast("Invite link copied.");
 }
 
 function handleRoomMessage(message) {
   if (message.type === "room-state" && Array.isArray(message.players)) {
     if (message.selfPlayerId) selfPlayerId = message.selfPlayerId;
-    roomPlayerCount.textContent = `${message.players.length} / 4 players connected`;
+    roomPlayerCount.textContent = `${message.players.length} / 4 players connected.`;
     roomPlayerList.replaceChildren(
       ...message.players.map((player) => {
         const item = document.createElement("li");
@@ -428,7 +456,7 @@ function handleRoomMessage(message) {
       })
     );
     if (dom.selectionPage.classList.contains("is-active")) {
-      selectionPlayerCount.textContent = `${message.players.length} / 4 players connected`;
+      selectionPlayerCount.textContent = `${message.players.length} / 4 players connected.`;
       selectionPlayerList.replaceChildren(
         ...message.players.map((player) => {
           const item = document.createElement("li");
@@ -441,6 +469,13 @@ function handleRoomMessage(message) {
       selectedRoomStage = message.selectedStage;
       renderSelectedStage(message.selectedStage);
     }
+    selectedRoomDifficulty = ["easy", "normal", "hard", "insane"].includes(
+      message.selectedDifficulty
+    )
+      ? message.selectedDifficulty
+      : "normal";
+    selectedRoomChallengeMode = Boolean(message.challengeModeEnabled);
+    if (roomDifficultySelect) roomDifficultySelect.value = selectedRoomDifficulty;
     const host = message.players.find((player) => player.isHost);
     const self = message.players.find((player) => player.playerId === selfPlayerId);
     if (self) roomRole = self.isHost ? "host" : "guest";
@@ -546,6 +581,7 @@ function handleRoomMessage(message) {
 
 function returnToRoomLobby(status) {
   setActivePage(dom.modePage);
+  updateStageUrl();
   selectionStatus.hidden = true;
   roomPanel.hidden = false;
   roomEntryActions.hidden = true;
@@ -567,9 +603,41 @@ function renderSelectedStage(stageNumber) {
   }
 }
 
+function syncHostOnlyInteractionTooltips() {
+  const isRoomConnected = Boolean(roomSocket && roomSocket.readyState === WebSocket.OPEN);
+  const isGuest = Boolean(isRoomConnected && roomRole !== "host");
+  document.body.classList.toggle("multiplayer-guest", isGuest);
+  document.body.classList.toggle("multiplayer-room-connected", isRoomConnected);
+  if (roomGlobalBackButton) {
+    roomGlobalBackButton.dataset.tooltip =
+      isRoomConnected && roomRole === "host" && dom.selectionPage.classList.contains("is-active")
+        ? "Back to the room lobby"
+        : isRoomConnected
+          ? "Leave the room before returning to game modes."
+          : "Back to game modes";
+  }
+  document.querySelectorAll("[data-host-only-tooltip]").forEach((element) => {
+    if (isGuest) {
+      element.dataset.tooltip = element.dataset.hostOnlyTooltip;
+    } else {
+      delete element.dataset.tooltip;
+    }
+  });
+  const difficultyControl = roomDifficultySelect?.closest(".room-difficulty-control");
+  if (difficultyControl) {
+    difficultyControl.classList.toggle("is-host-locked", isGuest);
+    if (isGuest) {
+      difficultyControl.dataset.tooltip = "Only the host can change the difficulty.";
+    } else {
+      delete difficultyControl.dataset.tooltip;
+    }
+  }
+}
+
 function updateRoomRoleUI(host) {
   guestWaitingMessage.hidden = roomRole === "host";
   roomSelectStageButton.hidden = roomRole !== "host";
+  syncHostOnlyInteractionTooltips();
   if (roomRole === "host") {
     roomStatus.textContent = "You are the host. Choose a stage from the stage selection screen.";
     return;
@@ -582,13 +650,14 @@ function updateRoomRoleUI(host) {
 
 function showHostStageSelection() {
   setActivePage(dom.selectionPage);
+  document.body.classList.add("multiplayer-stage-selection");
   roomPanel.hidden = true;
-  if (roomGlobalBackButton) roomGlobalBackButton.hidden = true;
+  if (roomGlobalBackButton) roomGlobalBackButton.hidden = false;
   modeScreen?.classList.remove("is-room-open");
   selectionStatus.hidden = false;
   selectionRoomCode.textContent = roomCode;
-  selectionMessage.textContent = "Choose a stage to start everyone together.";
-  selectionPlayerCount.textContent = `${roomPlayerList.children.length} / 4 players connected`;
+  selectionMessage.textContent = "Choose a stage to start";
+  selectionPlayerCount.textContent = `${roomPlayerList.children.length} / 4 players connected.`;
   selectionPlayerList.replaceChildren(
     ...Array.from(roomPlayerList.children, (player) => {
       const item = document.createElement("li");
@@ -600,6 +669,17 @@ function showHostStageSelection() {
     button.classList.remove("is-selected");
     button.disabled = false;
   });
+}
+
+function returnHostToRoomLobby() {
+  document.body.classList.remove("multiplayer-stage-selection");
+  setActivePage(dom.modePage);
+  syncHostOnlyInteractionTooltips();
+  selectionStatus.hidden = true;
+  roomPanel.hidden = false;
+  roomEntryActions.hidden = true;
+  roomConnectedState.hidden = false;
+  modeScreen?.classList.add("is-room-open");
 }
 
 function closeRoomSocketOnly(reason) {
@@ -627,6 +707,7 @@ function setRoomControlsDisabled(disabled) {
 }
 
 function resetRoomPanel(status) {
+  document.body.classList.remove("multiplayer-stage-selection");
   if (roomEntryActions) roomEntryActions.hidden = false;
   if (roomConnectedState) roomConnectedState.hidden = true;
   if (roomPlayerCount) roomPlayerCount.textContent = "";
@@ -634,6 +715,10 @@ function resetRoomPanel(status) {
   if (roomSelectedStage) roomSelectedStage.hidden = true;
   if (roomSelectStageButton) roomSelectStageButton.hidden = true;
   roomRole = "guest";
+  document.body.classList.remove("multiplayer-guest");
+  roomDifficultySelect?.closest(".room-difficulty-control")?.classList.remove("is-host-locked");
+  roomDifficultySelect?.closest(".room-difficulty-control")?.removeAttribute("title");
+  syncHostOnlyInteractionTooltips();
   selectedRoomStage = null;
   roomCode = null;
   selfPlayerId = null;
@@ -657,6 +742,22 @@ function closeRoomPanel() {
   modeScreen?.classList.remove("is-room-open");
   multiplayerButton.setAttribute("aria-pressed", "false");
   resetRoomPanel("");
+}
+
+function handleRoomGlobalBack() {
+  if (
+    roomSocket?.readyState === WebSocket.OPEN &&
+    roomRole === "host" &&
+    dom.selectionPage.classList.contains("is-active")
+  ) {
+    returnHostToRoomLobby();
+    return;
+  }
+  if (roomSocket?.readyState === WebSocket.OPEN) {
+    roomStatus.textContent = "Leave the room before returning to game modes.";
+    return;
+  }
+  closeRoomPanel();
 }
 
 export { initializeModeSelection };

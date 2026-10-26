@@ -5,6 +5,8 @@ import "./game/main.js";
 import "./app/uiSounds.js";
 import "./app/pageLoader.js";
 import { initGoogleAuth } from "./services/googleAuthUi.js";
+import { initializeRoughTooltips } from "./app/roughTooltip.js";
 
+initializeRoughTooltips();
 initializeModeSelection();
 initGoogleAuth();

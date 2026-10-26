@@ -97,6 +97,15 @@ export function createStageClearOverlay({
   const exitBtn = message.querySelector(".stage-clear-exit");
   const retryBtn = message.querySelector(".stage-clear-retry");
   const nextBtn = message.querySelector(".stage-clear-next");
+  [
+    [exitBtn, "Only the host can return everyone to the room."],
+    [retryBtn, "Only the host can restart the stage."],
+    [nextBtn, "Only the host can start the next stage."],
+  ].forEach(([button, tooltip]) => {
+    if (!button) return;
+    button.dataset.hostOnlyTooltip = tooltip;
+    if (document.body.classList.contains("multiplayer-guest")) button.dataset.tooltip = tooltip;
+  });
 
   [exitBtn, retryBtn, nextBtn].forEach((btn) => {
     decorate(btn);

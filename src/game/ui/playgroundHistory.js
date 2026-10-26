@@ -56,7 +56,7 @@ export function initPlaygroundHistoryButtons() {
   undoButton.type = "button";
   undoButton.className = "playground-history-btn playground-undo-btn";
   undoButton.setAttribute("aria-label", "Undo last playground stroke");
-  undoButton.title = "Undo";
+  undoButton.dataset.tooltip = "Undo";
   undoButton.appendChild(createActionIconCanvas("undo", { w: 52, h: 44, strokeWidth: 2.4 }));
   undoButton.addEventListener("click", undoPlaygroundStroke);
 
@@ -64,7 +64,7 @@ export function initPlaygroundHistoryButtons() {
   redoButton.type = "button";
   redoButton.className = "playground-history-btn playground-redo-btn";
   redoButton.setAttribute("aria-label", "Redo last playground stroke");
-  redoButton.title = "Redo";
+  redoButton.dataset.tooltip = "Redo";
   redoButton.appendChild(createActionIconCanvas("redo", { w: 52, h: 44, strokeWidth: 2.4 }));
   redoButton.addEventListener("click", redoPlaygroundStroke);
 

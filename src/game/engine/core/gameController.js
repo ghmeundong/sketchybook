@@ -494,6 +494,10 @@ export function createGameExitButton() {
   gameExitButton.className = "game-exit-btn game-hud-corner-btn";
   gameExitButton.setAttribute("type", "button");
   gameExitButton.setAttribute("aria-label", "Exit to stage selection");
+  gameExitButton.dataset.hostOnlyTooltip = "Only the host can return everyone to the room.";
+  if (document.body.classList.contains("multiplayer-guest")) {
+    gameExitButton.dataset.tooltip = gameExitButton.dataset.hostOnlyTooltip;
+  }
 
   gameExitButton.appendChild(createActionIconCanvas("exit", { w: 60, h: 48, strokeWidth: 2.5 }));
   gameExitButton.addEventListener("click", async () => {
@@ -518,6 +522,10 @@ export function createGameRetryButton() {
   gameRetryButton.className = "game-retry-btn game-hud-corner-btn";
   gameRetryButton.setAttribute("type", "button");
   gameRetryButton.setAttribute("aria-label", "Retry current stage");
+  gameRetryButton.dataset.hostOnlyTooltip = "Only the host can restart the stage.";
+  if (document.body.classList.contains("multiplayer-guest")) {
+    gameRetryButton.dataset.tooltip = gameRetryButton.dataset.hostOnlyTooltip;
+  }
 
   gameRetryButton.appendChild(createActionIconCanvas("retry", { w: 60, h: 48, strokeWidth: 2.5 }));
   gameRetryButton.addEventListener("click", async () => {

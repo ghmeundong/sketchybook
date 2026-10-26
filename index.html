@@ -70,11 +70,14 @@
           type="button"
           data-room-back
           aria-label="Back to game modes"
-          title="Back"
+          data-tooltip="Back to game modes"
           hidden
         ></button>
         <div class="page page-mode is-active">
           <section class="mode-screen" aria-labelledby="mode-screen-title">
+            <div class="mode-screen-login">
+              <div id="google-signin" class="google-signin-container"></div>
+            </div>
             <h1 class="mode-screen-title" id="mode-screen-title">SKETCHYBOOK</h1>
             <div class="mode-options">
               <button class="mode-card mode-card--single" type="button" data-select-single>
@@ -131,11 +134,20 @@
                     type="button"
                     data-room-copy-link
                     aria-label="Copy invite link"
-                    title="Copy invite link"
+                    data-tooltip="Copy invite link"
                   ></button>
                 </div>
                 <p class="room-player-count" data-room-player-count aria-live="polite"></p>
                 <ul class="room-player-list" data-room-player-list></ul>
+                <label class="room-difficulty-control" for="room-difficulty">
+                  <span>Difficulty</span>
+                  <select id="room-difficulty" data-room-difficulty>
+                    <option value="easy">Easy</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="hard">Hard</option>
+                    <option value="insane">Insane</option>
+                  </select>
+                </label>
                 <p class="guest-waiting-message" data-guest-waiting hidden>
                   Waiting for the host to choose a stage…
                 </p>
@@ -165,9 +177,8 @@
                 type="button"
                 data-start-mode-back
                 aria-label="Back to game modes"
-                title="Back"
+                data-tooltip="Back to game modes"
               ></button>
-              <div id="google-signin" class="google-signin-container"></div>
             </div>
             <div class="start-screen-actions" data-shared-toolbar-content>
               <div class="start-screen-tools">
@@ -176,7 +187,7 @@
                   type="button"
                   data-playground-button
                   aria-label="Open playground"
-                  title="Playground"
+                  data-tooltip="Open playground"
                 ></button>
                 <button
                   class="settings-toggle game-exit-btn"
@@ -332,7 +343,7 @@
                 type="button"
                 data-selection-copy-link
                 aria-label="Copy invite link"
-                title="Copy invite link"
+                data-tooltip="Copy invite link"
               >
               </button>
               <p data-selection-player-count></p>
