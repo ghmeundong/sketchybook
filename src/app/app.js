@@ -22,13 +22,15 @@ import {
 
 const startTitle = document.querySelector("[data-start-button]");
 const titleText = document.querySelector(".brand-title");
+const globalToolbar = document.querySelector("[data-global-app-toolbar]");
+const sharedToolbarContent = document.querySelector("[data-shared-toolbar-content]");
 const playgroundButton = document.querySelector("[data-playground-button]");
 const settingsToggle = document.querySelector("[data-settings-toggle]");
 const challengeModeToggle = document.querySelector("[data-challenge-mode-toggle]");
 const challengeModeStatus = document.getElementById("challenge-mode-status");
 const challengeModeOption = document.querySelector(".settings-option");
 const settingsPanel = document.getElementById("start-settings-panel");
-const settingsClose = document.querySelector("[data-settings-close]");
+const settingsCloseButtons = document.querySelectorAll("[data-settings-close]");
 const helpToggle = document.querySelector("[data-help-toggle]");
 const helpPanel = document.getElementById("start-help-panel");
 const difficultyPrevBtn = document.querySelector("[data-difficulty-prev]");
@@ -45,6 +47,9 @@ settingsOverlay.className = "settings-overlay";
 settingsOverlay.hidden = true;
 settingsOverlay.setAttribute("aria-hidden", "true");
 document.body.appendChild(settingsOverlay);
+if (globalToolbar && sharedToolbarContent) {
+  globalToolbar.appendChild(sharedToolbarContent);
+}
 window.addEventListener("sketchybook:audio-settings-change", (event) => {
   const sfxVolume = event.detail?.sfx;
   if (Number.isFinite(sfxVolume)) gameStartSound.volume = sfxVolume;
@@ -263,8 +268,6 @@ function createInsaneStartWarningModal() {
   confirmBtn.className = "insane-warning-button is-primary";
   confirmBtn.textContent = "Continue";
   confirmBtn.addEventListener("click", async () => {
-    gameStartSound.currentTime = 0;
-    void gameStartSound.play().catch(() => {});
     modal.remove();
     await launchGameFromStart(true);
   });
@@ -689,9 +692,11 @@ updateChallengeModeAvailability();
 
 syncChallengeModeToggleUI();
 
-if (settingsClose && settingsPanel) {
-  settingsClose.addEventListener("click", () => {
-    setSettingsPanelVisible(false);
+if (settingsCloseButtons.length && settingsPanel) {
+  settingsCloseButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setSettingsPanelVisible(false);
+    });
   });
 }
 

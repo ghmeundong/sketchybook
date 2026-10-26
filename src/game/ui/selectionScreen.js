@@ -14,12 +14,6 @@ import {
 } from "../engine/core/gameController.js";
 import { drawRoughFrameRect } from "./roughFrame.js";
 
-function setHelpPanelVisible(visible = true) {
-  if (!dom.helpPanel || !dom.helpToggle) return;
-  dom.helpPanel.hidden = !visible;
-  dom.helpToggle.setAttribute("aria-expanded", String(visible));
-}
-
 function drawRoughFrame(card) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", "0 0 100 100");
@@ -78,25 +72,6 @@ export function updateStageSelectionPage() {
 }
 
 export function initSelectionScreen() {
-  if (dom.helpToggle && dom.helpPanel) {
-    dom.helpToggle.textContent = "";
-    dom.helpToggle.appendChild(
-      createActionIconCanvas("question", { w: 40, h: 40, strokeWidth: 2.2 })
-    );
-    dom.helpToggle.addEventListener("click", () => {
-      setHelpPanelVisible(dom.helpPanel.hidden);
-    });
-
-    document.addEventListener("click", (event) => {
-      const target = event.target;
-      const clickedToggle = target === dom.helpToggle || dom.helpToggle.contains(target);
-      const clickedPanel = dom.helpPanel.contains(target);
-      if (!dom.helpPanel.hidden && !clickedToggle && !clickedPanel) {
-        setHelpPanelVisible(false);
-      }
-    });
-  }
-
   dom.stageButtons.forEach((card) => {
     drawRoughFrame(card);
     const stageNumber = Number(card.dataset.stage);
@@ -113,6 +88,8 @@ export function initSelectionScreen() {
       createActionIconCanvas("exit", { w: 60, h: 48, strokeWidth: 2.5 })
     );
     dom.backHomeButton.addEventListener("click", () => {
+      const backEvent = new CustomEvent("sketchybook:selection-back", { cancelable: true });
+      if (!window.dispatchEvent(backEvent)) return;
       setActivePage(dom.startPage);
       window.dispatchEvent(new Event("sketchybook:show-start"));
     });
@@ -124,6 +101,11 @@ export function initSelectionScreen() {
       if (!stageNumber || button.classList.contains("is-hidden")) {
         return;
       }
+      const selectionEvent = new CustomEvent("sketchybook:stage-select", {
+        cancelable: true,
+        detail: { stageNumber, button },
+      });
+      if (!window.dispatchEvent(selectionEvent)) return;
       await startStage(stageNumber);
     });
   });

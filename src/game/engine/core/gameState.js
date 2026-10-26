@@ -41,15 +41,13 @@ export const state = {
   lastPoint: null,
   currentStroke: null,
   physicsStrokes: [],
+  roomStrokePreviews: [],
   gameObjects: [],
   playgroundUndoStack: [],
   playgroundRedoStack: [],
   lastPhysicsTime: 0,
   totalDrawnLength: 0,
   drawLimitProgressTrackDrawn: false,
-
-  // window / focus
-  isWindowFocused: true,
 
   // audio / music page tracking
   activeAudioPage: null,

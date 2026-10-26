@@ -5,7 +5,6 @@ import {
   Platform,
   StripedRectObject,
   Segment,
-  ComplexObject,
   Rotor,
 } from "../objects/index.js";
 import {
@@ -28,9 +27,7 @@ import { createStrokeTexture } from "../render/gameRenderer.js";
 import { drawingAudio } from "../audio/drawingAudioInstance.js";
 import { dom } from "../engine/core/domRefs.js";
 import { state } from "../engine/core/gameState.js";
-import { isFullscreenActive } from "../engine/core/fullscreen.js";
 
-const isItchBuild = import.meta.env.MODE === "itch";
 import {
   getLineLengthLimit,
   isDrawLimitReached,
@@ -41,6 +38,24 @@ import {
   startPlayground,
 } from "../engine/core/gameController.js";
 import { recordPlaygroundStroke } from "../ui/playgroundHistory.js";
+import {
+  getServerTime,
+  isRoomConnected,
+  sendRoomStroke,
+  sendRoomStrokePreview,
+  cancelRoomStrokePreview,
+} from "../../services/multiplayer.js";
+import { INK } from "../../theme.js";
+
+const MAX_SHARED_STROKE_POINTS = 256;
+const MAX_PREVIEW_BATCH_POINTS = 31;
+const PREVIEW_SEND_INTERVAL_MS = 50;
+const scheduledStrokeTimers = new Map();
+let liveStrokeId = null;
+let liveStrokeSequence = 0;
+let liveStrokeSentPointCount = 0;
+let liveStrokeLastSentAt = 0;
+let liveStrokeAnchor = null;
 
 function segmentsCross(first, second) {
   const orientation = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
@@ -123,6 +138,183 @@ function findStrokeAttachment(stroke, floorY, hasFloor = true) {
   );
 }
 
+function createAndRegisterStroke(points, previewSource = null) {
+  if (state.challengeModeEnabled && state.challengeModeStrokeCount >= 1) return false;
+
+  const intersectsStripedArea = state.gameObjects.some(
+    (obj) => obj instanceof StripedRectObject && strokeIntersectsObject(points, obj)
+  );
+  const intersectsHatchedCircle = state.gameObjects.some(
+    (obj) => obj instanceof CircleObject && strokeIntersectsObject(points, obj)
+  );
+  const intersectsBall = state.gameObjects.some(
+    (obj) => obj instanceof Ball && strokeIntersectsObject(points, obj)
+  );
+  const strokeBody = state.currentStage?.createStrokeBody
+    ? state.currentStage.createStrokeBody(points)
+    : createStrokeBody(points);
+  if (
+    !strokeBody ||
+    shouldRejectStroke({
+      intersectsStripedArea,
+      intersectsHatchedCircle,
+      intersectsBall,
+      canDrawOnBall: state.difficultyRules.canDrawOnBall,
+    })
+  ) {
+    updateDrawLimitProgressUI();
+    return false;
+  }
+
+  const floorY = (dom.canvas?.clientHeight || 0) - 24;
+  const attachment = findStrokeAttachment(points, floorY, state.difficultyRules.hasFloor);
+  const attachmentBody = attachment?.physicsBody;
+  const isMovingAttachment =
+    attachmentBody && typeof attachmentBody.getType === "function"
+      ? attachmentBody.getType() !== "static"
+      : false;
+  const initializeBody = state.currentStage?.initializeStrokeBody
+    ? state.currentStage.initializeStrokeBody.bind(state.currentStage)
+    : initializeStrokeBody;
+  initializeBody(strokeBody, floorY, {
+    skipGround: state.challengeModeEnabled || !state.difficultyRules.hasFloor,
+    type: attachment && !isMovingAttachment ? "static" : "dynamic",
+  });
+  if (isMovingAttachment) {
+    attachBodyToBody(strokeBody.physicsBody, attachmentBody, attachmentBody.getPosition());
+  }
+
+  createStrokeTexture(strokeBody, previewSource);
+  state.physicsStrokes.push(strokeBody);
+  recordPlaygroundStroke(strokeBody);
+  if (state.challengeModeEnabled) state.challengeModeStrokeCount += 1;
+  state.totalDrawnLength += getLogicalStrokeDistance(points, state.coordinateSystem);
+  updateDrawLimitProgressUI();
+  return true;
+}
+
+function compactStroke(points) {
+  if (points.length <= MAX_SHARED_STROKE_POINTS) return points;
+  return Array.from({ length: MAX_SHARED_STROKE_POINTS }, (_, index) => {
+    const sourceIndex = Math.round((index * (points.length - 1)) / (MAX_SHARED_STROKE_POINTS - 1));
+    return points[sourceIndex];
+  });
+}
+
+function receiveRoomStroke(message) {
+  if (
+    !message?.eventId ||
+    !Number.isFinite(message.applyAt) ||
+    !Array.isArray(message.points) ||
+    !state.coordinateSystem
+  ) {
+    return;
+  }
+
+  const screenPoints = message.points.map((point) => state.coordinateSystem.toScreenPoint(point));
+  state.roomStrokePreviews = state.roomStrokePreviews.filter(
+    (stroke) =>
+      stroke.eventId !== message.eventId &&
+      !(stroke.playerId === message.playerId && stroke.strokeId === message.strokeId)
+  );
+  state.roomStrokePreviews.push({
+    eventId: message.eventId,
+    strokeId: message.strokeId,
+    playerId: message.playerId,
+    points: screenPoints,
+    width: message.width,
+    color: message.color,
+  });
+
+  const delay = Math.max(0, message.applyAt - getServerTime());
+  const timerId = window.setTimeout(() => {
+    scheduledStrokeTimers.delete(message.eventId);
+    state.roomStrokePreviews = state.roomStrokePreviews.filter(
+      (stroke) => stroke.eventId !== message.eventId
+    );
+    if (
+      dom.playPage?.classList.contains("is-active") &&
+      state.currentStageNumber === message.stageNumber
+    ) {
+      createAndRegisterStroke(screenPoints);
+    }
+  }, delay);
+  scheduledStrokeTimers.set(message.eventId, timerId);
+}
+
+function receiveRoomStrokePreview(message) {
+  if (
+    !message?.strokeId ||
+    !message.playerId ||
+    !Array.isArray(message.points) ||
+    !state.coordinateSystem
+  ) {
+    return;
+  }
+
+  const preview = state.roomStrokePreviews.find(
+    (stroke) => stroke.playerId === message.playerId && stroke.strokeId === message.strokeId
+  );
+  const screenPoints = message.points.map((point) => state.coordinateSystem.toScreenPoint(point));
+  if (preview) {
+    preview.points.push(...screenPoints.slice(preview.points.length ? 1 : 0));
+    preview.sequence = message.sequence;
+    return;
+  }
+
+  state.roomStrokePreviews.push({
+    playerId: message.playerId,
+    strokeId: message.strokeId,
+    sequence: message.sequence,
+    points: screenPoints,
+    color: INK,
+    width: 8,
+  });
+}
+
+function removeRoomStrokePreview(message) {
+  state.roomStrokePreviews = state.roomStrokePreviews.filter(
+    (stroke) => stroke.playerId !== message.playerId || stroke.strokeId !== message.strokeId
+  );
+}
+
+function sendLiveStrokePreview(force = false) {
+  if (!liveStrokeId || !isRoomConnected() || !state.currentStroke?.length) return;
+  const now = performance.now();
+  if (!force && now - liveStrokeLastSentAt < PREVIEW_SEND_INTERVAL_MS) return;
+
+  while (liveStrokeSentPointCount < state.currentStroke.length) {
+    const nextEnd = Math.min(
+      state.currentStroke.length,
+      liveStrokeSentPointCount + MAX_PREVIEW_BATCH_POINTS
+    );
+    const previousPoint = liveStrokeSentPointCount
+      ? state.currentStroke[liveStrokeSentPointCount - 1]
+      : liveStrokeAnchor;
+    const batch = [previousPoint, ...state.currentStroke.slice(liveStrokeSentPointCount, nextEnd)];
+    const logicalPoints = batch.map((point) => state.coordinateSystem.toLogicalPoint(point));
+    if (!sendRoomStrokePreview(liveStrokeId, liveStrokeSequence, logicalPoints)) return;
+    liveStrokeSentPointCount = nextEnd;
+    liveStrokeSequence += 1;
+  }
+  liveStrokeLastSentAt = now;
+}
+
+function cancelLiveStrokePreview(notifyPeers = true) {
+  if (notifyPeers) cancelRoomStrokePreview(liveStrokeId);
+  liveStrokeId = null;
+  liveStrokeSequence = 0;
+  liveStrokeSentPointCount = 0;
+  liveStrokeLastSentAt = 0;
+  liveStrokeAnchor = null;
+}
+
+function clearRoomStrokePreviews() {
+  for (const timerId of scheduledStrokeTimers.values()) window.clearTimeout(timerId);
+  scheduledStrokeTimers.clear();
+  state.roomStrokePreviews = [];
+}
+
 function getPoint(event) {
   const rect = dom.canvas.getBoundingClientRect();
   return {
@@ -153,17 +345,17 @@ function findBallAtPoint(clickPos) {
 }
 
 function startDrawing(event) {
-  const isFullscreen = isFullscreenActive() || isItchBuild;
-  if (
-    !isFullscreen ||
-    state.stageCleared ||
-    (state.challengeModeEnabled && state.challengeModeStrokeCount >= 1)
-  ) {
+  if (state.stageCleared || (state.challengeModeEnabled && state.challengeModeStrokeCount >= 1)) {
     return;
   }
   state.stageEventCount += 1;
   state.isDrawing = true;
   state.lastPoint = getPoint(event);
+  liveStrokeId = isRoomConnected() ? crypto.randomUUID() : null;
+  liveStrokeSequence = 0;
+  liveStrokeSentPointCount = 0;
+  liveStrokeLastSentAt = 0;
+  liveStrokeAnchor = state.lastPoint;
   drawingAudio.start(state.lastPoint);
   state.currentStroke = [];
   // reset preview cache for a new stroke
@@ -173,8 +365,7 @@ function startDrawing(event) {
 }
 
 function continueDrawing(event) {
-  const isFullscreen = isFullscreenActive() || isItchBuild;
-  if (!isFullscreen || state.stageCleared || !state.isDrawing || !state.lastPoint) {
+  if (state.stageCleared || !state.isDrawing || !state.lastPoint) {
     return;
   }
 
@@ -189,6 +380,7 @@ function continueDrawing(event) {
   });
   // mark preview cache dirty so it'll be re-generated once per change
   state.currentStrokePreviewDirty = true;
+  sendLiveStrokePreview();
 }
 
 function stopDrawing(event) {
@@ -199,6 +391,7 @@ function stopDrawing(event) {
   drawingAudio.stop();
 
   if (state.stageCleared) {
+    cancelLiveStrokePreview();
     state.isDrawing = false;
     state.lastPoint = null;
     if (state.previewCtx) state.previewCtx.clearRect(0, 0, state.canvasWidth, state.canvasHeight);
@@ -212,6 +405,7 @@ function stopDrawing(event) {
   state.lastPoint = null;
 
   if (!state.currentStroke || state.currentStroke.length < 2) {
+    cancelLiveStrokePreview();
     if (state.challengeModeEnabled) {
       state.currentStroke = null;
       return;
@@ -250,12 +444,14 @@ function stopDrawing(event) {
       state.currentStrokePreviewDirty = false;
       state.currentStrokePreviewLastIndex = 0;
       state.currentStroke = null;
+      cancelLiveStrokePreview();
       updateDrawLimitProgressUI();
       return;
     }
   }
 
   if (totalDist <= CLICK_DISTANCE_THRESHOLD) {
+    cancelLiveStrokePreview();
     if (state.challengeModeEnabled) {
       state.currentStroke = null;
       return;
@@ -269,74 +465,24 @@ function stopDrawing(event) {
     return;
   }
 
-  const stageCreateStrokeBody = state.currentStage?.createStrokeBody || createStrokeBody;
-  const stageInitializeStrokeBody =
-    state.currentStage?.initializeStrokeBody || initializeStrokeBody;
-
   if (state.challengeModeEnabled) {
     if (state.challengeModeStrokeCount >= 1) {
+      cancelLiveStrokePreview();
       state.currentStroke = null;
       return;
     }
   }
 
-  const intersectsStripedArea = state.gameObjects.some(
-    (obj) => obj instanceof StripedRectObject && strokeIntersectsObject(state.currentStroke, obj)
-  );
-  const intersectsHatchedCircle = state.gameObjects.some(
-    (obj) => obj instanceof CircleObject && strokeIntersectsObject(state.currentStroke, obj)
-  );
-  const intersectsBall = state.gameObjects.some(
-    (obj) => obj instanceof Ball && strokeIntersectsObject(state.currentStroke, obj)
-  );
-
-  const strokeBody = stageCreateStrokeBody(state.currentStroke);
-
-  // 난이도 규칙에 따라 공 위에 그리기를 제한
-  const shouldCreateStroke =
-    strokeBody &&
-    !shouldRejectStroke({
-      intersectsStripedArea,
-      intersectsHatchedCircle,
-      intersectsBall,
-      canDrawOnBall: state.difficultyRules.canDrawOnBall,
-    });
-
-  if (shouldCreateStroke) {
-    const floorY = (dom.canvas?.clientHeight || 0) - 24;
-    const attachment = findStrokeAttachment(
-      state.currentStroke,
-      floorY,
-      state.difficultyRules.hasFloor
+  if (isRoomConnected()) {
+    sendLiveStrokePreview(true);
+    const logicalPoints = compactStroke(state.currentStroke).map((point) =>
+      state.coordinateSystem.toLogicalPoint(point)
     );
-    const attachmentBody = attachment?.physicsBody;
-    const isMovingAttachment =
-      attachmentBody && typeof attachmentBody.getType === "function"
-        ? attachmentBody.getType() !== "static"
-        : false;
-    const shouldSkipGround = state.challengeModeEnabled || !state.difficultyRules.hasFloor;
-    stageInitializeStrokeBody(strokeBody, floorY, {
-      skipGround: shouldSkipGround,
-      type: attachment && !isMovingAttachment ? "static" : "dynamic",
-    });
-    if (isMovingAttachment) {
-      const targetPosition = attachmentBody.getPosition();
-      attachBodyToBody(strokeBody.physicsBody, attachmentBody, targetPosition);
-    }
-    // Prefer using the preview canvas snapshot so the finalized texture
-    // matches exactly what the player saw during drawing.
-    createStrokeTexture(strokeBody, state.previewCanvas);
-    state.physicsStrokes.push(strokeBody);
-    recordPlaygroundStroke(strokeBody);
-    if (state.challengeModeEnabled) {
-      state.challengeModeStrokeCount += 1;
-    }
-    state.totalDrawnLength += getLogicalStrokeDistance(state.currentStroke, state.coordinateSystem);
-    updateDrawLimitProgressUI();
-  } else if (!shouldCreateStroke && state.currentStroke) {
-    // Reset progress when a stroke crosses a restricted object.
-    updateDrawLimitProgressUI();
+    sendRoomStroke(logicalPoints, { width: 8, color: INK, strokeId: liveStrokeId });
+  } else {
+    createAndRegisterStroke(state.currentStroke, state.previewCanvas);
   }
+  cancelLiveStrokePreview(false);
 
   // clear preview overlay after capturing snapshot for the finalized stroke
   if (state.previewCtx) state.previewCtx.clearRect(0, 0, state.canvasWidth, state.canvasHeight);
@@ -384,6 +530,18 @@ export function launchBallFromInput(eventRepeat = false) {
 }
 
 export function initPointerInput() {
+  window.addEventListener("sketchybook:room-stroke", (event) => {
+    receiveRoomStroke(event.detail);
+  });
+  window.addEventListener("sketchybook:room-stroke-preview", (event) => {
+    receiveRoomStrokePreview(event.detail);
+  });
+  window.addEventListener("sketchybook:room-stroke-preview-end", (event) => {
+    removeRoomStrokePreview(event.detail);
+  });
+  window.addEventListener("sketchybook:stage-reset", clearRoomStrokePreviews);
+  window.addEventListener("sketchybook:room-lobby", clearRoomStrokePreviews);
+  window.addEventListener("sketchybook:room-closed", clearRoomStrokePreviews);
   dom.canvas?.addEventListener("pointerdown", startDrawing);
   dom.canvas?.addEventListener("pointermove", continueDrawing);
   window.addEventListener("pointerup", stopDrawing);

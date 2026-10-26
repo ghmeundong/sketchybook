@@ -1,8 +1,7 @@
 import rough from "roughjs";
 import { state } from "../engine/core/gameState.js";
-import { isFullscreenActive } from "../engine/core/fullscreen.js";
 import { getPhysicsScaleProfile } from "../engine/physics/physics.js";
-import { INK, FONT_DISPLAY } from "../../theme.js";
+import { INK } from "../../theme.js";
 
 export function getRenderDpr() {
   return Math.min(2, Math.max(1, window.devicePixelRatio || 1));
@@ -282,6 +281,7 @@ export function render() {
     difficultyRules,
     currentStroke,
     physicsStrokes,
+    roomStrokePreviews,
     gameObjects,
   } = state;
   if (!roughCanvas || !ctx) return;
@@ -296,28 +296,23 @@ export function render() {
     }
   }
 
-  // Check if in fullscreen mode
-  const isFullscreen = isFullscreenActive() || import.meta.env.MODE === "itch";
-
-  // If not fullscreen, show guidance message
-  if (!isFullscreen) {
-    ctx.save();
-
-    const fontSize = Math.max(24, Math.round(canvasHeight * 0.08));
-    ctx.font = `bold ${fontSize}px ${FONT_DISPLAY}`;
-    ctx.fillStyle = INK;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    const centerY = canvasHeight / 2;
-    ctx.fillText("Game paused", canvasWidth / 2, centerY);
-
-    ctx.restore();
-    return;
-  }
-
   if (currentStroke && currentStroke.length > 1) {
     drawStrokePreview(currentStroke);
+  }
+
+  for (const stroke of roomStrokePreviews || []) {
+    if (stroke.points.length < 2) continue;
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = stroke.color || INK;
+    ctx.lineWidth = Math.max(1.5, (stroke.width || 8) * 0.55 * (getStrokeWidth() / 8));
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+    for (const point of stroke.points.slice(1)) ctx.lineTo(point.x, point.y);
+    ctx.stroke();
+    ctx.restore();
   }
 
   physicsStrokes.forEach((stroke) => drawPhysicsStroke(stroke));
