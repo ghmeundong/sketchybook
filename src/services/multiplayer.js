@@ -3,6 +3,9 @@ import { buildApiUrl } from "./api.js";
 let activeSocket = null;
 let serverClockOffset = 0;
 const roundTripSamples = [];
+const MIN_ROOM_ACTION_LEAD_MS = 150;
+const MAX_ROOM_ACTION_LEAD_MS = 1000;
+const DEFAULT_ROOM_ACTION_RTT_MS = 100;
 
 function getRoomSocketUrl(roomCode, playerName) {
   const url = new URL(buildApiUrl(`/api/rooms/${encodeURIComponent(roomCode)}`));
@@ -11,13 +14,13 @@ function getRoomSocketUrl(roomCode, playerName) {
   return url.toString();
 }
 
-export async function createRoom() {
+export async function createRoom({ difficulty, challengeModeEnabled } = {}) {
   let response;
   try {
     response = await fetch(buildApiUrl("/api/rooms"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "create" }),
+      body: JSON.stringify({ action: "create", difficulty, challengeModeEnabled }),
       signal: AbortSignal.timeout(10000),
     });
   } catch (error) {
@@ -222,6 +225,10 @@ function getRoomActionLeadTime() {
   const sortedSamples = [...roundTripSamples].sort((first, second) => first - second);
   const p90RoundTrip = sortedSamples.length
     ? sortedSamples[Math.ceil(sortedSamples.length * 0.9) - 1]
-    : 300;
-  return Math.min(3000, Math.max(700, Math.ceil(p90RoundTrip * 2 + 500)));
+    : DEFAULT_ROOM_ACTION_RTT_MS;
+  const estimatedOneWayDelay = p90RoundTrip / 2;
+  return Math.min(
+    MAX_ROOM_ACTION_LEAD_MS,
+    Math.max(MIN_ROOM_ACTION_LEAD_MS, Math.ceil(estimatedOneWayDelay + 100))
+  );
 }

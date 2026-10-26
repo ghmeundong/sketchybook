@@ -9,8 +9,9 @@ const ROOM_CODE_LENGTH = 6;
 const MAX_ROOM_PLAYERS = 4;
 const MAX_PLAYER_NAME_LENGTH = 20;
 const MAX_STROKE_POINTS = 256;
-const MIN_STROKE_LEAD_MS = 700;
-const MAX_STROKE_LEAD_MS = 3000;
+const MIN_STROKE_LEAD_MS = 150;
+const MAX_STROKE_LEAD_MS = 1000;
+const ROOM_START_DELAY_MS = 500;
 const VALID_DIFFICULTIES = new Set(["easy", "normal", "hard", "insane"]);
 
 function createRoomCode(randomBytes = crypto.getRandomValues(new Uint8Array(ROOM_CODE_LENGTH))) {
@@ -42,11 +43,24 @@ async function handleRoomRequest(request, env) {
   if (parts.length === 2 && parts[1] === "rooms" && request.method === "POST") {
     const body = await request.json().catch(() => null);
     if (body?.action !== "create") return errorResponse("Unsupported room action.", 400);
+    const difficulty = body.difficulty ?? "normal";
+    if (
+      !VALID_DIFFICULTIES.has(difficulty) ||
+      (body.challengeModeEnabled != null && typeof body.challengeModeEnabled !== "boolean")
+    ) {
+      return errorResponse("Invalid room game mode.", 400);
+    }
+    const challengeModeEnabled =
+      difficulty === "insane" || (difficulty === "hard" && Boolean(body.challengeModeEnabled));
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const roomCode = createRoomCode();
       const room = env.MULTIPLAYER_ROOMS.getByName(roomCode);
-      const response = await room.fetch("https://room.internal/create", { method: "POST" });
+      const response = await room.fetch("https://room.internal/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ difficulty, challengeModeEnabled }),
+      });
       if (response.status === 201) {
         const { hostToken } = await response.json();
         return jsonResponse({ ok: true, roomCode, hostToken });
@@ -107,10 +121,16 @@ export class MultiplayerRoom {
     if (request.method === "POST" && url.pathname === "/create") {
       const existing = await this.state.storage.get("createdAt");
       if (existing) return new Response("Room already exists", { status: 409 });
+      const body = await request.json().catch(() => null);
+      const difficulty = VALID_DIFFICULTIES.has(body?.difficulty) ? body.difficulty : "normal";
+      const challengeModeEnabled =
+        difficulty === "insane" || (difficulty === "hard" && body?.challengeModeEnabled === true);
       const hostToken = crypto.randomUUID();
       await this.state.storage.put("createdAt", Date.now());
       await this.state.storage.put("hostToken", hostToken);
       await this.state.storage.delete("selectedStage");
+      await this.state.storage.put("selectedDifficulty", difficulty);
+      await this.state.storage.put("challengeModeEnabled", challengeModeEnabled);
       await this.state.storage.put("status", "waiting");
       await this.state.storage.put("roomSequence", 0);
       await this.state.storage.put("recentStrokeEvents", []);
@@ -283,7 +303,7 @@ export class MultiplayerRoom {
         return;
       }
 
-      const startAt = now + 2500;
+      const startAt = now + ROOM_START_DELAY_MS;
       await this.state.storage.put("selectedStage", requestedStage);
       await this.state.storage.put("startedAt", startAt);
       await this.state.storage.put("roomSequence", 0);
@@ -341,25 +361,51 @@ export class MultiplayerRoom {
       return;
     }
 
+    if (payload?.type === "select-difficulty") {
+      if (
+        !VALID_DIFFICULTIES.has(payload.difficulty) ||
+        (payload.challengeModeEnabled != null && typeof payload.challengeModeEnabled !== "boolean")
+      ) {
+        socket.send(JSON.stringify({ type: "error", message: "Invalid room difficulty." }));
+        return;
+      }
+      await this.state.storage.put("selectedDifficulty", payload.difficulty);
+      await this.state.storage.put(
+        "challengeModeEnabled",
+        payload.difficulty === "insane" ||
+          (payload.difficulty === "hard" && Boolean(payload.challengeModeEnabled))
+      );
+      await this.broadcastRoomState();
+      return;
+    }
+
     if (payload?.type === "start-game") {
       const stageNumber = payload.stageNumber;
       if (!Number.isInteger(stageNumber) || stageNumber < 1 || stageNumber > 18) {
         socket.send(JSON.stringify({ type: "error", message: "Select a valid stage first." }));
         return;
       }
-      const difficulty = payload.difficulty ?? "normal";
+      const storedDifficulty = await this.state.storage.get("selectedDifficulty");
+      const difficulty = VALID_DIFFICULTIES.has(storedDifficulty)
+        ? storedDifficulty
+        : (payload.difficulty ?? "normal");
+      const storedChallengeMode = await this.state.storage.get("challengeModeEnabled");
       if (
         !VALID_DIFFICULTIES.has(difficulty) ||
-        (payload.challengeModeEnabled != null && typeof payload.challengeModeEnabled !== "boolean")
+        (payload.challengeModeEnabled != null &&
+          typeof payload.challengeModeEnabled !== "boolean") ||
+        (storedChallengeMode != null && typeof storedChallengeMode !== "boolean")
       ) {
         socket.send(JSON.stringify({ type: "error", message: "Invalid room game mode." }));
         return;
       }
-      const challengeModeEnabled = difficulty === "insane" || Boolean(payload.challengeModeEnabled);
+      const challengeModeEnabled =
+        difficulty === "insane" ||
+        (difficulty === "hard" && Boolean(storedChallengeMode ?? payload.challengeModeEnabled));
       await this.state.storage.put("selectedStage", stageNumber);
       await this.state.storage.put("selectedDifficulty", difficulty);
       await this.state.storage.put("challengeModeEnabled", challengeModeEnabled);
-      const startAt = Date.now() + 2500;
+      const startAt = Date.now() + ROOM_START_DELAY_MS;
       await this.state.storage.put("roomSequence", 0);
       await this.state.storage.put("recentStrokeEvents", []);
       await this.state.storage.put("lastStrokeApplyAt", 0);
@@ -626,6 +672,8 @@ export class MultiplayerRoom {
         players: this.getPlayers(),
         selfPlayerId,
         selectedStage: await this.state.storage.get("selectedStage"),
+        selectedDifficulty: (await this.state.storage.get("selectedDifficulty")) || "normal",
+        challengeModeEnabled: Boolean(await this.state.storage.get("challengeModeEnabled")),
         status: await this.state.storage.get("status"),
         serverTime: Date.now(),
       })
@@ -637,6 +685,8 @@ export class MultiplayerRoom {
       type: "room-state",
       players: this.getPlayers(),
       selectedStage: await this.state.storage.get("selectedStage"),
+      selectedDifficulty: (await this.state.storage.get("selectedDifficulty")) || "normal",
+      challengeModeEnabled: Boolean(await this.state.storage.get("challengeModeEnabled")),
       status: await this.state.storage.get("status"),
       serverTime: Date.now(),
     });

@@ -41,7 +41,7 @@ function showSignedIn(user) {
   signOutBtn.type = "button";
   signOutBtn.className = "game-exit-btn sign-out-btn";
   signOutBtn.setAttribute("aria-label", "Sign out");
-  signOutBtn.title = "Sign out";
+  signOutBtn.dataset.tooltip = "Sign out";
   signOutBtn.style.background = "transparent";
   signOutBtn.style.border = "none";
   signOutBtn.style.cursor = "pointer";

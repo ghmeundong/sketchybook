@@ -25,6 +25,13 @@
   text-align: center;
 }
 
+.mode-screen-login {
+  position: absolute;
+  top: clamp(0.75rem, 2vw, 1.25rem);
+  left: clamp(0.75rem, 2vw, 1.25rem);
+  z-index: 2;
+}
+
 .mode-screen-kicker {
   margin: 0 0 0.5rem;
   color: var(--ink-soft);
@@ -159,6 +166,10 @@
 
 .mode-screen.is-room-open .mode-options,
 .mode-screen.is-room-open .mode-screen-status {
+  display: none;
+}
+
+.mode-screen.is-room-open .mode-screen-login {
   display: none;
 }
 
@@ -337,6 +348,58 @@
   font-size: 0.8rem;
 }
 
+.room-difficulty-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  color: var(--ink-strong);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.room-difficulty-control select {
+  min-width: 9rem;
+  min-height: 2.4rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid rgb(60 47 31 / 28%);
+  border-radius: 0;
+  background: #fff8e8;
+  color: var(--ink);
+  font: inherit;
+}
+
+.room-difficulty-control select:disabled {
+  opacity: 0.8;
+}
+
+.room-difficulty-control select:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.room-difficulty-control.is-host-locked {
+  cursor: not-allowed;
+}
+
+.room-difficulty-control.is-host-locked select {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+body.multiplayer-guest [data-host-only-tooltip] {
+  cursor: not-allowed !important;
+}
+
+body.multiplayer-room-connected .multiplayer-global-back {
+  cursor: not-allowed !important;
+}
+
+body.multiplayer-room-connected.multiplayer-stage-selection .multiplayer-global-back {
+  cursor: pointer !important;
+}
+
 .room-player-list {
   display: grid;
   gap: 0.3rem;
@@ -441,22 +504,31 @@
 
 .multiplayer-toast {
   position: fixed;
-  z-index: 1200;
+  z-index: 1250;
   top: 50%;
   left: 50%;
   max-width: min(26rem, calc(100vw - 2rem));
-  padding: 0.8rem 1rem;
-  background: var(--ink-strong);
-  color: #fff8e8;
-  box-shadow: 0 5px 18px rgb(38 29 20 / 24%);
-  font-size: 0.88rem;
-  line-height: 1.45;
+  padding: 0.85rem 1.1rem;
+  background: rgb(250 244 216 / 96%);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.03em;
+  text-align: center;
   opacity: 0;
   transform: translate(-50%, calc(-50% + 0.5rem));
   transition:
     opacity 180ms ease,
     transform 180ms ease;
   pointer-events: none;
+}
+
+.multiplayer-toast-message {
+  position: relative;
+  z-index: 1;
+  display: block;
 }
 
 .multiplayer-toast.is-visible {
@@ -935,11 +1007,11 @@ body.settings-is-open .global-app-toolbar {
   box-shadow: none;
 }
 
-.challenge-mode-tooltip {
+.rough-tooltip {
   position: fixed;
-  z-index: 40;
-  width: clamp(8.5rem, 16vw, 11rem);
-  min-height: 3.2rem;
+  z-index: 1300;
+  width: clamp(8.5rem, 22vw, 14rem);
+  min-height: 3rem;
   opacity: 0;
   pointer-events: none;
   transform: translateY(0) rotate(-1deg);
@@ -948,12 +1020,12 @@ body.settings-is-open .global-app-toolbar {
     transform 150ms ease;
 }
 
-.challenge-mode-tooltip.is-visible {
+.rough-tooltip.is-visible {
   opacity: 1;
   transform: translateY(0) rotate(0deg);
 }
 
-.challenge-mode-tooltip svg {
+.rough-tooltip svg {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -961,7 +1033,7 @@ body.settings-is-open .global-app-toolbar {
   pointer-events: none;
 }
 
-.challenge-mode-tooltip-label {
+.rough-tooltip-label {
   position: relative;
   z-index: 1;
   display: flex;
@@ -969,12 +1041,13 @@ body.settings-is-open .global-app-toolbar {
   justify-content: center;
   width: 100%;
   height: 100%;
-  padding: 0.6rem 0.75rem;
+  min-height: 3rem;
+  padding: 0.65rem 0.85rem;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.3;
   letter-spacing: 0.04em;
   text-align: center;
 }
@@ -1153,6 +1226,10 @@ body.settings-is-open .global-app-toolbar {
 
 .selection-exit-btn:active {
   opacity: 0.85;
+}
+
+body.multiplayer-room-connected .selection-exit-btn {
+  display: none;
 }
 
 .selection-screen-title {

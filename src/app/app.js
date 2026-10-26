@@ -7,7 +7,7 @@ import { getAudioSettings, setAudioSettings } from "./audioSettings.js";
 import { initializeOrientationPrompt } from "./orientationPrompt.js";
 import { shouldRevealStartPage } from "./startupState.js";
 import { INK, PAPER } from "../theme.js";
-import { attachRoughFrame, drawRoughFrameRect, refreshRoughFrame } from "../game/ui/roughFrame.js";
+import { attachRoughFrame, refreshRoughFrame } from "../game/ui/roughFrame.js";
 import {
   getChallengeModePreference,
   setChallengeModePreference,
@@ -143,83 +143,6 @@ function syncChallengeModeToggleUI() {
   challengeModeToggle.classList.toggle("is-active", enabled);
 }
 
-function createChallengeModeTooltip() {
-  const tooltipHost = challengeModeToggle?.parentElement;
-  if (!tooltipHost || challengeModeToggle.dataset.tooltipReady === "true") {
-    return tooltipHost?.querySelector(".challenge-mode-tooltip") || null;
-  }
-
-  const tooltip = document.createElement("div");
-  tooltip.className = "challenge-mode-tooltip";
-  tooltip.setAttribute("role", "status");
-  tooltip.setAttribute("aria-live", "polite");
-
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 220 82");
-  svg.setAttribute("preserveAspectRatio", "none");
-  svg.style.position = "absolute";
-  svg.style.inset = "0";
-  svg.style.width = "100%";
-  svg.style.height = "100%";
-  svg.style.pointerEvents = "none";
-
-  const rc = rough.svg(svg);
-  const roughFrame = drawRoughFrameRect(rc, 8, 8, 202, 66, {
-    strokeWidth: 2,
-    roughness: 2,
-    fill: "rgba(250, 244, 216, 0.96)",
-  });
-  svg.appendChild(roughFrame);
-
-  const label = document.createElement("div");
-  label.className = "challenge-mode-tooltip-label";
-  label.textContent =
-    selectedDifficulty === DIFFICULTY_LEVELS.INSANE
-      ? "Challenge Mode is always on in Insane and cannot be turned off."
-      : "Challenge Mode is available on Hard and Insane levels only.";
-
-  tooltip.appendChild(svg);
-  tooltip.appendChild(label);
-  tooltipHost.appendChild(tooltip);
-  challengeModeToggle.dataset.tooltipReady = "true";
-
-  return tooltip;
-}
-
-function positionChallengeModeTooltip(event) {
-  const tooltip = challengeModeToggle?.parentElement?.querySelector(".challenge-mode-tooltip");
-  if (!tooltip) return;
-
-  const mouseX = event?.clientX ?? window.innerWidth / 2;
-  const mouseY = event?.clientY ?? window.innerHeight / 2;
-  const offset = 18;
-  const tooltipWidth = tooltip.offsetWidth || 140;
-
-  tooltip.style.left = `${Math.max(12, mouseX - tooltipWidth - offset)}px`;
-  tooltip.style.top = `${mouseY - 8}px`;
-  tooltip.style.transform = "translateY(0) rotate(0deg)";
-}
-
-function showChallengeModeTooltip(event) {
-  const tooltip = createChallengeModeTooltip();
-  if (!tooltip) return;
-  const label = tooltip.querySelector(".challenge-mode-tooltip-label");
-  if (label) {
-    label.textContent =
-      selectedDifficulty === DIFFICULTY_LEVELS.INSANE
-        ? "Challenge Mode is always on in Insane and cannot be turned off."
-        : "Challenge Mode is available on Hard and Insane levels only.";
-  }
-  positionChallengeModeTooltip(event);
-  tooltip.classList.add("is-visible");
-}
-
-function hideChallengeModeTooltip() {
-  const tooltip = challengeModeToggle?.parentElement?.querySelector(".challenge-mode-tooltip");
-  if (!tooltip) return;
-  tooltip.classList.remove("is-visible");
-}
-
 function createInsaneStartWarningModal() {
   const existing = document.querySelector(".insane-warning-modal");
   if (existing) {
@@ -319,6 +242,14 @@ function updateChallengeModeAvailability() {
   challengeModeToggle.disabled = !isAvailable || isInsane;
   challengeModeToggle.style.opacity = isAvailable && !isInsane ? "1" : "0.5";
   challengeModeToggle.style.cursor = isAvailable && !isInsane ? "pointer" : "not-allowed";
+  challengeModeOption.tabIndex = challengeModeToggle.disabled ? 0 : -1;
+  if (challengeModeToggle.disabled) {
+    challengeModeOption.dataset.tooltip = isInsane
+      ? "Challenge Mode is always on in Insane and cannot be turned off."
+      : "Challenge Mode is available on Hard and Insane levels only.";
+  } else {
+    delete challengeModeOption.dataset.tooltip;
+  }
 
   // 비활성화 난이도에서는 항상 Challenge Mode를 off로 설정
   syncChallengeModeToggleUI();
@@ -328,8 +259,6 @@ function updateChallengeModeAvailability() {
       ? 'Challenge Mode is always on in Insane.<br />It cannot be turned off.<br /><span class="challenge-mode-constraints">draw only one line <br />no clicks</span>'
       : '<span class="challenge-mode-constraints">draw only one line <br />no clicks</span>';
   }
-
-  hideChallengeModeTooltip();
 }
 
 function updateDifficultyDisplay() {
@@ -648,24 +577,6 @@ if (challengeModeToggle && challengeModeOption) {
     syncChallengeModeToggleUI();
     updateDifficultyDisplay();
   });
-
-  challengeModeToggle.addEventListener("pointerenter", (event) => {
-    if (challengeModeToggle.disabled) {
-      showChallengeModeTooltip(event);
-    }
-  });
-  challengeModeToggle.addEventListener("pointermove", (event) => {
-    if (challengeModeToggle.disabled) {
-      positionChallengeModeTooltip(event);
-    }
-  });
-  challengeModeToggle.addEventListener("pointerleave", hideChallengeModeTooltip);
-  challengeModeToggle.addEventListener("focus", (event) => {
-    if (challengeModeToggle.disabled) {
-      showChallengeModeTooltip(event);
-    }
-  });
-  challengeModeToggle.addEventListener("blur", hideChallengeModeTooltip);
 }
 
 // 난이도 선택 이벤트 리스너

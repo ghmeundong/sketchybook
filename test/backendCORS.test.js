@@ -72,16 +72,43 @@ describe("backend CORS handling", () => {
     await expect(response.json()).resolves.toEqual({ status: "waiting" });
   });
 
+  it("creates rooms with the requested difficulty and Challenge Mode setting", async () => {
+    const storage = createTestStorage();
+    storage.setAlarm = async () => {};
+    const room = new MultiplayerRoom({ storage });
+
+    const response = await room.fetch(
+      new Request("https://room.internal/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ difficulty: "hard", challengeModeEnabled: true }),
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(storage.values.get("selectedDifficulty")).toBe("hard");
+    expect(storage.values.get("challengeModeEnabled")).toBe(true);
+  });
+
   it("creates a room and returns a valid share code", async () => {
     const request = new Request("http://example.com/api/rooms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "create" }),
+      body: JSON.stringify({
+        action: "create",
+        difficulty: "insane",
+        challengeModeEnabled: true,
+      }),
     });
     const namespace = {
       getByName: (name) => ({
-        fetch: async () => {
+        fetch: async (url, options) => {
           expect(name).toMatch(/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{6}$/);
+          expect(url).toBe("https://room.internal/create");
+          expect(JSON.parse(options.body)).toEqual({
+            difficulty: "insane",
+            challengeModeEnabled: true,
+          });
           return Response.json({ hostToken: "host-token" }, { status: 201 });
         },
       }),
@@ -132,6 +159,60 @@ describe("backend CORS handling", () => {
     expect(guest.sent.at(-1)).toMatchObject({ type: "room-start", stageNumber: 8 });
   });
 
+  it("lets only the host choose the lobby difficulty and broadcasts it to players", async () => {
+    const host = createTestSocket({ isHost: true, playerId: "host" });
+    const guest = createTestSocket({ isHost: false, playerId: "guest" });
+    const storage = createTestStorage({
+      selectedDifficulty: "normal",
+      challengeModeEnabled: false,
+      status: "waiting",
+    });
+    const room = new MultiplayerRoom({ storage, getWebSockets: () => [host, guest] });
+
+    await room.webSocketMessage(
+      guest,
+      JSON.stringify({ type: "select-difficulty", difficulty: "hard" })
+    );
+    expect(storage.values.get("selectedDifficulty")).toBe("normal");
+    expect(guest.sent.at(-1)).toMatchObject({ type: "error" });
+
+    await room.webSocketMessage(
+      host,
+      JSON.stringify({
+        type: "select-difficulty",
+        difficulty: "hard",
+        challengeModeEnabled: true,
+      })
+    );
+    expect(storage.values.get("selectedDifficulty")).toBe("hard");
+    expect(storage.values.get("challengeModeEnabled")).toBe(true);
+    expect(host.sent.at(-1)).toMatchObject({
+      type: "room-state",
+      selectedDifficulty: "hard",
+      challengeModeEnabled: true,
+    });
+    expect(guest.sent.at(-1)).toMatchObject({
+      type: "room-state",
+      selectedDifficulty: "hard",
+      challengeModeEnabled: true,
+    });
+
+    await room.webSocketMessage(
+      host,
+      JSON.stringify({
+        type: "start-game",
+        stageNumber: 3,
+        difficulty: "easy",
+        challengeModeEnabled: false,
+      })
+    );
+    expect(host.sent.at(-1)).toMatchObject({
+      type: "room-start",
+      difficulty: "hard",
+      challengeModeEnabled: true,
+    });
+  });
+
   it("rejects a start request with an invalid stage", async () => {
     const host = createTestSocket({ isHost: true });
     const storage = createTestStorage({ selectedStage: 1, status: "waiting" });
@@ -165,7 +246,7 @@ describe("backend CORS handling", () => {
       challengeModeEnabled: true,
     });
     expect(guest.sent.at(-1)).toEqual(host.sent.at(-1));
-    expect(host.sent.at(-1).startAt - host.sent.at(-1).serverTime).toBe(2500);
+    expect(host.sent.at(-1).startAt - host.sent.at(-1).serverTime).toBe(500);
   });
 
   it("allows only the host to retry the current stage and rejects duplicate transitions", async () => {
@@ -264,7 +345,7 @@ describe("backend CORS handling", () => {
         ],
         width: 8,
         color: "#4f3b24",
-        leadTimeMs: 700,
+        leadTimeMs: 1,
       })
     );
 
@@ -277,7 +358,7 @@ describe("backend CORS handling", () => {
       playerId: "guest",
       playerName: "Guest",
     });
-    expect(acceptedStroke.applyAt - acceptedStroke.serverTime).toBeGreaterThanOrEqual(700);
+    expect(acceptedStroke.applyAt - acceptedStroke.serverTime).toBeGreaterThanOrEqual(150);
     expect(guest.sent.at(-1)).toEqual(acceptedStroke);
   });
 
@@ -331,7 +412,7 @@ describe("backend CORS handling", () => {
     const launch = {
       type: "ball-launch",
       eventId: "deadbeef-0005",
-      leadTimeMs: 700,
+      leadTimeMs: 1,
     };
 
     await room.webSocketMessage(guest, JSON.stringify(launch));
@@ -345,7 +426,7 @@ describe("backend CORS handling", () => {
       playerName: "Guest",
     });
     expect(acceptedLaunch.applyAt).toBeGreaterThan(previousApplyAt);
-    expect(acceptedLaunch.applyAt - acceptedLaunch.serverTime).toBeGreaterThanOrEqual(700);
+    expect(acceptedLaunch.applyAt - acceptedLaunch.serverTime).toBeGreaterThanOrEqual(150);
     expect(guest.sent.at(-1)).toEqual(acceptedLaunch);
 
     await room.webSocketMessage(guest, JSON.stringify(launch));
