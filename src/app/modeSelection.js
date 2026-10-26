@@ -33,6 +33,8 @@ const selectionRoomCode = document.querySelector("[data-selection-room-code]");
 const selectionPlayerCount = document.querySelector("[data-selection-player-count]");
 const selectionPlayerList = document.querySelector("[data-selection-player-list]");
 const selectionLeaveButton = document.querySelector("[data-selection-room-leave]");
+const roomCopyLinkButton = document.querySelector("[data-room-copy-link]");
+const selectionCopyLinkButton = document.querySelector("[data-selection-copy-link]");
 let roomSocket = null;
 let isConnecting = false;
 let roomRole = "guest";
@@ -129,6 +131,9 @@ function initializeModeSelection() {
     roughness: 1.6,
   });
   initializeArtwork();
+  [roomCopyLinkButton, selectionCopyLinkButton].forEach((button) => {
+    button?.appendChild(createActionIconCanvas("copy", { w: 24, h: 24, strokeWidth: 2.2 }));
+  });
 
   singleButton.addEventListener("click", () => {
     multiplayerButton.setAttribute("aria-pressed", "false");
@@ -159,6 +164,8 @@ function initializeModeSelection() {
   });
 
   roomGlobalBackButton?.addEventListener("click", closeRoomPanel);
+  roomCopyLinkButton?.addEventListener("click", copyRoomInviteLink);
+  selectionCopyLinkButton?.addEventListener("click", copyRoomInviteLink);
   roomCreateButton?.addEventListener("click", async () => {
     await withRoomConnection(async () => {
       const room = await createRoom();
@@ -226,6 +233,20 @@ function initializeModeSelection() {
     roomStatus.textContent = "Returning everyone to the room…";
     roomSocket.send(JSON.stringify({ type: "return-to-lobby" }));
   });
+
+  const inviteCode = new URLSearchParams(window.location.search).get("room")?.trim().toUpperCase();
+  if (inviteCode) {
+    multiplayerButton.setAttribute("aria-pressed", "true");
+    modeScreen?.classList.add("is-room-open");
+    if (roomPanel) roomPanel.hidden = false;
+    if (roomGlobalBackButton) roomGlobalBackButton.hidden = false;
+    if (roomCodeInput) roomCodeInput.value = inviteCode;
+    if (!/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{6}$/.test(inviteCode)) {
+      resetRoomPanel("This invite link has an invalid room code.");
+      return;
+    }
+    void joinRoomByCode(inviteCode);
+  }
 }
 
 function getPlayerName() {
@@ -247,6 +268,15 @@ async function withRoomConnection(connect) {
     roomSocket = connection.socket ?? connection;
     roomCode = connection.roomCode ?? roomCodeInput?.value.trim().toUpperCase();
     roomRole = connection.isHost ? "host" : "guest";
+    const currentUrl = new URL(window.location.href);
+    if (currentUrl.searchParams.get("room")?.toUpperCase() === roomCode) {
+      currentUrl.searchParams.delete("room");
+      window.history.replaceState(
+        null,
+        "",
+        `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`
+      );
+    }
     roomCodeDisplay.textContent = roomCode;
     roomEntryActions.hidden = true;
     roomConnectedState.hidden = false;
@@ -259,6 +289,35 @@ async function withRoomConnection(connect) {
   } finally {
     isConnecting = false;
     setRoomControlsDisabled(false);
+  }
+}
+
+async function joinRoomByCode(code) {
+  await withRoomConnection(() => connectToRoom(code, getPlayerName(), handleRoomMessage));
+}
+
+async function copyRoomInviteLink() {
+  if (!roomCode) return;
+  const inviteUrl = new URL(window.location.href);
+  inviteUrl.searchParams.delete("stage");
+  inviteUrl.searchParams.set("room", roomCode);
+  const link = inviteUrl.toString();
+  try {
+    await navigator.clipboard.writeText(link);
+  } catch {
+    const temporaryInput = document.createElement("textarea");
+    temporaryInput.value = link;
+    temporaryInput.setAttribute("readonly", "");
+    temporaryInput.style.position = "fixed";
+    temporaryInput.style.opacity = "0";
+    document.body.append(temporaryInput);
+    temporaryInput.select();
+    document.execCommand("copy");
+    temporaryInput.remove();
+  }
+  roomStatus.textContent = "Invite link copied. Send it to your friend.";
+  if (selectionMessage && dom.selectionPage.classList.contains("is-active")) {
+    selectionMessage.textContent = "Invite link copied. Send it to your friend.";
   }
 }
 
