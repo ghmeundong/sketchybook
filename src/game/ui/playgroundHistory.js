@@ -52,6 +52,10 @@ export function initPlaygroundHistoryButtons() {
   if (!dom.board) return;
   removePlaygroundHistoryButtons();
 
+  if (state.isMapTest) {
+    return;
+  }
+
   undoButton = document.createElement("button");
   undoButton.type = "button";
   undoButton.className = "playground-history-btn playground-undo-btn";
