@@ -39,70 +39,112 @@ export function connectToRoom(
   onMessage = () => {},
   hostToken = null
 ) {
-  return new Promise((resolve, reject) => {
-    const url = new URL(getRoomSocketUrl(roomCode, playerName));
-    if (hostToken) url.searchParams.set("host", hostToken);
-    const socket = new WebSocket(url.toString());
-    let connected = false;
-    let pingInterval = null;
-    const timeoutId = window.setTimeout(() => {
-      if (!connected) {
-        socket.close();
-        reject(new Error("The room connection timed out. Please try again."));
-      }
-    }, 10000);
+  return checkRoomJoinable(roomCode).then(
+    () =>
+      new Promise((resolve, reject) => {
+        const url = new URL(getRoomSocketUrl(roomCode, playerName));
+        if (hostToken) url.searchParams.set("host", hostToken);
+        const socket = new WebSocket(url.toString());
+        let connected = false;
+        let failureHandled = false;
+        let pingInterval = null;
+        const timeoutId = window.setTimeout(() => {
+          if (!connected) {
+            socket.close();
+            void rejectConnection(new Error("The room connection timed out. Please try again."));
+          }
+        }, 10000);
 
-    socket.addEventListener("message", (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        if (message.type === "pong" && Number.isFinite(message.clientTime)) {
-          const roundTrip = Date.now() - message.clientTime;
-          message.serverOffset = message.serverTime - (message.clientTime + roundTrip / 2);
-          serverClockOffset = message.serverOffset;
-          roundTripSamples.push(roundTrip);
-          if (roundTripSamples.length > 12) roundTripSamples.shift();
-        }
-        onMessage(message);
-      } catch {
-        onMessage({ type: "error", message: "Received an invalid room update." });
-      }
+        const rejectConnection = async (fallbackError) => {
+          if (failureHandled) return;
+          failureHandled = true;
+          window.clearTimeout(timeoutId);
+          let connectionError = fallbackError;
+          try {
+            await checkRoomJoinable(roomCode);
+          } catch (statusError) {
+            connectionError = statusError;
+          }
+          reject(connectionError);
+        };
+
+        socket.addEventListener("message", (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            if (message.type === "pong" && Number.isFinite(message.clientTime)) {
+              const roundTrip = Date.now() - message.clientTime;
+              message.serverOffset = message.serverTime - (message.clientTime + roundTrip / 2);
+              serverClockOffset = message.serverOffset;
+              roundTripSamples.push(roundTrip);
+              if (roundTripSamples.length > 12) roundTripSamples.shift();
+            }
+            onMessage(message);
+          } catch {
+            onMessage({ type: "error", message: "Received an invalid room update." });
+          }
+        });
+        socket.addEventListener("open", () => {
+          connected = true;
+          activeSocket = socket;
+          window.clearTimeout(timeoutId);
+          const sendPing = () => {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({ type: "ping", clientTime: Date.now() }));
+            }
+          };
+          sendPing();
+          pingInterval = window.setInterval(sendPing, 2000);
+          resolve(socket);
+        });
+        socket.addEventListener("error", () => {
+          if (connected) return;
+          void rejectConnection(
+            new Error("Could not connect to that room. Check the code and try again.")
+          );
+        });
+        socket.addEventListener("close", (event) => {
+          if (activeSocket === socket) activeSocket = null;
+          if (pingInterval) window.clearInterval(pingInterval);
+          if (!connected) {
+            void rejectConnection(
+              new Error(
+                event.code === 1006
+                  ? "Could not connect to the multiplayer server."
+                  : event.reason || "The room connection was closed."
+              )
+            );
+            return;
+          }
+          if (event.code === 1000) return;
+          onMessage({ type: "disconnected", reason: event.reason });
+        });
+      })
+  );
+}
+
+async function checkRoomJoinable(roomCode) {
+  let response;
+  try {
+    response = await fetch(buildApiUrl(`/api/rooms/${encodeURIComponent(roomCode)}/status`), {
+      signal: AbortSignal.timeout(5000),
     });
-    socket.addEventListener("open", () => {
-      connected = true;
-      activeSocket = socket;
-      window.clearTimeout(timeoutId);
-      const sendPing = () => {
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({ type: "ping", clientTime: Date.now() }));
-        }
-      };
-      sendPing();
-      pingInterval = window.setInterval(sendPing, 2000);
-      resolve(socket);
-    });
-    socket.addEventListener("error", () => {
-      if (connected) return;
-      window.clearTimeout(timeoutId);
-      reject(new Error("Could not connect to that room. Check the code and try again."));
-    });
-    socket.addEventListener("close", (event) => {
-      if (activeSocket === socket) activeSocket = null;
-      if (pingInterval) window.clearInterval(pingInterval);
-      if (!connected) {
-        window.clearTimeout(timeoutId);
-        reject(
-          new Error(
-            event.code === 1006
-              ? "Could not connect to the multiplayer server."
-              : event.reason || "The room connection was closed."
-          )
-        );
-        return;
-      }
-      if (event.code === 1000) return;
-      onMessage({ type: "disconnected", reason: event.reason });
-    });
-  });
+  } catch (error) {
+    if (error.name === "TimeoutError") {
+      throw new Error("Checking the room status timed out. Please try again.", { cause: error });
+    }
+    throw error;
+  }
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "Could not check the room status.");
+  if (payload.status === "started") {
+    const error = new Error("This room is already in a game. Ask the host to return to the lobby.");
+    error.code = "ROOM_IN_PROGRESS";
+    throw error;
+  }
+  if (payload.status !== "waiting") {
+    throw new Error("This room is not available to join.");
+  }
 }
 
 export function isRoomConnected() {
@@ -139,11 +181,7 @@ export function cancelRoomStrokePreview(strokeId) {
 export function sendRoomStroke(points, { width = 8, color = "#222222", strokeId } = {}) {
   if (!isRoomConnected() || !Array.isArray(points) || points.length < 2) return false;
 
-  const sortedSamples = [...roundTripSamples].sort((first, second) => first - second);
-  const p90RoundTrip = sortedSamples.length
-    ? sortedSamples[Math.ceil(sortedSamples.length * 0.9) - 1]
-    : 300;
-  const leadTimeMs = Math.min(3000, Math.max(700, Math.ceil(p90RoundTrip * 2 + 500)));
+  const leadTimeMs = getRoomActionLeadTime();
   try {
     activeSocket.send(
       JSON.stringify({
@@ -160,4 +198,30 @@ export function sendRoomStroke(points, { width = 8, color = "#222222", strokeId 
   } catch {
     return false;
   }
+}
+
+export function sendRoomBallLaunch() {
+  if (!isRoomConnected()) return false;
+
+  const eventId = crypto.randomUUID();
+  try {
+    activeSocket.send(
+      JSON.stringify({
+        type: "ball-launch",
+        eventId,
+        leadTimeMs: getRoomActionLeadTime(),
+      })
+    );
+    return eventId;
+  } catch {
+    return false;
+  }
+}
+
+function getRoomActionLeadTime() {
+  const sortedSamples = [...roundTripSamples].sort((first, second) => first - second);
+  const p90RoundTrip = sortedSamples.length
+    ? sortedSamples[Math.ceil(sortedSamples.length * 0.9) - 1]
+    : 300;
+  return Math.min(3000, Math.max(700, Math.ceil(p90RoundTrip * 2 + 500)));
 }

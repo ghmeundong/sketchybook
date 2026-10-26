@@ -107,29 +107,20 @@ export function createStageClearOverlay({
     }
   });
 
-  exitBtn?.addEventListener("click", async () => {
-    overlay.classList.remove("is-visible");
-    overlay.setAttribute("aria-hidden", "true");
-    overlay.style.opacity = "0";
-    overlay.style.visibility = "hidden";
-    if (typeof onExit === "function") await onExit();
-  });
+  const handleOverlayAction = (button, action) => {
+    button?.addEventListener("click", async () => {
+      const shouldContinue = typeof action !== "function" || (await action()) !== false;
+      if (!shouldContinue) return;
+      overlay.classList.remove("is-visible");
+      overlay.setAttribute("aria-hidden", "true");
+      overlay.style.opacity = "0";
+      overlay.style.visibility = "hidden";
+    });
+  };
 
-  retryBtn?.addEventListener("click", async () => {
-    overlay.classList.remove("is-visible");
-    overlay.setAttribute("aria-hidden", "true");
-    overlay.style.opacity = "0";
-    overlay.style.visibility = "hidden";
-    if (typeof onRetry === "function") await onRetry();
-  });
-
-  nextBtn?.addEventListener("click", async () => {
-    overlay.classList.remove("is-visible");
-    overlay.setAttribute("aria-hidden", "true");
-    overlay.style.opacity = "0";
-    overlay.style.visibility = "hidden";
-    if (typeof onNext === "function") await onNext();
-  });
+  handleOverlayAction(exitBtn, onExit);
+  handleOverlayAction(retryBtn, onRetry);
+  handleOverlayAction(nextBtn, onNext);
 
   stageClearOverlayRef.current = overlay;
   stageClearMessageRef.current = message;

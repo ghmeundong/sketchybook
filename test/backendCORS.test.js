@@ -40,6 +40,38 @@ describe("backend CORS handling", () => {
     await expect(response.json()).resolves.toEqual({ error: "WebSocket upgrade required." });
   });
 
+  it("returns room status for the join preflight", async () => {
+    const namespace = {
+      getByName: (name) => ({
+        fetch: async (url) => {
+          expect(name).toBe("ABC234");
+          expect(url).toBe("https://room.internal/status");
+          return Response.json({ status: "started" });
+        },
+      }),
+    };
+    const response = await backend.fetch(
+      new Request("http://example.com/api/rooms/ABC234/status"),
+      { MULTIPLAYER_ROOMS: namespace }
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    await expect(response.json()).resolves.toEqual({ status: "started" });
+  });
+
+  it("reports status only for an existing room", async () => {
+    const room = new MultiplayerRoom({
+      storage: createTestStorage({ createdAt: Date.now(), status: "waiting" }),
+      getWebSockets: () => [],
+    });
+
+    const response = await room.fetch(new Request("https://room.internal/status"));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ status: "waiting" });
+  });
+
   it("creates a room and returns a valid share code", async () => {
     const request = new Request("http://example.com/api/rooms", {
       method: "POST",
@@ -79,9 +111,24 @@ describe("backend CORS handling", () => {
     expect(storage.values.get("selectedStage")).toBe(8);
     expect(host.sent.at(-1)).toMatchObject({ type: "room-state", selectedStage: 8 });
 
-    await room.webSocketMessage(host, JSON.stringify({ type: "start-game", stageNumber: 8 }));
+    await room.webSocketMessage(
+      host,
+      JSON.stringify({
+        type: "start-game",
+        stageNumber: 8,
+        difficulty: "hard",
+        challengeModeEnabled: true,
+      })
+    );
     expect(storage.values.get("status")).toBe("started");
-    expect(host.sent.at(-1)).toMatchObject({ type: "room-start", stageNumber: 8 });
+    expect(storage.values.get("selectedDifficulty")).toBe("hard");
+    expect(storage.values.get("challengeModeEnabled")).toBe(true);
+    expect(host.sent.at(-1)).toMatchObject({
+      type: "room-start",
+      stageNumber: 8,
+      difficulty: "hard",
+      challengeModeEnabled: true,
+    });
     expect(guest.sent.at(-1)).toMatchObject({ type: "room-start", stageNumber: 8 });
   });
 
@@ -94,6 +141,107 @@ describe("backend CORS handling", () => {
 
     expect(storage.values.get("status")).toBe("waiting");
     expect(host.sent.at(-1)).toMatchObject({ type: "error" });
+  });
+
+  it("starts the next stage for everyone when the host advances", async () => {
+    const host = createTestSocket({ isHost: true, playerId: "host" });
+    const guest = createTestSocket({ isHost: false, playerId: "guest" });
+    const storage = createTestStorage({
+      status: "started",
+      selectedStage: 4,
+      selectedDifficulty: "insane",
+      challengeModeEnabled: true,
+      startedAt: 0,
+    });
+    const room = new MultiplayerRoom({ storage, getWebSockets: () => [host, guest] });
+
+    await room.webSocketMessage(host, JSON.stringify({ type: "next-stage", stageNumber: 5 }));
+
+    expect(storage.values.get("selectedStage")).toBe(5);
+    expect(host.sent.at(-1)).toMatchObject({
+      type: "room-start",
+      stageNumber: 5,
+      difficulty: "insane",
+      challengeModeEnabled: true,
+    });
+    expect(guest.sent.at(-1)).toEqual(host.sent.at(-1));
+    expect(host.sent.at(-1).startAt - host.sent.at(-1).serverTime).toBe(2500);
+  });
+
+  it("allows only the host to retry the current stage and rejects duplicate transitions", async () => {
+    const host = createTestSocket({ isHost: true, playerId: "host" });
+    const guest = createTestSocket({ isHost: false, playerId: "guest" });
+    const storage = createTestStorage({ status: "started", selectedStage: 4, startedAt: 0 });
+    const room = new MultiplayerRoom({ storage, getWebSockets: () => [host, guest] });
+
+    await room.webSocketMessage(guest, JSON.stringify({ type: "retry-stage", stageNumber: 4 }));
+    expect(guest.sent.at(-1)).toMatchObject({ type: "error" });
+    expect(host.sent).toHaveLength(0);
+
+    await room.webSocketMessage(host, JSON.stringify({ type: "retry-stage", stageNumber: 4 }));
+    const acceptedRetry = host.sent.at(-1);
+    expect(acceptedRetry).toMatchObject({ type: "room-start", stageNumber: 4 });
+
+    await room.webSocketMessage(host, JSON.stringify({ type: "next-stage", stageNumber: 5 }));
+    expect(host.sent.at(-1)).toMatchObject({
+      type: "error",
+      message: "A stage transition is already pending.",
+    });
+    expect(guest.sent.at(-1)).toEqual(acceptedRetry);
+  });
+
+  it("broadcasts a host-validated stage clear once to every room member", async () => {
+    const host = createTestSocket({ isHost: true, playerId: "host" });
+    const guest = createTestSocket({ isHost: false, playerId: "guest" });
+    const storage = createTestStorage({ status: "started", selectedStage: 4, startedAt: 0 });
+    const room = new MultiplayerRoom({ storage, getWebSockets: () => [host, guest] });
+    const stageClear = {
+      type: "stage-clear",
+      stageNumber: 4,
+      stageEventCount: 6,
+    };
+
+    await room.webSocketMessage(guest, JSON.stringify(stageClear));
+    expect(guest.sent.at(-1)).toMatchObject({ type: "error" });
+    expect(host.sent).toHaveLength(0);
+
+    await room.webSocketMessage(host, JSON.stringify(stageClear));
+    expect(host.sent.at(-1)).toEqual(stageClear);
+    expect(guest.sent.at(-1)).toEqual(stageClear);
+    expect(guest.sent.filter((message) => message.type === "stage-clear")).toHaveLength(1);
+
+    await room.webSocketMessage(host, JSON.stringify(stageClear));
+    expect(host.sent).toHaveLength(1);
+    expect(guest.sent.filter((message) => message.type === "stage-clear")).toHaveLength(1);
+  });
+
+  it("rejects gameplay messages while a stage transition is waiting to start", async () => {
+    const guest = createTestSocket({ isHost: false, playerId: "guest" });
+    const storage = createTestStorage({
+      status: "started",
+      selectedStage: 5,
+      startedAt: Date.now() + 5000,
+    });
+    const room = new MultiplayerRoom({ storage, getWebSockets: () => [guest] });
+
+    await room.webSocketMessage(
+      guest,
+      JSON.stringify({
+        type: "stroke",
+        eventId: "deadbeef-0006",
+        points: [
+          { x: 100, y: 120 },
+          { x: 240, y: 280 },
+        ],
+        width: 8,
+        color: "#4f3b24",
+      })
+    );
+
+    expect(guest.sent.at(-1)).toMatchObject({
+      type: "error",
+      message: "The room is not ready for gameplay.",
+    });
   });
 
   it("accepts player strokes with server-assigned order and activation time", async () => {
@@ -167,6 +315,45 @@ describe("backend CORS handling", () => {
     );
     expect(host.sent.filter((message) => message.type === "stroke")).toHaveLength(1);
     expect(guest.sent.at(-1)).toMatchObject({ type: "error", message: "Invalid stroke." });
+  });
+
+  it("broadcasts deduplicated ball launches in the same room action order as strokes", async () => {
+    const host = createTestSocket({ isHost: true, playerId: "host", name: "Host" });
+    const guest = createTestSocket({ isHost: false, playerId: "guest", name: "Guest" });
+    const storage = createTestStorage({
+      status: "started",
+      selectedStage: 4,
+      roomSequence: 3,
+      lastRoomActionApplyAt: Date.now() + 900,
+    });
+    const previousApplyAt = storage.values.get("lastRoomActionApplyAt");
+    const room = new MultiplayerRoom({ storage, getWebSockets: () => [host, guest] });
+    const launch = {
+      type: "ball-launch",
+      eventId: "deadbeef-0005",
+      leadTimeMs: 700,
+    };
+
+    await room.webSocketMessage(guest, JSON.stringify(launch));
+    const acceptedLaunch = host.sent.at(-1);
+    expect(acceptedLaunch).toMatchObject({
+      type: "ball-launch",
+      eventId: launch.eventId,
+      roomSequence: 4,
+      stageNumber: 4,
+      playerId: "guest",
+      playerName: "Guest",
+    });
+    expect(acceptedLaunch.applyAt).toBeGreaterThan(previousApplyAt);
+    expect(acceptedLaunch.applyAt - acceptedLaunch.serverTime).toBeGreaterThanOrEqual(700);
+    expect(guest.sent.at(-1)).toEqual(acceptedLaunch);
+
+    await room.webSocketMessage(guest, JSON.stringify(launch));
+    expect(host.sent.filter((message) => message.type === "ball-launch")).toHaveLength(1);
+    expect(guest.sent.at(-1)).toMatchObject({
+      type: "ball-launch-duplicate",
+      eventId: launch.eventId,
+    });
   });
 
   it("relays ordered live stroke previews to peers and broadcasts cancellation", async () => {

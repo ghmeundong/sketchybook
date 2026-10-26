@@ -439,6 +439,35 @@
   text-align: center;
 }
 
+.multiplayer-toast {
+  position: fixed;
+  z-index: 1200;
+  top: 50%;
+  left: 50%;
+  max-width: min(26rem, calc(100vw - 2rem));
+  padding: 0.8rem 1rem;
+  background: var(--ink-strong);
+  color: #fff8e8;
+  box-shadow: 0 5px 18px rgb(38 29 20 / 24%);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  opacity: 0;
+  transform: translate(-50%, calc(-50% + 0.5rem));
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+  pointer-events: none;
+}
+
+.multiplayer-toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
+.multiplayer-toast[hidden] {
+  display: none;
+}
+
 .settings-mode-change {
   position: relative;
   width: 100%;

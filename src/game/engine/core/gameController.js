@@ -15,7 +15,7 @@ import {
 } from "../../ui/gameUi.js";
 import { getChallengeModePreference, setChallengeModePreference } from "../config/challengeMode.js";
 import { shouldAdvancePhysics } from "../config/inputRules.js";
-import { shouldRebuildPhysicsWorld } from "../physics/physicsState.js";
+import { consumePhysicsStepBatch, shouldRebuildPhysicsWorld } from "../physics/physicsState.js";
 import { isChallengeClearedLocal, saveChallengeCleared } from "../../ui/stageProgress.js";
 import {
   stepPhysicsWorld,
@@ -50,11 +50,55 @@ import {
   removePlaygroundHistoryButtons,
 } from "../../ui/playgroundHistory.js";
 import { INK } from "../../../theme.js";
+import { isRoomConnected } from "../../../services/multiplayer.js";
 
 const isItchBuild = import.meta.env.MODE === "itch";
+const MULTIPLAYER_PHYSICS_STEP_MS = 1000 / 60;
+const MAX_MULTIPLAYER_STEPS_PER_FRAME = 8;
 
 state.currentDifficulty = getInitialDifficulty();
 state.difficultyRules = getDifficultyRules(state.currentDifficulty);
+let roomModeOverride = null;
+let previousRoomMode = null;
+
+function clearRoomModeOverride() {
+  if (previousRoomMode) {
+    state.currentDifficulty = previousRoomMode.difficulty;
+    state.difficultyRules = getDifficultyRules(state.currentDifficulty);
+    state.challengeModeEnabled = previousRoomMode.challengeModeEnabled;
+  }
+  roomModeOverride = null;
+  previousRoomMode = null;
+}
+
+window.addEventListener("sketchybook:room-mode", (event) => {
+  const { difficulty, challengeModeEnabled } = event.detail || {};
+  if (
+    !Object.values(DIFFICULTY_LEVELS).includes(difficulty) ||
+    typeof challengeModeEnabled !== "boolean"
+  ) {
+    return;
+  }
+  if (!roomModeOverride) {
+    previousRoomMode = {
+      difficulty: state.currentDifficulty,
+      challengeModeEnabled: state.challengeModeEnabled,
+    };
+  }
+  state.currentDifficulty = difficulty;
+  state.difficultyRules = getDifficultyRules(difficulty);
+  roomModeOverride = {
+    challengeModeEnabled: difficulty === DIFFICULTY_LEVELS.INSANE || challengeModeEnabled,
+  };
+});
+
+window.addEventListener("sketchybook:room-lobby", () => {
+  clearRoomModeOverride();
+});
+
+window.addEventListener("sketchybook:room-closed", () => {
+  clearRoomModeOverride();
+});
 
 export function getInitialDifficulty() {
   const params = new URLSearchParams(window.location.search);
@@ -219,7 +263,8 @@ export function resetStageState() {
     state.animationFrameId = null;
   }
   // 난이도 규칙 적용: Challenge 모드는 hard/insane에서만 활성화 가능
-  const userPrefersChallenge = getChallengeModePreference();
+  const userPrefersChallenge =
+    roomModeOverride?.challengeModeEnabled ?? getChallengeModePreference();
   const canEnableChallenge = state.difficultyRules.enableChallengeMode;
   state.challengeModeEnabled =
     state.currentDifficulty === DIFFICULTY_LEVELS.INSANE ||
@@ -236,6 +281,7 @@ export function resetStageState() {
   state.roomStrokePreviews = [];
   window.dispatchEvent(new CustomEvent("sketchybook:stage-reset"));
   state.stageCleared = false;
+  state.stageClearRequestPending = false;
   state.currentStage = null;
   state.stageHasSimulated = false;
   state.stageEventCount = 0;
@@ -244,6 +290,7 @@ export function resetStageState() {
   state.totalDrawnLength = 0;
   state.drawLimitProgressTrackDrawn = false;
   state.lastPhysicsTime = 0;
+  state.physicsAccumulatorMs = 0;
   state.floorTextureCanvas = null;
   state.floorTextureKey = null;
   state.currentStrokePreviewDirty = false;
@@ -325,37 +372,38 @@ export function createStageClearOverlay() {
     board: dom.board,
     stageClearOverlayRef,
     stageClearMessageRef,
-  });
-  state.stageClearOverlay = stageClearOverlayRef.current;
-  state.stageClearMessage = stageClearMessageRef.current;
-
-  if (!state.stageClearOverlay || !state.stageClearMessage) return;
-
-  const exitBtn = state.stageClearMessage.querySelector(".stage-clear-exit");
-  const retryBtn = state.stageClearMessage.querySelector(".stage-clear-retry");
-  const nextBtn = state.stageClearMessage.querySelector(".stage-clear-next");
-
-  if (exitBtn) {
-    exitBtn.addEventListener("click", async () => {
+    onExit: () => {
+      const exitEvent = new CustomEvent("sketchybook:game-exit", { cancelable: true });
+      if (!window.dispatchEvent(exitEvent)) return false;
       hideStageClearOverlay();
-      setActivePage(dom.selectionPage);
+      setActivePage(state.isPlayground ? dom.startPage : dom.selectionPage);
+      if (state.isPlayground) {
+        window.dispatchEvent(new Event("sketchybook:show-start"));
+      }
       if (state.animationFrameId) cancelAnimationFrame(state.animationFrameId);
-    });
-  }
-  if (retryBtn) {
-    retryBtn.addEventListener("click", async () => {
+      return true;
+    },
+    onRetry: async () => {
+      if (!dispatchStageRetryRequest()) return false;
       hideStageClearOverlay();
       await initializeStage(state.currentStageNumber);
       resizeCanvas();
-    });
-  }
-  if (nextBtn) {
-    nextBtn.addEventListener("click", async () => {
-      hideStageClearOverlay();
+      return true;
+    },
+    onNext: async () => {
       const next = Math.min((state.currentStageNumber || 1) + 1, totalStageCount);
+      const nextEvent = new CustomEvent("sketchybook:stage-next", {
+        cancelable: true,
+        detail: { stageNumber: next },
+      });
+      if (!window.dispatchEvent(nextEvent)) return false;
+      hideStageClearOverlay();
       await startStage(next);
-    });
-  }
+      return true;
+    },
+  });
+  state.stageClearOverlay = stageClearOverlayRef.current;
+  state.stageClearMessage = stageClearMessageRef.current;
 }
 
 export function showStageClearOverlay(message = "Stage Cleared!") {
@@ -389,9 +437,55 @@ export function showStageClearOverlay(message = "Stage Cleared!") {
   });
 }
 
+function dispatchStageRetryRequest() {
+  return window.dispatchEvent(
+    new CustomEvent("sketchybook:stage-retry", {
+      cancelable: true,
+      detail: { stageNumber: state.currentStageNumber },
+    })
+  );
+}
+
 export function hideStageClearOverlay() {
   hideStageClearOverlayUI(state.stageClearOverlay, dom.canvas);
 }
+
+function completeStageClear() {
+  state.stageCleared = true;
+  drawingAudio.stop();
+  const currentMode = state.currentDifficulty;
+  syncProgressForMode(currentMode).catch((err) => {
+    console.error("[Sync] 데이터 동기화 실패:", err);
+  });
+  state.stageClearOverlayTimer = window.setTimeout(() => {
+    state.stageClearOverlayTimer = null;
+    playStageClearSound();
+    showStageClearOverlay("Stage Cleared!");
+  }, 750);
+  if (state.currentStage && typeof state.currentStage.onClear === "function") {
+    try {
+      state.currentStage.onClear();
+    } catch (error) {
+      console.warn("currentStage.onClear failed:", error);
+    }
+  }
+  window.dispatchEvent(new CustomEvent("stageClear", { detail: { stage: state.currentStage } }));
+}
+
+window.addEventListener("sketchybook:room-stage-clear", (event) => {
+  const { stageNumber, stageEventCount } = event.detail || {};
+  if (
+    !Number.isInteger(stageNumber) ||
+    stageNumber !== state.currentStageNumber ||
+    !Number.isInteger(stageEventCount) ||
+    state.stageCleared
+  ) {
+    return;
+  }
+  state.stageEventCount = stageEventCount;
+  state.stageClearRequestPending = false;
+  completeStageClear();
+});
 
 export function createGameExitButton() {
   if (!dom.board || state.gameExitButton) return;
@@ -427,6 +521,7 @@ export function createGameRetryButton() {
 
   gameRetryButton.appendChild(createActionIconCanvas("retry", { w: 60, h: 48, strokeWidth: 2.5 }));
   gameRetryButton.addEventListener("click", async () => {
+    if (!dispatchStageRetryRequest()) return;
     hideStageClearOverlay();
     if (state.isPlayground) {
       await startPlayground();
@@ -498,6 +593,7 @@ window.addEventListener("sketchybook:start-playground", () => {
 });
 
 window.addEventListener("sketchybook:start-game", async (event) => {
+  clearRoomModeOverride();
   const requestedDifficulty = event.detail?.difficulty;
   if (Object.values(DIFFICULTY_LEVELS).includes(requestedDifficulty)) {
     state.currentDifficulty = requestedDifficulty;
@@ -514,21 +610,13 @@ window.addEventListener("sketchybook:start-game", async (event) => {
 });
 
 export async function initializePageFlow() {
-  const requestedStage = getRequestedStageFromUrl();
-  if (requestedStage) {
-    state.currentStageNumber = requestedStage;
-    setActivePage(dom.playPage);
-    updateStageUrl(requestedStage);
-    await initializeStage(requestedStage);
-    resizeCanvas();
-  } else {
-    state.stagePageIndex = getStagePageIndexForStage(
-      state.currentStageNumber,
-      stagePageSize,
-      totalStagePages
-    );
-    setActivePage(dom.modePage);
-  }
+  state.stagePageIndex = getStagePageIndexForStage(
+    state.currentStageNumber,
+    stagePageSize,
+    totalStagePages
+  );
+  updateStageUrl();
+  setActivePage(dom.modePage);
 }
 
 export async function initializeStage(stageNumberOverride) {
@@ -750,7 +838,10 @@ export function syncGamePlayState() {
   const isPageVisible = !document.hidden;
 
   if (!shouldAdvancePhysics({ isGameActive, isPageVisible })) {
-    state.lastPhysicsTime = 0;
+    if (!isRoomConnected()) {
+      state.lastPhysicsTime = 0;
+      state.physicsAccumulatorMs = 0;
+    }
     if (state.isDrawing) {
       state.isDrawing = false;
       state.lastPoint = null;
@@ -789,7 +880,6 @@ export function tick(timestamp = 0) {
 
     const elapsed = Math.max(0, timestamp - state.lastPhysicsTime);
     if (elapsed > 0) {
-      const deltaSeconds = Math.min(elapsed / 1000, 0.032);
       const nextProfile =
         profile ||
         createDeviceSafePhysicsProfile({
@@ -799,29 +889,48 @@ export function tick(timestamp = 0) {
         });
       setPhysicsScaleProfile(nextProfile);
 
-      if (state.currentStage && typeof state.currentStage.update === "function") {
-        state.currentStage.update(state.physicsStrokes, floorY, {
-          deltaTime: deltaSeconds,
-          substeps: nextProfile.maxSubsteps,
-          velocityIterations: 8,
-        });
-      } else {
-        stepPhysicsWorld({
-          deltaTime: deltaSeconds,
-          substeps: nextProfile.maxSubsteps,
-          velocityIterations: 8,
-        });
-        state.physicsStrokes.forEach((stroke) => {
-          if (!stroke?.points?.length || !stroke.body) {
-            return;
-          }
+      const multiplayer = isRoomConnected();
+      const stepBatch = multiplayer
+        ? consumePhysicsStepBatch({
+            elapsedMs: elapsed,
+            accumulatedMs: state.physicsAccumulatorMs,
+            stepMs: MULTIPLAYER_PHYSICS_STEP_MS,
+            maxSteps: MAX_MULTIPLAYER_STEPS_PER_FRAME,
+          })
+        : { stepCount: 1, remainingMs: 0 };
+      const { stepCount } = stepBatch;
+      const deltaSeconds = multiplayer
+        ? MULTIPLAYER_PHYSICS_STEP_MS / 1000
+        : Math.min(elapsed / 1000, 0.032);
 
-          updateStrokeBody(stroke, floorY);
-        });
+      for (let step = 0; step < stepCount; step += 1) {
+        if (state.currentStage && typeof state.currentStage.update === "function") {
+          state.currentStage.update(state.physicsStrokes, floorY, {
+            deltaTime: deltaSeconds,
+            substeps: nextProfile.maxSubsteps,
+            velocityIterations: 8,
+          });
+        } else {
+          stepPhysicsWorld({
+            deltaTime: deltaSeconds,
+            substeps: nextProfile.maxSubsteps,
+            velocityIterations: 8,
+          });
+          state.physicsStrokes.forEach((stroke) => {
+            if (!stroke?.points?.length || !stroke.body) {
+              return;
+            }
+
+            updateStrokeBody(stroke, floorY);
+          });
+        }
       }
 
       state.lastPhysicsTime = timestamp;
-      state.stageHasSimulated = true;
+      state.physicsAccumulatorMs = stepBatch.remainingMs;
+      if (stepCount > 0) {
+        state.stageHasSimulated = true;
+      }
     }
   }
 
@@ -862,26 +971,19 @@ export function tick(timestamp = 0) {
   });
 
   // If all stars collected, signal stage clear
-  if (allStarsCollected && !state.stageCleared) {
-    state.stageCleared = true;
-    drawingAudio.stop();
-    const currentMode = state.currentDifficulty;
-    syncProgressForMode(currentMode).catch((err) => {
-      console.error("[Sync] 데이터 동기화 실패:", err);
+  if (allStarsCollected && !state.stageCleared && !state.stageClearRequestPending) {
+    const stageClearEvent = new CustomEvent("sketchybook:stage-clear-check", {
+      cancelable: true,
+      detail: {
+        stageNumber: state.currentStageNumber,
+        stageEventCount: state.stageEventCount,
+      },
     });
-    state.stageClearOverlayTimer = window.setTimeout(() => {
-      state.stageClearOverlayTimer = null;
-      playStageClearSound();
-      showStageClearOverlay("Stage Cleared!");
-    }, 750);
-    if (state.currentStage && typeof state.currentStage.onClear === "function") {
-      try {
-        state.currentStage.onClear();
-      } catch (e) {
-        console.warn("currentStage.onClear failed:", e);
-      }
+    if (window.dispatchEvent(stageClearEvent)) {
+      completeStageClear();
+    } else {
+      state.stageClearRequestPending = true;
     }
-    window.dispatchEvent(new CustomEvent("stageClear", { detail: { stage: state.currentStage } }));
   }
   render();
   verifyGamePageMusicAfterFirstRender(isGameActive);
