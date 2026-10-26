@@ -14,6 +14,7 @@ export function createStageClearOverlay({
   board,
   stageClearOverlayRef,
   stageClearMessageRef,
+  disableNext = false,
   onExit,
   onRetry,
   onNext,
@@ -97,6 +98,11 @@ export function createStageClearOverlay({
   const exitBtn = message.querySelector(".stage-clear-exit");
   const retryBtn = message.querySelector(".stage-clear-retry");
   const nextBtn = message.querySelector(".stage-clear-next");
+  if (nextBtn && disableNext) {
+    nextBtn.disabled = true;
+    nextBtn.setAttribute("aria-disabled", "true");
+    nextBtn.dataset.tooltip = "Next map is available for shared maps.";
+  }
   [
     [exitBtn, "Only the host can return everyone to the room."],
     [retryBtn, "Only the host can restart the stage."],
@@ -144,16 +150,19 @@ export function showStageClearOverlay({
   canvas,
   stageNumber,
   difficulty,
+  showScore = true,
   onAfterSave,
   onScoreStarAppear,
 }) {
   if (!overlay || !message) return;
 
-  const stars = getStageStarRating(stageClearState.stageMinEvents, stageClearState.stageEventCount);
+  const stars = showScore
+    ? getStageStarRating(stageClearState.stageMinEvents, stageClearState.stageEventCount)
+    : 0;
   message.querySelector(".stage-clear-title").textContent = "Stage Cleared!";
   renderStageScoreStars({ message, stars, onStarAppear: onScoreStarAppear });
 
-  if (stageNumber) {
+  if (showScore && stageNumber) {
     saveStageScore(stageNumber, stars, difficulty);
     renderStageSelectionButtons(stageButtons, difficulty);
     const stageButton = stageButtons.find((button) => Number(button.dataset.stage) === stageNumber);

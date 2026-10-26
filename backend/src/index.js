@@ -7,10 +7,13 @@ const CORS_HEADERS = {
 const ROOM_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 const ROOM_CODE_LENGTH = 6;
 const MAX_ROOM_PLAYERS = 4;
+const ROOM_SOCKET_OPEN = 1;
 const MAX_PLAYER_NAME_LENGTH = 20;
 const MAX_STROKE_POINTS = 256;
 const MIN_STROKE_LEAD_MS = 150;
 const MAX_STROKE_LEAD_MS = 1000;
+const MAX_SHARED_MAP_BYTES = 64 * 1024;
+const MAX_SHARED_MAP_OBJECTS = 100;
 const ROOM_START_DELAY_MS = 500;
 const VALID_DIFFICULTIES = new Set(["easy", "normal", "hard", "insane"]);
 
@@ -661,6 +664,7 @@ export class MultiplayerRoom {
   getPlayers() {
     return this.state
       .getWebSockets()
+      .filter((connection) => connection.readyState === ROOM_SOCKET_OPEN)
       .map((connection) => connection.deserializeAttachment())
       .filter(Boolean);
   }
@@ -904,8 +908,239 @@ async function handleProgressRequest(request, env) {
   return jsonResponse({ ok: true, mode });
 }
 
+function validateSharedMap(map) {
+  if (!map || typeof map !== "object" || Array.isArray(map)) return "Map data must be an object.";
+  if (typeof map.name !== "string" || !map.name.trim() || map.name.length > 40) {
+    return "Map name must be between 1 and 40 characters.";
+  }
+  if (!Array.isArray(map.objects) || map.objects.length > MAX_SHARED_MAP_OBJECTS) {
+    return `Map must contain no more than ${MAX_SHARED_MAP_OBJECTS} objects.`;
+  }
+  const validTypes = new Set([
+    "platform", "circle", "ball", "star", "stripedRect", "portal", "segment", "complex", "poly", "rotor", "text",
+  ]);
+  let hasBall = false;
+  let hasStar = false;
+  for (const [index, object] of map.objects.entries()) {
+    if (!object || typeof object !== "object" || !validTypes.has(object.type)) {
+      return `Object ${index + 1} has an unsupported type.`;
+    }
+    hasBall ||= object.type === "ball";
+    hasStar ||= object.type === "star";
+    const isNumber = (value) => typeof value === "number" && Number.isFinite(value);
+    const hasNormalizedPosition = (x, y) => isNumber(x) && isNumber(y) && x >= 0 && x <= 1 && y >= 0 && y <= 1;
+    if (object.type === "segment") {
+      if (!hasNormalizedPosition(object.x1, object.y1) || !hasNormalizedPosition(object.x2, object.y2)) {
+        return `Line ${index + 1} needs normalized endpoints.`;
+      }
+    } else if (["complex", "poly", "rotor"].includes(object.type)) {
+      if (!Array.isArray(object.points) || object.points.length < 2 || object.points.length > 128 ||
+        object.points.some((point) => !point || !hasNormalizedPosition(point.x, point.y))) {
+        return `Shape ${index + 1} needs 2 to 128 normalized points.`;
+      }
+    } else if (!hasNormalizedPosition(object.x, object.y)) {
+      return `Object ${index + 1} needs a normalized x and y position.`;
+    }
+    if (["platform", "stripedRect", "portal"].includes(object.type) &&
+      (!isNumber(object.width) || object.width <= 0 || !isNumber(object.height) || object.height <= 0)) {
+      return `Object ${index + 1} needs positive width and height values.`;
+    }
+    if (["ball", "circle", "star"].includes(object.type) && (!isNumber(object.radius) || object.radius <= 0)) {
+      return `Object ${index + 1} needs a positive radius.`;
+    }
+    if (object.type === "text" && (typeof object.text !== "string" || object.text.length > 200)) {
+      return `Text object ${index + 1} needs text with at most 200 characters.`;
+    }
+  }
+  if (!hasBall || !hasStar) return "Shared maps need at least one ball and one star.";
+  return null;
+}
+
+async function handleSharedMapsRequest(request, env) {
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS shared_maps (
+      id TEXT PRIMARY KEY,
+      owner_sub TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      author_name TEXT NOT NULL,
+      name TEXT NOT NULL,
+      map_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(owner_sub, source_id)
+    )`
+  ).run();
+
+  const url = new URL(request.url);
+  const pathParts = url.pathname.split("/").filter(Boolean);
+  if (request.method === "GET" && pathParts.length === 2) {
+    const result = await env.DB.prepare(
+      "SELECT id, name, author_name, map_json, created_at, updated_at FROM shared_maps ORDER BY updated_at DESC LIMIT 100"
+    ).all();
+    const maps = (result.results || []).map((row) => ({
+      id: row.id,
+      name: row.name,
+      authorName: row.author_name,
+      objects: JSON.parse(row.map_json).objects,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+    return jsonResponse({ ok: true, maps });
+  }
+
+  if (request.method === "GET" && pathParts.length === 3) {
+    const mapId = pathParts[2];
+    if (!/^[\da-f-]{36}$/i.test(mapId)) return errorResponse("Invalid shared map ID.", 400);
+    const row = await env.DB.prepare(
+      "SELECT id, name, author_name, map_json, created_at FROM shared_maps WHERE id = ?"
+    ).bind(mapId).first();
+    if (!row) return errorResponse("Shared map not found.", 404);
+    const map = JSON.parse(row.map_json);
+    return jsonResponse({
+      ok: true,
+      map: { id: row.id, name: row.name, authorName: row.author_name, objects: map.objects, createdAt: row.created_at },
+    });
+  }
+
+  if (request.method !== "POST" || pathParts.length !== 2) {
+    return new Response(null, { status: 405, headers: CORS_HEADERS });
+  }
+  const idToken = getBearerToken(request);
+  if (!idToken) return errorResponse("Sign in to share a map.", 401);
+  let tokenPayload;
+  try {
+    tokenPayload = await verifyIdToken(idToken, env);
+  } catch {
+    return errorResponse("Invalid auth token.", 401);
+  }
+  if (!tokenPayload.sub) return errorResponse("Invalid token payload.", 401);
+
+  const contentLength = Number(request.headers.get("Content-Length") || 0);
+  if (contentLength > MAX_SHARED_MAP_BYTES) return errorResponse("Map data is too large.", 413);
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body.sourceId !== "string" || body.sourceId.length > 80) {
+    return errorResponse("Request must include a valid sourceId.", 400);
+  }
+  const map = body.map;
+  const validationError = validateSharedMap(map);
+  if (validationError) return errorResponse(validationError, 400);
+  const mapJson = JSON.stringify({ version: 1, name: map.name.trim(), objects: map.objects });
+  if (new TextEncoder().encode(mapJson).byteLength > MAX_SHARED_MAP_BYTES) {
+    return errorResponse("Map data is too large.", 413);
+  }
+  const now = new Date().toISOString();
+  const id = crypto.randomUUID();
+  const authorName = String(tokenPayload.name || tokenPayload.email || "Sketchybook player")
+    .replace(/[<>\p{Cc}]/gu, "")
+    .slice(0, 40) || "Sketchybook player";
+  await env.DB.prepare(
+    `INSERT INTO shared_maps (id, owner_sub, source_id, author_name, name, map_json, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(owner_sub, source_id) DO UPDATE SET
+       author_name = excluded.author_name,
+       name = excluded.name,
+       map_json = excluded.map_json,
+       updated_at = excluded.updated_at`
+  ).bind(id, tokenPayload.sub, body.sourceId, authorName, map.name.trim(), mapJson, now, now).run();
+  const saved = await env.DB.prepare(
+    "SELECT id, updated_at FROM shared_maps WHERE owner_sub = ? AND source_id = ?"
+  ).bind(tokenPayload.sub, body.sourceId).first();
+  return jsonResponse({ ok: true, id: saved.id, updatedAt: saved.updated_at });
+}
+
+async function handleAccountMapsRequest(request, env) {
+  const idToken = getBearerToken(request);
+  if (!idToken) return errorResponse("Sign in to save maps to your account.", 401);
+
+  let tokenPayload;
+  try {
+    tokenPayload = await verifyIdToken(idToken, env);
+  } catch {
+    return errorResponse("Invalid auth token.", 401);
+  }
+  if (!tokenPayload.sub) return errorResponse("Invalid token payload.", 401);
+
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS account_maps (
+      owner_sub TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      map_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY(owner_sub, source_id)
+    )`
+  ).run();
+
+  if (request.method === "GET") {
+    const result = await env.DB.prepare(
+      "SELECT source_id, name, map_json, updated_at FROM account_maps WHERE owner_sub = ? ORDER BY updated_at DESC"
+    )
+      .bind(tokenPayload.sub)
+      .all();
+    const maps = (result.results || []).map((row) => ({
+      id: row.source_id,
+      name: row.name,
+      objects: JSON.parse(row.map_json).objects,
+      updatedAt: row.updated_at,
+    }));
+    return jsonResponse({ ok: true, maps });
+  }
+
+  if (request.method !== "POST") {
+    return new Response(null, { status: 405, headers: CORS_HEADERS });
+  }
+
+  const contentLength = Number(request.headers.get("Content-Length") || 0);
+  if (contentLength > MAX_SHARED_MAP_BYTES) return errorResponse("Map data is too large.", 413);
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body.sourceId !== "string" || body.sourceId.length > 80) {
+    return errorResponse("Request must include a valid map ID.", 400);
+  }
+  const validationError = validateSharedMap(body.map);
+  if (validationError) return errorResponse(validationError, 400);
+
+  const mapJson = JSON.stringify({
+    version: 1,
+    name: body.map.name.trim(),
+    objects: body.map.objects,
+  });
+  if (new TextEncoder().encode(mapJson).byteLength > MAX_SHARED_MAP_BYTES) {
+    return errorResponse("Map data is too large.", 413);
+  }
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `INSERT INTO account_maps (owner_sub, source_id, name, map_json, updated_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(owner_sub, source_id) DO UPDATE SET
+       name = excluded.name,
+       map_json = excluded.map_json,
+       updated_at = excluded.updated_at`
+  )
+    .bind(tokenPayload.sub, body.sourceId, body.map.name.trim(), mapJson, now)
+    .run();
+  return jsonResponse({ ok: true, id: body.sourceId, updatedAt: now });
+}
+
 async function handleRequest(request, env) {
   const url = new URL(request.url);
+
+  if (url.pathname === "/api/user/maps") {
+    try {
+      return await handleAccountMapsRequest(request, env);
+    } catch (error) {
+      console.error("[backend] handleAccountMapsRequest error:", error);
+      return errorResponse(error.message || "Failed to handle account maps.");
+    }
+  }
+
+  if (url.pathname === "/api/maps" || url.pathname.startsWith("/api/maps/")) {
+    try {
+      return await handleSharedMapsRequest(request, env);
+    } catch (error) {
+      console.error("[backend] handleSharedMapsRequest error:", error);
+      return errorResponse(error.message || "Failed to handle shared maps.");
+    }
+  }
 
   if (url.pathname === "/api/rooms" || url.pathname.startsWith("/api/rooms/")) {
     try {
