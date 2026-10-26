@@ -5,7 +5,7 @@ import {
 } from "../src/game/engine/physics/physicsState.js";
 
 describe("shouldRebuildPhysicsWorld", () => {
-  it("avoids rebuilding the physics world after simulation has already started", () => {
+  it("rebuilds the physics world after a layout remap even if simulation has started", () => {
     expect(
       shouldRebuildPhysicsWorld({
         needsLayoutRemap: true,
@@ -13,7 +13,7 @@ describe("shouldRebuildPhysicsWorld", () => {
         physicsStrokeCount: 0,
         hasExistingPhysicsBodies: true,
       })
-    ).toBe(false);
+    ).toBe(true);
   });
   it("allows a rebuild when the stage is still fresh and layout remap is needed", () => {
     expect(
@@ -24,6 +24,16 @@ describe("shouldRebuildPhysicsWorld", () => {
         hasExistingPhysicsBodies: false,
       })
     ).toBe(true);
+  });
+
+  it("does not rebuild the physics world when there is no layout remap", () => {
+    expect(
+      shouldRebuildPhysicsWorld({
+        stageHasSimulated: true,
+        physicsStrokeCount: 1,
+        hasExistingPhysicsBodies: true,
+      })
+    ).toBe(false);
   });
 });
 

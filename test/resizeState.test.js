@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { rescalePoint, rescalePoints } from "../src/game/engine/systems/resizeState.js";
+import {
+  rescaleLocalPoint,
+  rescalePoint,
+  rescalePoints,
+} from "../src/game/engine/systems/resizeState.js";
 
 describe("rescalePoint", () => {
   it("keeps a point anchored to the same relative position when the viewport changes", () => {
@@ -24,5 +28,22 @@ describe("rescalePoints", () => {
       { x: 0, y: 0 },
       { x: 600, y: 450 },
     ]);
+  });
+});
+
+describe("rescaleLocalPoint", () => {
+  it("preserves a rotated local point under a non-uniform canvas resize", () => {
+    const point = { x: 8, y: 3 };
+    const angle = Math.PI / 4;
+    const resized = rescaleLocalPoint(point, angle, 2, 0.5);
+    const rotate = ({ x, y }) => ({
+      x: Math.cos(angle) * x - Math.sin(angle) * y,
+      y: Math.sin(angle) * x + Math.cos(angle) * y,
+    });
+
+    const resizedWorldOffset = rotate(resized);
+    const originalWorldOffset = rotate(point);
+    expect(resizedWorldOffset.x).toBeCloseTo(originalWorldOffset.x * 2);
+    expect(resizedWorldOffset.y).toBeCloseTo(originalWorldOffset.y * 0.5);
   });
 });

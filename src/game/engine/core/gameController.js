@@ -3,7 +3,7 @@ import { createCoordinateSystem } from "./coordinates.js";
 import { loadStage } from "../../levels/loader/stageLoader.js";
 import { resolveCircleRadius, segmentIntersectsCircle, segmentIntersectsRect } from "./geometry.js";
 import { getStagePageIndexForStage } from "../../levels/pages/stagePages.js";
-import { rescalePoint } from "../systems/resizeState.js";
+import { rescaleLocalPoint, rescalePoint } from "../systems/resizeState.js";
 import { shouldDeferResize } from "../systems/layoutSync.js";
 import { remapGameObjects } from "../../render/canvasObjectResize.js";
 import { processBallObjectInteractions } from "../../systems/gameObjectInteractions.js";
@@ -20,6 +20,8 @@ import { isChallengeClearedLocal, saveChallengeCleared } from "../../ui/stagePro
 import {
   stepPhysicsWorld,
   updateStrokeBody,
+  initializeStrokeBody,
+  attachBodyToBody,
   resetPhysicsWorld,
   createDeviceSafePhysicsProfile,
   getPhysicsScaleProfile,
@@ -32,7 +34,12 @@ import { createGameObjects } from "../../stages/gameObjectFactory.js";
 import { DIFFICULTY_LEVELS, getDifficultyRules } from "../config/difficultyLevels.js";
 import { dom, stagePageSize, totalStageCount, totalStagePages } from "./domRefs.js";
 import { state } from "./gameState.js";
-import { render, getCanvasPixelSize, getRenderDpr } from "../../render/gameRenderer.js";
+import {
+  render,
+  createStrokeTexture,
+  getCanvasPixelSize,
+  getRenderDpr,
+} from "../../render/gameRenderer.js";
 import {
   playScoreStarSound,
   playStageClearSound,
@@ -691,6 +698,67 @@ export function resizeCanvas() {
 
   const previousCanvasWidth = state.canvasWidth;
   const previousCanvasHeight = state.canvasHeight;
+  const needsLayoutRemap =
+    previousCanvasWidth > 0 &&
+    previousCanvasHeight > 0 &&
+    (previousCanvasWidth !== measuredWidth || previousCanvasHeight !== measuredHeight);
+  const objectPhysicsStates = new Map();
+  const strokePhysicsStates = new Map();
+  if (needsLayoutRemap) {
+    for (const object of state.gameObjects) {
+      const bodies = object.physicsBody
+        ? [object.physicsBody]
+        : Array.isArray(object.physicsBodies)
+          ? object.physicsBodies
+          : [];
+      const bodyStates = bodies.map((body) => {
+        const position = body.getPosition();
+        const velocity = body.getLinearVelocity();
+        const angle = body.getAngle();
+        if (body === object.physicsBody) {
+          object.screenX = position.x;
+          object.screenY = position.y;
+          if ("nx" in object) object.nx = position.x / previousCanvasWidth;
+          if ("ny" in object) object.ny = position.y / previousCanvasHeight;
+          if ("angle" in object) object.angle = angle;
+          if (object instanceof Rotor) {
+            object.cx = position.x / previousCanvasWidth;
+            object.cy = position.y / previousCanvasHeight;
+          }
+        }
+        return {
+          angle,
+          angularVelocity: body.getAngularVelocity(),
+          velocityX: velocity.x,
+          velocityY: velocity.y,
+        };
+      });
+      if (bodyStates.length) objectPhysicsStates.set(object, bodyStates);
+    }
+
+    for (const stroke of state.physicsStrokes) {
+      const body = stroke.physicsBody;
+      if (!body) continue;
+      const position = body.getPosition();
+      const velocity = body.getLinearVelocity();
+      stroke.body.x = position.x;
+      stroke.body.y = position.y;
+      stroke.body.vx = velocity.x;
+      stroke.body.vy = velocity.y;
+      stroke.angle = body.getAngle();
+      stroke.angularVelocity = body.getAngularVelocity();
+      stroke.points.forEach((point) => {
+        const worldPoint = body.getWorldPoint({ x: point.restX, y: point.restY });
+        point.x = worldPoint.x;
+        point.y = worldPoint.y;
+      });
+      strokePhysicsStates.set(stroke, {
+        angle: stroke.angle,
+        angularVelocity: stroke.angularVelocity,
+        type: body.getType(),
+      });
+    }
+  }
   let previewSnapshot = null;
   if (
     state.currentStroke?.length &&
@@ -767,11 +835,6 @@ export function resizeCanvas() {
     );
   }
 
-  const needsLayoutRemap =
-    previousCanvasWidth > 0 &&
-    previousCanvasHeight > 0 &&
-    (previousCanvasWidth !== state.canvasWidth || previousCanvasHeight !== state.canvasHeight);
-
   if (needsLayoutRemap && state.gameObjects.length) {
     remapGameObjects(
       state.gameObjects,
@@ -793,6 +856,34 @@ export function resizeCanvas() {
       )
     );
     state.currentStrokePreviewDirty = false;
+  }
+
+  if (needsLayoutRemap) {
+    const scaleX = state.canvasWidth / previousCanvasWidth;
+    const scaleY = state.canvasHeight / previousCanvasHeight;
+    for (const stroke of state.physicsStrokes) {
+      stroke.body.x *= scaleX;
+      stroke.body.y *= scaleY;
+      stroke.body.vx *= scaleX;
+      stroke.body.vy *= scaleY;
+      stroke.centerOfMass.x = stroke.body.x;
+      stroke.centerOfMass.y = stroke.body.y;
+      const angle = strokePhysicsStates.get(stroke)?.angle ?? stroke.angle;
+      stroke.points.forEach((point) => {
+        const restPoint = rescaleLocalPoint(
+          { x: point.restX, y: point.restY },
+          angle,
+          scaleX,
+          scaleY
+        );
+        point.restX = restPoint.x;
+        point.restY = restPoint.y;
+        point.x = stroke.body.x + point.restX;
+        point.y = stroke.body.y + point.restY;
+      });
+      stroke.texture = null;
+      stroke.textureOffset = null;
+    }
   }
 
   const shouldRebuildPhysics = shouldRebuildPhysicsWorld({
@@ -817,8 +908,6 @@ export function resizeCanvas() {
       stroke.physicsBody = null;
       stroke.physicsSegments = [];
       stroke.grounded = false;
-      stroke.angle = 0;
-      stroke.angularVelocity = 0;
     }
   }
 
@@ -834,6 +923,56 @@ export function resizeCanvas() {
     challengeModeEnabled: state.challengeModeEnabled,
     difficultyRules: state.difficultyRules,
   });
+
+  if (shouldRebuildPhysics && needsLayoutRemap) {
+    const scaleX = state.canvasWidth / previousCanvasWidth;
+    const scaleY = state.canvasHeight / previousCanvasHeight;
+    state.lastPhysicsTime = 0;
+    state.physicsAccumulatorMs = 0;
+    for (const [object, bodyStates] of objectPhysicsStates) {
+      const bodies = object.physicsBody
+        ? [object.physicsBody]
+        : Array.isArray(object.physicsBodies)
+          ? object.physicsBodies
+          : [];
+      bodies.forEach((body, index) => {
+        const bodyState = bodyStates[index];
+        if (!bodyState) return;
+        body.setTransform(body.getPosition(), bodyState.angle);
+        body.setLinearVelocity({
+          x: bodyState.velocityX * scaleX,
+          y: bodyState.velocityY * scaleY,
+        });
+        body.setAngularVelocity(bodyState.angularVelocity);
+      });
+    }
+
+    for (const stroke of state.physicsStrokes) {
+      const strokeState = strokePhysicsStates.get(stroke);
+      initializeStrokeBody(stroke, floorYForPhysics, {
+        skipGround: state.challengeModeEnabled || !state.difficultyRules.hasFloor,
+        type: strokeState?.type ?? "dynamic",
+        freezeOnContact: stroke.freezeOnContact,
+      });
+      if (!stroke.physicsBody) continue;
+      stroke.physicsBody.setTransform(
+        { x: stroke.body.x, y: stroke.body.y },
+        strokeState?.angle ?? 0
+      );
+      stroke.physicsBody.setLinearVelocity({ x: stroke.body.vx, y: stroke.body.vy });
+      stroke.physicsBody.setAngularVelocity(strokeState?.angularVelocity ?? 0);
+      if (stroke.attachedTo?.physicsBody) {
+        attachBodyToBody(
+          stroke.physicsBody,
+          stroke.attachedTo.physicsBody,
+          stroke.attachedTo.physicsBody.getPosition()
+        );
+      }
+      stroke.angle = strokeState?.angle ?? 0;
+      stroke.angularVelocity = strokeState?.angularVelocity ?? 0;
+      createStrokeTexture(stroke);
+    }
+  }
 
   if (state.animationFrameId) {
     cancelAnimationFrame(state.animationFrameId);

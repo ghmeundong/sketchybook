@@ -4,11 +4,15 @@ export function shouldRebuildPhysicsWorld({
   physicsStrokeCount = 0,
   hasExistingPhysicsBodies = false,
 }) {
+  if (needsLayoutRemap) {
+    return true;
+  }
+
   if (stageHasSimulated || physicsStrokeCount > 0) {
     return false;
   }
 
-  return Boolean(needsLayoutRemap || hasExistingPhysicsBodies);
+  return Boolean(hasExistingPhysicsBodies);
 }
 
 export function consumePhysicsStepBatch({ elapsedMs, accumulatedMs = 0, stepMs, maxSteps }) {
