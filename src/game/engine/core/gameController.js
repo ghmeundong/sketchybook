@@ -333,12 +333,17 @@ export function setActivePage(page) {
     if (modeStatus) modeStatus.textContent = "Log in to access the map editor.";
   }
 
-  [dom.modePage, dom.mapBoardPage, dom.mapEditorPage, dom.startPage, dom.selectionPage, dom.playPage].forEach(
-    (item) => {
-      if (!item) return;
-      item.classList.toggle("is-active", item === page);
-    }
-  );
+  [
+    dom.modePage,
+    dom.mapBoardPage,
+    dom.mapEditorPage,
+    dom.startPage,
+    dom.selectionPage,
+    dom.playPage,
+  ].forEach((item) => {
+    if (!item) return;
+    item.classList.toggle("is-active", item === page);
+  });
   dom.globalToolbar?.classList.toggle(
     "is-hidden",
     page === dom.playPage || page === dom.mapBoardPage || page === dom.mapEditorPage
@@ -663,12 +668,27 @@ export async function startMapTest(mapDefinition) {
   const mapTestDefinition = {
     id: mapDefinition.id,
     name: String(mapDefinition.name || "Untitled map"),
-    objects: mapDefinition.objects.map((object) => ({ ...object })),
+    objects: mapDefinition.objects.map((object) => {
+      const copy = { ...object };
+      if (copy.type === "text" && !/[가-힣]/.test(String(copy.text || ""))) {
+        copy.fontFamily = "sketchyfont, serif";
+        copy.useKoreanTextScale = false;
+      }
+      return copy;
+    }),
   };
   await startPlayground({ mapTestDefinition });
   const playableObjects = [
     ...mapTestDefinition.objects,
-    { type: "text", x: 0.5, y: 0.12, text: mapTestDefinition.name },
+    {
+      type: "text",
+      x: 0.5,
+      y: 0.12,
+      text: mapTestDefinition.name,
+      shouldTranslate: false,
+      fontFamily: "sketchyfont, serif",
+      useKoreanTextScale: false,
+    },
   ];
   state.stageMinEvents = 1;
   state.currentStage = {

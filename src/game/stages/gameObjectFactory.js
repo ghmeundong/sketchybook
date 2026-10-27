@@ -96,6 +96,8 @@ export function createGameObject(definition) {
         fontSize: definition.fontSize,
         color: definition.color,
         fontFamily: definition.fontFamily,
+        shouldTranslate: definition.shouldTranslate,
+        useKoreanTextScale: definition.useKoreanTextScale,
       });
     default:
       return null;

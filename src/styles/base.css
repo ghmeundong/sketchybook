@@ -30,7 +30,8 @@ html[lang="ko"] {
   --font-display: ryuryufont, myeongjofont, serif;
 
   font-size: calc(var(--body-font-size) * 1.05);
-  font-weight: 500;
+  font-weight: 700;
+  font-synthesis: weight;
   letter-spacing: 0.015em;
 }
 
@@ -118,7 +119,7 @@ html[lang="ko"] button,
 html[lang="ko"] input,
 html[lang="ko"] select,
 html[lang="ko"] textarea {
-  font-weight: 500;
+  font-weight: 700;
 }
 
 body::before {

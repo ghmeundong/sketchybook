@@ -127,3 +127,46 @@
     transform: rotate(0deg);
   }
 }
+
+html[lang="ko"]
+  :is(
+    .orientation-prompt-eyebrow,
+    .orientation-prompt-body,
+    .orientation-prompt-status,
+    .mode-screen-kicker,
+    .mode-screen-prompt,
+    .mode-card-description,
+    .mode-card-action,
+    .mode-screen-status,
+    .room-code-label,
+    .room-code-display,
+    .room-player-count,
+    .room-difficulty-label,
+    .room-difficulty-description,
+    .multiplayer-selection-status > p,
+    .guest-waiting-message,
+    .room-selected-stage,
+    .room-status,
+    .multiplayer-toast,
+    .help-panel p,
+    .settings-panel-text,
+    .settings-volume-label,
+    .rough-tooltip-label,
+    .insane-warning-eyebrow,
+    .insane-warning-message,
+    .insane-warning-prompt,
+    .settings-option-text,
+    .difficulty-description,
+    .game-coordinate-label,
+    .map-board-kicker,
+    .map-board-status,
+    .map-card-author,
+    .map-board-empty,
+    .my-maps-status,
+    .map-editor-json-actions [role="status"],
+    .map-editor-properties label,
+    .map-editor-properties p,
+    .map-editor-status
+  ) {
+  zoom: 1.15;
+}

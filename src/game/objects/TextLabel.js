@@ -3,11 +3,22 @@ import { translateText } from "../../app/localization.js";
 
 export class TextLabel {
   constructor(opts = {}) {
-    const { x, y, text, fontSize, color, fontFamily } = opts || {};
+    const {
+      x,
+      y,
+      text,
+      fontSize,
+      color,
+      fontFamily,
+      shouldTranslate = true,
+      useKoreanTextScale = true,
+    } = opts || {};
     this.nx = typeof x === "number" ? x : 0.5;
     this.ny = typeof y === "number" ? y : 0.2;
     this.sourceText = text || "";
-    this.text = translateText(this.sourceText);
+    this.shouldTranslate = shouldTranslate;
+    this.useKoreanTextScale = useKoreanTextScale;
+    this.text = this.shouldTranslate ? translateText(this.sourceText) : this.sourceText;
     this.fontSize = typeof fontSize === "number" ? fontSize : 0.04;
     this.color = typeof color === "string" ? color : INK;
     this.fontFamily = typeof fontFamily === "string" ? fontFamily : null;
@@ -18,17 +29,17 @@ export class TextLabel {
   }
 
   createTexture(canvasW, canvasH) {
-    const isKoreanLocale = document.documentElement.lang === "ko";
+    const useKoreanTextStyle = this.useKoreanTextScale && document.documentElement.lang === "ko";
     const fontPx =
       (this.fontSize > 1 ? this.fontSize : Math.max(10, Math.round(this.fontSize * canvasH))) *
-      (isKoreanLocale ? 1.05 : 1);
+      (useKoreanTextStyle ? 1.05 : 1);
     const fontFamily = this.fontFamily || FONT_DISPLAY;
     const lines = String(this.text)
       .split("\n")
       .map((line) => line.trim());
     const off = document.createElement("canvas");
     const offCtx = off.getContext("2d");
-    offCtx.font = `${isKoreanLocale ? "500 " : ""}${fontPx}px ${fontFamily}`;
+    offCtx.font = `${useKoreanTextStyle ? "700 " : ""}${fontPx}px ${fontFamily}`;
     offCtx.textBaseline = "middle";
     offCtx.textAlign = "center";
 
@@ -52,12 +63,10 @@ export class TextLabel {
     const hid = off.getContext("2d");
     hid.setTransform(dpr, 0, 0, dpr, 0, 0);
     hid.clearRect(0, 0, width, height);
-    hid.font = `${isKoreanLocale ? "500 " : ""}${fontPx}px ${fontFamily}`;
+    hid.font = `${useKoreanTextStyle ? "700 " : ""}${fontPx}px ${fontFamily}`;
     hid.textBaseline = "middle";
     hid.textAlign = "center";
     hid.fillStyle = this.color;
-    hid.strokeStyle = this.color;
-    hid.lineWidth = Math.max(1, Math.round(fontPx * 0.12));
 
     const centerX = width / 2;
     let centerY = padding + fontPx / 2;
@@ -79,7 +88,7 @@ export class TextLabel {
 
   draw(canvasW, canvasH, ctx) {
     if (!ctx) return;
-    const nextText = translateText(this.sourceText);
+    const nextText = this.shouldTranslate ? translateText(this.sourceText) : this.sourceText;
     const fontFamily = this.fontFamily || FONT_DISPLAY;
     if (this.text !== nextText) {
       this.text = nextText;

@@ -38,6 +38,30 @@ describe("createGameObject", () => {
     expect(createGameObject()).toBeNull();
     expect(createGameObject({ type: "unknown" })).toBeNull();
   });
+
+  it("preserves text labels marked as user-authored", () => {
+    const object = createGameObject({
+      type: "text",
+      text: "My Map Name",
+      shouldTranslate: false,
+    });
+
+    expect(object).toBeInstanceOf(TextLabel);
+    expect(object.shouldTranslate).toBe(false);
+    expect(object.text).toBe("My Map Name");
+  });
+
+  it("preserves explicit font styling and Korean scale settings for text labels", () => {
+    const object = createGameObject({
+      type: "text",
+      text: "English label",
+      fontFamily: "sketchyfont, serif",
+      useKoreanTextScale: false,
+    });
+
+    expect(object.fontFamily).toBe("sketchyfont, serif");
+    expect(object.useKoreanTextScale).toBe(false);
+  });
 });
 
 describe("createGameObjects", () => {
