@@ -117,7 +117,8 @@
 .mode-card-art {
   display: block;
   width: min(100%, 13.75rem);
-  height: 8rem;
+  height: auto;
+  aspect-ratio: 55 / 32;
   flex: 0 0 auto;
 }
 
@@ -1584,7 +1585,7 @@ body.multiplayer-room-connected .selection-exit-btn {
 
   .mode-card-art {
     width: 6.5rem;
-    height: 6.5rem;
+    height: auto;
     grid-row: 1 / 4;
     align-self: center;
   }
@@ -1784,7 +1785,7 @@ body.multiplayer-room-connected .selection-exit-btn {
 
   .mode-card-art {
     width: min(100%, 10rem);
-    height: 5.5rem;
+    height: auto;
   }
 
   .mode-card-title {
@@ -1824,7 +1825,7 @@ body.multiplayer-room-connected .selection-exit-btn {
 
   .mode-card-art {
     width: 6rem;
-    height: 6rem;
+    height: auto;
     grid-row: 1 / 4;
   }
 }
@@ -2297,6 +2298,54 @@ body.multiplayer-room-connected .selection-exit-btn {
   margin-top: 0.3rem;
 }
 
+.map-json-highlight {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  color: var(--ink-strong);
+  pointer-events: none;
+}
+
+.map-json-highlight code {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: max-content;
+  min-width: 100%;
+  min-height: 100%;
+  padding: 1rem;
+  color: var(--ink-strong);
+  font-family: var(--font-mono, Consolas, monospace);
+  font-size: 0.84rem;
+  line-height: 1.55;
+  white-space: pre;
+  tab-size: 2;
+}
+
+.json-token-key {
+  color: #805c0b;
+}
+
+.json-token-string {
+  color: #27704d;
+}
+
+.json-token-number {
+  color: #2867a0;
+}
+
+.json-token-literal {
+  color: #a34a32;
+  font-weight: 700;
+}
+
+.json-token-punctuation {
+  color: #897a62;
+}
+
 .map-reference-content code {
   padding: 0.1rem 0.25rem;
   background: rgb(61 53 43 / 7%);
@@ -2461,6 +2510,7 @@ body.multiplayer-room-connected .selection-exit-btn {
 
 .map-editor-json-workspace textarea {
   position: relative;
+  z-index: 1;
   width: 100%;
   min-height: 0;
   flex: 1 1 auto;
@@ -2469,14 +2519,20 @@ body.multiplayer-room-connected .selection-exit-btn {
   border: 0;
   border-radius: 1px;
   outline: none;
-  background: #fffdf5;
-  color: var(--ink-strong);
+  background: transparent;
+  color: transparent;
+  caret-color: var(--ink-strong);
+  -webkit-text-fill-color: transparent;
   font-family: var(--font-mono, Consolas, monospace);
   font-size: 0.84rem;
   line-height: 1.55;
   tab-size: 2;
   white-space: pre;
   overflow: auto;
+}
+
+.map-editor-json-workspace textarea::selection {
+  background: rgb(212 175 55 / 40%);
 }
 
 .map-editor-json-workspace textarea:focus-visible {
@@ -2852,6 +2908,11 @@ body.multiplayer-room-connected .selection-exit-btn {
   }
 
   .map-editor-json-workspace textarea {
+    padding: 0.65rem;
+    font-size: 0.72rem;
+  }
+
+  .map-json-highlight code {
     padding: 0.65rem;
     font-size: 0.72rem;
   }

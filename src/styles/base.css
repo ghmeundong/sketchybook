@@ -28,6 +28,10 @@
 
 html[lang="ko"] {
   --font-display: ryuryufont, myeongjofont, serif;
+
+  font-size: calc(var(--body-font-size) * 1.05);
+  font-weight: 500;
+  letter-spacing: 0.015em;
 }
 
 /* Mobile landscape optimization */
@@ -108,6 +112,13 @@ h6,
 span,
 div {
   font-family: var(--font-display);
+}
+
+html[lang="ko"] button,
+html[lang="ko"] input,
+html[lang="ko"] select,
+html[lang="ko"] textarea {
+  font-weight: 500;
 }
 
 body::before {

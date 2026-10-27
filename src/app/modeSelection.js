@@ -12,7 +12,7 @@ import {
   getNextDifficulty,
   getPreviousDifficulty,
 } from "../game/engine/config/difficultyLevels.js";
-import { GOLD, INK, INK_SOFT } from "../theme.js";
+import { BALL_COLOR, GOLD, INK, INK_SOFT } from "../theme.js";
 import { connectToRoom, createRoom } from "../services/multiplayer.js";
 import { getStoredUser } from "../services/auth.js";
 
@@ -85,7 +85,7 @@ function drawModeArtwork(canvas, mode) {
     roughCanvas.line(82, 54, 126, 82, lineStyle);
     roughCanvas.circle(150, 72, 25, {
       ...lineStyle,
-      fill: GOLD,
+      fill: BALL_COLOR,
       fillStyle: "hachure",
       hachureGap: 5,
     });
@@ -117,7 +117,7 @@ function drawModeArtwork(canvas, mode) {
     roughCanvas.line(164, 56, 164, 102, lineStyle);
     roughCanvas.circle(68, 66, 17, {
       ...lineStyle,
-      fill: GOLD,
+      fill: BALL_COLOR,
       fillStyle: "hachure",
       hachureGap: 5,
     });

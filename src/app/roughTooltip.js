@@ -6,6 +6,7 @@ let tooltip = null;
 let tooltipLabel = null;
 let activeTarget = null;
 let activePointerPosition = null;
+let inputMode = "pointer";
 
 function resolveTooltipTarget(target) {
   return target instanceof Element ? target.closest("[data-tooltip]") : null;
@@ -91,12 +92,20 @@ function hideTooltip() {
 }
 
 export function initializeRoughTooltips() {
+  document.addEventListener("pointerdown", () => {
+    inputMode = "pointer";
+  });
+  document.addEventListener("keydown", () => {
+    inputMode = "keyboard";
+  });
   document.addEventListener("pointerover", (event) => {
+    inputMode = "pointer";
     const target = resolveTooltipTarget(event.target);
     if (!target || target.contains(event.relatedTarget)) return;
     showTooltip(target, event);
   });
   document.addEventListener("pointermove", (event) => {
+    inputMode = "pointer";
     const target = resolveTooltipTarget(event.target);
     if (target && target !== activeTarget) {
       showTooltip(target, event);
@@ -115,6 +124,7 @@ export function initializeRoughTooltips() {
     }
   });
   document.addEventListener("focusin", (event) => {
+    if (inputMode !== "keyboard") return;
     const target = resolveTooltipTarget(event.target);
     if (target) showTooltip(target);
   });
@@ -123,7 +133,13 @@ export function initializeRoughTooltips() {
   });
   const tooltipObserver = new MutationObserver((mutations) => {
     if (mutations.some((mutation) => mutation.target === activeTarget)) {
-      showTooltip(activeTarget, activePointerPosition);
+      const isHovered = activeTarget.matches(":hover");
+      const isKeyboardFocused = inputMode === "keyboard" && activeTarget.matches(":focus-visible");
+      if (isHovered || isKeyboardFocused) {
+        showTooltip(activeTarget, activePointerPosition);
+      } else {
+        hideTooltip();
+      }
     }
   });
   tooltipObserver.observe(document.body, {

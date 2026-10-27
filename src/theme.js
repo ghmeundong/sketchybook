@@ -9,6 +9,7 @@ export const PAPER_CARD = "#f7ebc8";
 export const PAPER_BRIGHT = "#fff8e8";
 export const GOLD = "#d4af37";
 export const DANGER = "#c0392b";
+export const BALL_COLOR = "#2f3e6f";
 function getInitialKoreanLocale() {
   try {
     return (

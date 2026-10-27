@@ -18,15 +18,17 @@ export class TextLabel {
   }
 
   createTexture(canvasW, canvasH) {
+    const isKoreanLocale = document.documentElement.lang === "ko";
     const fontPx =
-      this.fontSize > 1 ? this.fontSize : Math.max(10, Math.round(this.fontSize * canvasH));
+      (this.fontSize > 1 ? this.fontSize : Math.max(10, Math.round(this.fontSize * canvasH))) *
+      (isKoreanLocale ? 1.05 : 1);
     const fontFamily = this.fontFamily || FONT_DISPLAY;
     const lines = String(this.text)
       .split("\n")
       .map((line) => line.trim());
     const off = document.createElement("canvas");
     const offCtx = off.getContext("2d");
-    offCtx.font = `${fontPx}px ${fontFamily}`;
+    offCtx.font = `${isKoreanLocale ? "500 " : ""}${fontPx}px ${fontFamily}`;
     offCtx.textBaseline = "middle";
     offCtx.textAlign = "center";
 
@@ -50,7 +52,7 @@ export class TextLabel {
     const hid = off.getContext("2d");
     hid.setTransform(dpr, 0, 0, dpr, 0, 0);
     hid.clearRect(0, 0, width, height);
-    hid.font = `${fontPx}px ${fontFamily}`;
+    hid.font = `${isKoreanLocale ? "500 " : ""}${fontPx}px ${fontFamily}`;
     hid.textBaseline = "middle";
     hid.textAlign = "center";
     hid.fillStyle = this.color;

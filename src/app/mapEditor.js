@@ -35,6 +35,7 @@ const propertySpin = document.querySelector("[data-property-spin]");
 const propertySpinWrap = document.querySelector("[data-property-spin-wrap]");
 const propertyEmpty = document.querySelector("[data-property-empty]");
 const jsonEditor = document.querySelector("[data-map-json]");
+const jsonHighlight = document.querySelector("[data-map-json-highlight]");
 const jsonStatus = document.querySelector("[data-json-status]");
 const jsonWorkspace = document.querySelector("[data-json-workspace]");
 const jsonSuggestions = document.querySelector("[data-json-suggestions]");
@@ -449,7 +450,49 @@ function positionSuggestionPopup(cursor) {
   jsonSuggestions.style.top = `${Math.max(0, Math.min(sourceRect.height - 40, top))}px`;
 }
 
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, (character) => {
+    const entities = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+    return entities[character];
+  });
+}
+
+function renderJsonHighlight() {
+  if (!jsonHighlight || !jsonEditor) return;
+  const source = jsonEditor.value;
+  const tokenPattern =
+    /("(?:\\.|[^"\\])*"(?=\s*:)|"(?:\\.|[^"\\])*"|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?|\b(?:true|false|null)\b)/g;
+  let highlighted = "";
+  let previousIndex = 0;
+  let match = tokenPattern.exec(source);
+
+  while (match) {
+    highlighted += escapeHtml(source.slice(previousIndex, match.index));
+    const token = match[0];
+    const followingText = source.slice(match.index + token.length);
+    const tokenClass = token.startsWith('"')
+      ? /^\s*:/.test(followingText)
+        ? "key"
+        : "string"
+      : /^(?:true|false|null)$/.test(token)
+        ? "literal"
+        : "number";
+    highlighted += `<span class="json-token-${tokenClass}">${escapeHtml(token)}</span>`;
+    previousIndex = match.index + token.length;
+    match = tokenPattern.exec(source);
+  }
+
+  jsonHighlight.innerHTML = `${highlighted}${escapeHtml(source.slice(previousIndex))}`;
+  syncJsonHighlightScroll();
+}
+
+function syncJsonHighlightScroll() {
+  if (!jsonHighlight || !jsonEditor) return;
+  jsonHighlight.style.transform = `translate(${-jsonEditor.scrollLeft}px, ${-jsonEditor.scrollTop}px)`;
+}
+
 function refreshJsonSuggestions() {
+  const previousSelection = activeSuggestions[selectedSuggestionIndex]?.label;
   const completion = findJsonSuggestions(jsonEditor.value, jsonEditor.selectionStart);
   if (!completion) {
     jsonSuggestions.hidden = true;
@@ -462,7 +505,8 @@ function refreshJsonSuggestions() {
     jsonSuggestions.hidden = true;
     return;
   }
-  selectedSuggestionIndex = 0;
+  const preservedIndex = activeSuggestions.findIndex((item) => item.label === previousSelection);
+  selectedSuggestionIndex = preservedIndex >= 0 ? preservedIndex : 0;
   jsonSuggestions.replaceChildren(
     ...activeSuggestions.map((item, index) => {
       const option = document.createElement("button");
@@ -546,6 +590,7 @@ function setEditorView(view) {
   if (showJson) {
     jsonSessionSnapshot = JSON.stringify(objects);
     jsonEditor.value = JSON.stringify(serializeCurrentMap(), null, 2);
+    renderJsonHighlight();
     jsonStatus.textContent = "Changes apply automatically when the JSON is valid.";
     jsonEditor.focus();
   } else {
@@ -957,7 +1002,7 @@ function onPointerUp(event) {
         height: height / point.height,
       });
       selectedIndex = objects.length - 1;
-      setStatus(pointerAction.type === "platform" ? "Platform added." : "Hazard area added.");
+      setStatus(pointerAction.type === "platform" ? "Platform added." : "Forbidden Zone added.");
     } else {
       setStatus("Drag to draw a platform.");
     }
@@ -1504,6 +1549,7 @@ function initializeMapEditor() {
   });
 
   jsonEditor.addEventListener("input", () => {
+    renderJsonHighlight();
     refreshJsonSuggestions();
     applyMapJson();
   });
@@ -1511,6 +1557,7 @@ function initializeMapEditor() {
   jsonEditor.addEventListener("keyup", refreshJsonSuggestions);
   jsonEditor.addEventListener("keydown", handleJsonEditorKeydown);
   jsonEditor.addEventListener("scroll", () => {
+    syncJsonHighlightScroll();
     if (!jsonSuggestions.hidden) positionSuggestionPopup(jsonEditor.selectionStart);
   });
 
