@@ -194,6 +194,12 @@ function createAndRegisterStroke(points, previewSource = null) {
   if (state.challengeModeEnabled) state.challengeModeStrokeCount += 1;
   state.totalDrawnLength += getLogicalStrokeDistance(points, state.coordinateSystem);
   updateDrawLimitProgressUI();
+  if (state.currentStageNumber === 5 && attachment instanceof Rotor) {
+    window.dispatchEvent(new CustomEvent("sketchybook:stage-five-stroke"));
+  }
+  if (state.currentStageNumber === 9) {
+    window.dispatchEvent(new CustomEvent("sketchybook:stage-nine-stroke"));
+  }
   return true;
 }
 
@@ -470,6 +476,7 @@ function stopDrawing(event) {
     const ball = findBallAtPoint(clickPos);
     if (ball?.physicsBody) {
       launchBallFromInput();
+      window.dispatchEvent(new CustomEvent("sketchybook:tutorial-ball-click"));
     }
 
     state.currentStroke = null;
@@ -515,6 +522,7 @@ function stopDrawing(event) {
     const ball = findBallAtPoint(clickPos);
     if (ball?.physicsBody) {
       launchBallFromInput();
+      window.dispatchEvent(new CustomEvent("sketchybook:tutorial-ball-click"));
     }
     state.currentStroke = null;
     return;
@@ -635,6 +643,9 @@ export function initPointerInput() {
 
     if (event.key === " " || event.code === "Space") {
       event.preventDefault();
+      if (isGameActive && !event.repeat) {
+        window.dispatchEvent(new CustomEvent("sketchybook:tutorial-spacebar"));
+      }
       launchBallFromInput(event.repeat);
     }
   });

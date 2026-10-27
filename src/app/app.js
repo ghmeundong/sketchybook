@@ -144,17 +144,23 @@ function syncChallengeModeToggleUI() {
   challengeModeToggle.classList.toggle("is-active", enabled);
 }
 
-function createInsaneStartWarningModal() {
+function createDifficultyStartWarningModal(difficulty) {
   const existing = document.querySelector(".insane-warning-modal");
   if (existing) {
     return existing;
   }
 
+  const isInsane = difficulty === DIFFICULTY_LEVELS.INSANE;
+  const titleText = isInsane ? "Insane difficulty" : "Hard difficulty";
+  const messageText = isInsane
+    ? "We strongly recommend that you understand every mechanic, map structure, and principle before attempting this level. This is not a level created for fun; it is a brutal challenge designed for the most unforgiving difficulty. Tutorials are unavailable on Hard and Insane difficulties."
+    : "Tutorials are unavailable on Hard difficulty. Review the game mechanics before starting, because no in-game tutorial guidance will appear.";
+
   const modal = document.createElement("div");
   modal.className = "insane-warning-modal";
   modal.setAttribute("role", "dialog");
   modal.setAttribute("aria-modal", "true");
-  modal.setAttribute("aria-label", "Insane level warning");
+  modal.setAttribute("aria-label", "Difficulty level warning");
 
   const card = document.createElement("div");
   card.className = "insane-warning-card";
@@ -165,12 +171,11 @@ function createInsaneStartWarningModal() {
 
   const title = document.createElement("h2");
   title.className = "insane-warning-title";
-  title.textContent = "Insane difficulty";
+  title.textContent = titleText;
 
   const message = document.createElement("p");
   message.className = "insane-warning-message";
-  message.textContent =
-    "We strongly recommend that you understand every mechanic, map structure, and principle before attempting this level. This is not a level created for fun; it is a brutal challenge designed for the most unforgiving difficulty.";
+  message.textContent = messageText;
 
   const prompt = document.createElement("p");
   prompt.className = "insane-warning-prompt";
@@ -224,8 +229,8 @@ function createInsaneStartWarningModal() {
   return modal;
 }
 
-function showInsaneStartWarningModal() {
-  createInsaneStartWarningModal();
+function showDifficultyStartWarningModal(difficulty) {
+  createDifficultyStartWarningModal(difficulty);
 }
 
 function updateChallengeModeAvailability(difficulty = roomDifficultyContext || selectedDifficulty) {
@@ -667,8 +672,11 @@ if (startTitle) {
   startTitle.addEventListener("click", (event) => {
     event.preventDefault();
 
-    if (selectedDifficulty === DIFFICULTY_LEVELS.INSANE) {
-      showInsaneStartWarningModal();
+    if (
+      selectedDifficulty === DIFFICULTY_LEVELS.HARD ||
+      selectedDifficulty === DIFFICULTY_LEVELS.INSANE
+    ) {
+      showDifficultyStartWarningModal(selectedDifficulty);
       return;
     }
 

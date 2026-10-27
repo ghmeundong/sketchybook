@@ -4,6 +4,8 @@ const koreanText = {
   "Loading Sketchybook…": "스케치북 불러오는 중…",
   "Game tools": "게임 도구",
   "Back to game modes": "게임 모드로 돌아가기",
+  Tutorial: "튜토리얼",
+  "Space bar": "스페이스바",
   English: "영어",
   "Launch ball": "공 발사",
   "R:": "R 키:",
@@ -186,9 +188,12 @@ const koreanText = {
   "Game Start": "게임 시작",
   "Loading...": "불러오는 중...",
   Warning: "경고",
+  "Hard difficulty": "어려움 난이도",
   "Insane difficulty": "극한 난이도",
-  "We strongly recommend that you understand every mechanic, map structure, and principle before attempting this level. This is not a level created for fun; it is a brutal challenge designed for the most unforgiving difficulty.":
-    "이 스테이지에 도전하기 전에 게임의 모든 규칙과 맵 구조를 충분히 익히는 것을 권장합니다. 이 스테이지는 가볍게 즐기기 위한 것이 아니라, 가장 가혹한 난이도에 도전하도록 설계되었습니다.",
+  "Tutorials are unavailable on Hard difficulty. Review the game mechanics before starting, because no in-game tutorial guidance will appear.":
+    "어려움 난이도에서는 튜토리얼이 표시되지 않습니다. 게임 내 안내를 받을 수 없으니 시작 전에 게임 규칙을 충분히 익혀 주세요.",
+  "We strongly recommend that you understand every mechanic, map structure, and principle before attempting this level. This is not a level created for fun; it is a brutal challenge designed for the most unforgiving difficulty. Tutorials are unavailable on Hard and Insane difficulties.":
+    "이 스테이지에 도전하기 전에 게임의 모든 규칙과 맵 구조를 충분히 익히는 것을 권장합니다. 이 스테이지는 가볍게 즐기기 위한 것이 아니라, 가장 가혹한 난이도에 도전하도록 설계되었습니다. 어려움과 극한 난이도에서는 튜토리얼이 표시되지 않습니다.",
   "Do you really want to continue to this level?": "정말 이 스테이지를 계속 진행할까요?",
   Cancel: "취소",
   Continue: "계속",
@@ -345,7 +350,9 @@ const koreanText = {
   "draw a line to connect the platforms": "선을 그려 발판을 연결하세요",
   "space bar also works, and R is for reset":
     "스페이스바로 발사할 수도 있고 R 키로 다시 시작할 수 있습니다",
-  "tip: rotors are attachable": "팁: 회전 발판에는 선을 연결할 수 있습니다",
+  "Tip: Drawn lines can attach to rotors or the ground.":
+    "팁: 그린 선은 회전체나 바닥에 연결할 수 있습니다.",
+  "ground and rotors are attachable": "바닥과 회전체에는 선을 연결할 수 있습니다.",
   "this is a bonus": "이건 보너스입니다",
   "you cannot draw on striped area": "줄무늬 영역에는 선을 그릴 수 없습니다",
   "wait, portals!": "뭐야, 포털!",

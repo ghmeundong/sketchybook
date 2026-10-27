@@ -28,7 +28,7 @@ import {
   setPhysicsScaleProfile,
 } from "../physics/physics.js";
 import { createPhysicsBodiesForGameObjects } from "../physics/bodySetup.js";
-import { Rotor } from "../../objects/index.js";
+import { Ball, CircleObject, Platform, Rotor, Star } from "../../objects/index.js";
 import { isUserLoggedIn, syncProgressForMode } from "../../../services/auth.js";
 import { fetchSharedMaps } from "../../../services/sharedMaps.js";
 import { createGameObjects } from "../../stages/gameObjectFactory.js";
@@ -59,6 +59,14 @@ import {
 } from "../../ui/playgroundHistory.js";
 import { INK } from "../../../theme.js";
 import { isRoomConnected } from "../../../services/multiplayer.js";
+import {
+  startFirstStageTutorial,
+  startSecondStageTutorial,
+  startThirdStageTutorial,
+  startStageFiveRotorTutorial,
+  startStageNineHatchedCircleTutorial,
+  removeActiveTutorial,
+} from "../../ui/firstStageTutorial.js";
 
 const isItchBuild = import.meta.env.MODE === "itch";
 const MULTIPLAYER_PHYSICS_STEP_MS = 1000 / 60;
@@ -530,7 +538,11 @@ function completeStageClear() {
       console.warn("currentStage.onClear failed:", error);
     }
   }
-  window.dispatchEvent(new CustomEvent("stageClear", { detail: { stage: state.currentStage } }));
+  window.dispatchEvent(
+    new CustomEvent("stageClear", {
+      detail: { stage: state.currentStage, stageNumber: state.currentStageNumber },
+    })
+  );
 }
 
 window.addEventListener("sketchybook:room-stage-clear", (event) => {
@@ -632,6 +644,7 @@ export async function startStage(stageNumber) {
   if (!stageNumber) {
     return;
   }
+  removeActiveTutorial();
   state.currentStageNumber = stageNumber;
   state.isPlayground = false;
   setActivePage(dom.playPage);
@@ -639,9 +652,33 @@ export async function startStage(stageNumber) {
   updateStageUrl(stageNumber);
   await initializeStage(stageNumber);
   resizeCanvas();
+  if (
+    state.currentDifficulty === DIFFICULTY_LEVELS.HARD ||
+    state.currentDifficulty === DIFFICULTY_LEVELS.INSANE
+  ) {
+    return;
+  }
+  if (stageNumber === 1 && !isRoomConnected()) {
+    const ball = state.gameObjects.find((object) => object instanceof Ball);
+    startFirstStageTutorial(dom.board, dom.canvas, ball);
+  } else if (stageNumber === 2 && !isRoomConnected()) {
+    const platforms = state.gameObjects.filter((object) => object instanceof Platform);
+    startSecondStageTutorial(dom.board, dom.canvas, platforms);
+  } else if (stageNumber === 3 && !isRoomConnected()) {
+    startThirdStageTutorial(dom.board, state.gameRetryButton);
+  } else if (stageNumber === 5 && !isRoomConnected()) {
+    const rotor = state.gameObjects.find((object) => object instanceof Rotor);
+    const platform = state.gameObjects.find((object) => object instanceof Platform);
+    const star = state.gameObjects.find((object) => object instanceof Star);
+    startStageFiveRotorTutorial(dom.board, dom.canvas, rotor, platform, star);
+  } else if (stageNumber === 9 && !isRoomConnected()) {
+    const circle = state.gameObjects.find((object) => object instanceof CircleObject);
+    startStageNineHatchedCircleTutorial(dom.board, dom.canvas, circle);
+  }
 }
 
 export async function startPlayground({ mapTestDefinition = null } = {}) {
+  removeActiveTutorial();
   state.isPlayground = true;
   state.isMapTest = Boolean(mapTestDefinition);
   state.mapTestDefinition = mapTestDefinition;

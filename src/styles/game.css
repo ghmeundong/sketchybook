@@ -41,6 +41,425 @@
   overflow: hidden;
 }
 
+.first-stage-tutorial {
+  position: absolute;
+  z-index: 75;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.first-stage-tutorial-target {
+  position: absolute;
+  top: var(--tutorial-ball-y);
+  left: var(--tutorial-ball-x);
+  width: 3rem;
+  height: 3rem;
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  animation: tutorial-target-pulse 1.6s ease-out infinite;
+  transform: translate(-50%, -50%);
+}
+
+.first-stage-tutorial-line-target {
+  width: 2rem;
+  height: 2rem;
+  border-color: var(--ink-soft);
+  animation-duration: 2.4s;
+}
+
+.first-stage-tutorial-line-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.first-stage-tutorial-line-path {
+  fill: none;
+  stroke: var(--ink-strong);
+  stroke-linecap: round;
+  stroke-width: 7;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: tutorial-draw-line 2.4s ease-in-out infinite;
+}
+
+.first-stage-tutorial-cursor {
+  position: absolute;
+  top: var(--tutorial-ball-y);
+  left: var(--tutorial-ball-x);
+  width: 1.75rem;
+  height: 2.25rem;
+  overflow: visible;
+  filter: drop-shadow(1px 2px 1px rgb(61 53 43 / 30%));
+  animation: tutorial-cursor-click 2.4s ease-in-out infinite;
+}
+
+.first-stage-tutorial-line-cursor {
+  animation-name: tutorial-cursor-draw-line;
+}
+
+.stage-nine-tutorial-line {
+  fill: none;
+  stroke: var(--ink-strong);
+  stroke-linecap: round;
+  stroke-width: 7;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: stage-nine-draw 3.8s ease-in-out infinite;
+}
+
+.stage-nine-tutorial-cursor {
+  animation: stage-nine-cursor 3.8s ease-in-out infinite;
+}
+
+.stage-nine-tutorial-cross {
+  position: absolute;
+  width: 3.75rem;
+  height: 3.75rem;
+  overflow: visible;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.65);
+  animation: stage-nine-cross 3.8s ease-in-out infinite;
+}
+
+.stage-nine-tutorial-cross path {
+  fill: none;
+  stroke: var(--danger);
+  stroke-linecap: round;
+  stroke-width: 8;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: stage-nine-cross-draw 3.8s ease-in-out infinite;
+}
+
+.stage-nine-tutorial-cross path:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.stage-nine-tutorial-message {
+  position: absolute;
+  max-width: min(20rem, 80vw);
+  padding: 0.4rem 0.7rem;
+  border: 1px solid rgb(79 59 36 / 28%);
+  background: rgb(255 248 232 / 94%);
+  color: var(--ink-strong);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  opacity: 0;
+  transform: translate(-50%, 0.4rem);
+  animation: stage-nine-message 3.8s ease-in-out infinite;
+}
+
+.first-stage-tutorial-keycap,
+.first-stage-tutorial-reset-keycap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  color: #25221e;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+}
+
+.first-stage-tutorial-keycap {
+  z-index: 1;
+  width: min(25rem, 90vw);
+  height: 6rem;
+  animation: tutorial-key-press 1.8s ease-in-out infinite;
+}
+
+.first-stage-tutorial-keycap-shadow,
+.first-stage-tutorial-reset-keycap-shadow {
+  position: absolute;
+  height: 0.65rem;
+  border-radius: 50%;
+  background: rgb(37 34 30 / 58%);
+  filter: blur(0.35rem);
+  pointer-events: none;
+}
+
+.first-stage-tutorial-keycap-shadow {
+  top: 50%;
+  left: 50%;
+  z-index: 0;
+  width: min(22rem, 78vw);
+  transform: translate(-50%, calc(-50% + 3rem));
+  box-shadow: 0 0.2rem 0.45rem rgb(0 0 0 / 28%);
+}
+
+.first-stage-tutorial-keycap-shape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.first-stage-tutorial-keycap-side {
+  fill: #eee9df;
+  stroke: #25221e;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+.first-stage-tutorial-keycap-front {
+  fill: #e3ddd1;
+  stroke: #25221e;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+.first-stage-tutorial-keycap-top {
+  fill: #fffdf8;
+  stroke: #25221e;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+.first-stage-tutorial-keycap-outline {
+  fill: none;
+  stroke: #25221e;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+
+.first-stage-tutorial-space-mark {
+  top: 18%;
+  color: #25221e;
+  font-family: var(--font-display);
+  font-size: clamp(0.95rem, 3.2vw, 1.4rem);
+  font-weight: 800;
+  white-space: nowrap;
+  transform: perspective(180px) translateX(-50%) rotateX(56deg) scaleX(1.08);
+  transform-origin: center;
+}
+
+.first-stage-tutorial-reset-keycap {
+  z-index: 2;
+  width: 4.4rem;
+  height: 3.8rem;
+  animation: tutorial-key-press 1.8s ease-in-out infinite;
+}
+
+.first-stage-tutorial-reset-keycap-shadow {
+  display: none;
+  z-index: 2;
+  width: 3.7rem;
+  transform: translate(-50%, -50%) translateY(2rem);
+  box-shadow: 0 0.15rem 0.35rem rgb(0 0 0 / 25%);
+}
+
+.first-stage-tutorial-key-mark {
+  position: absolute;
+  z-index: 1;
+  top: 11%;
+  left: 50%;
+  color: #25221e;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
+  transform: perspective(150px) translateX(-50%) rotateX(54deg);
+  transform-origin: center;
+}
+
+.first-stage-tutorial-key-mark.first-stage-tutorial-space-mark {
+  transform: perspective(180px) translateX(-50%) rotateX(56deg) scaleX(1.08);
+}
+
+.first-stage-tutorial-reset-spotlight,
+.first-stage-tutorial-reset-keycap {
+  display: none;
+}
+
+.first-stage-tutorial-reset-spotlight {
+  position: absolute;
+  z-index: 1;
+  border: 2px solid #fffdf5;
+  border-radius: 0.4rem;
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 58%);
+  pointer-events: none;
+}
+
+.first-stage-tutorial-keys.is-reset-phase .first-stage-tutorial-keycap {
+  display: none;
+}
+
+.first-stage-tutorial-keys.is-reset-phase .first-stage-tutorial-reset-spotlight,
+.first-stage-tutorial-keys.is-reset-phase .first-stage-tutorial-reset-keycap,
+.first-stage-tutorial-keys.is-reset-phase .first-stage-tutorial-reset-keycap-shadow {
+  display: grid;
+}
+
+@keyframes tutorial-key-press {
+  0%,
+  35%,
+  100% {
+    transform: translate(-50%, -50%) translateY(0);
+  }
+
+  48%,
+  62% {
+    transform: translate(-50%, -50%) translateY(0.35rem);
+  }
+}
+
+@keyframes tutorial-draw-line {
+  0%,
+  14%,
+  100% {
+    stroke-dashoffset: 1;
+  }
+
+  49%,
+  78% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes tutorial-cursor-draw-line {
+  0%,
+  14% {
+    transform: translate(-0.2rem, -0.2rem);
+  }
+
+  49%,
+  57% {
+    transform: translate(
+        calc(var(--tutorial-line-dx) - 0.2rem),
+        calc(var(--tutorial-line-dy) - 0.2rem)
+      )
+      scale(0.82);
+  }
+
+  65%,
+  100% {
+    transform: translate(
+      calc(var(--tutorial-line-dx) - 0.2rem),
+      calc(var(--tutorial-line-dy) - 0.2rem)
+    );
+  }
+}
+
+@keyframes stage-nine-draw {
+  0%,
+  8%,
+  100% {
+    stroke-dashoffset: 1;
+  }
+
+  42%,
+  78% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes stage-nine-cursor {
+  0%,
+  8% {
+    transform: translate(-0.2rem, -0.2rem);
+  }
+
+  42%,
+  78%,
+  100% {
+    transform: translate(
+      calc(var(--tutorial-line-dx) - 0.2rem),
+      calc(var(--tutorial-line-dy) - 0.2rem)
+    );
+  }
+}
+
+@keyframes stage-nine-cross {
+  0%,
+  45%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.65);
+  }
+
+  55%,
+  88% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes stage-nine-cross-draw {
+  0%,
+  48%,
+  100% {
+    stroke-dashoffset: 1;
+  }
+
+  65%,
+  88% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes stage-nine-message {
+  0%,
+  58%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0.4rem);
+  }
+
+  68%,
+  88% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes tutorial-cursor-click {
+  0%,
+  14% {
+    transform: translate(-4.5rem, -4rem) scale(1);
+  }
+
+  43%,
+  49% {
+    transform: translate(-0.2rem, -0.2rem) scale(0.82);
+  }
+
+  57%,
+  100% {
+    transform: translate(-0.2rem, -0.2rem) scale(1);
+  }
+}
+
+@keyframes tutorial-target-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+
+  50% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .first-stage-tutorial-target,
+  .first-stage-tutorial-cursor {
+    animation-duration: 4s;
+  }
+}
+
 .page-play {
   top: calc(-1 * var(--page-padding));
   left: 50%;
