@@ -516,11 +516,16 @@
                   aria-label="Map name"
                 />
               </label>
-              <div class="map-editor-select-wrap">
-                <select class="map-editor-select" data-map-library aria-label="Saved maps">
-                  <option value="">Saved maps</option>
-                </select>
-              </div>
+              <button
+                class="map-editor-button map-editor-library-toggle"
+                type="button"
+                data-map-library-toggle
+                aria-haspopup="dialog"
+                aria-expanded="false"
+                aria-controls="my-maps-picker"
+              >
+                My Maps
+              </button>
               <div class="map-editor-actions">
                 <button class="map-editor-button" type="button" data-map-new>New</button>
                 <button
@@ -546,6 +551,29 @@
                 </button>
               </div>
             </header>
+            <div class="my-maps-backdrop" data-my-maps-backdrop hidden>
+              <section
+                class="my-maps-picker"
+                id="my-maps-picker"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="my-maps-title"
+              >
+                <header class="my-maps-picker-header">
+                  <h2 id="my-maps-title">My Maps</h2>
+                  <button
+                    class="map-editor-button"
+                    type="button"
+                    data-my-maps-close
+                    aria-label="Close My Maps"
+                  >
+                    Close
+                  </button>
+                </header>
+                <div class="my-maps-grid" data-my-maps-grid></div>
+                <p class="my-maps-status" data-my-maps-status role="status" aria-live="polite"></p>
+              </section>
+            </div>
             <div class="map-editor-view-switch" role="tablist" aria-label="Editor mode">
               <button
                 class="map-editor-view-tab"

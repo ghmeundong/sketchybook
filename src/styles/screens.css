@@ -2000,11 +2000,6 @@ body.multiplayer-room-connected .selection-exit-btn {
   cursor: pointer;
 }
 
-.map-preview-play > canvas:not(.rough-frame-canvas) {
-  width: 1.25rem !important;
-  height: 1.25rem !important;
-}
-
 .map-preview-play > .rough-frame-canvas {
   z-index: 0 !important;
 }
@@ -2029,6 +2024,103 @@ body.multiplayer-room-connected .selection-exit-btn {
   padding: clamp(0.75rem, 2vw, 1.5rem);
   background: var(--paper-bright);
   box-shadow: 0 12px 40px rgb(61 53 43 / 24%);
+}
+
+.my-maps-backdrop {
+  position: fixed;
+  z-index: 950;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(38 29 20 / 42%);
+  backdrop-filter: blur(3px);
+}
+
+.my-maps-backdrop[hidden] {
+  display: none;
+}
+
+.my-maps-picker {
+  position: relative;
+  display: flex;
+  width: min(100%, 42rem);
+  max-height: min(80%, 38rem);
+  min-height: 12rem;
+  flex-direction: column;
+  padding: clamp(0.75rem, 2vw, 1.25rem);
+  background: var(--paper-bright);
+  box-shadow: 0 12px 40px rgb(61 53 43 / 30%);
+}
+
+.my-maps-picker-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+}
+
+.my-maps-picker-header h2 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.my-maps-grid {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10rem), 1fr));
+  align-content: start;
+  gap: 0.8rem;
+  overflow: auto;
+  padding: 0.25rem;
+}
+
+.my-map-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  aspect-ratio: 1.2;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.55rem;
+  border: 0;
+  background: rgb(255 253 245 / 75%);
+  color: var(--ink-strong);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 150ms ease, background-color 150ms ease;
+}
+
+.my-map-card:hover {
+  z-index: 1;
+  background: var(--paper-bright);
+  transform: translateY(-3px) rotate(-0.3deg);
+}
+
+.my-map-preview {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  background: #fffdf5;
+}
+
+.my-map-card > .rough-frame-canvas {
+  z-index: 0 !important;
+}
+
+.my-maps-status {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.5rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
 }
 
 .map-reference-panel[hidden] {
@@ -2222,23 +2314,9 @@ body.multiplayer-room-connected .selection-exit-btn {
   font-weight: 800;
 }
 
-.map-editor-select-wrap {
-  position: relative;
-  flex: 0 1 11rem;
-  min-width: 7rem;
-  min-height: 2.25rem;
-  padding: 0.35rem 0.55rem;
-}
-
-.map-editor-select {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  background: transparent;
-  color: var(--ink-strong);
-  font: inherit;
-  font-size: 0.8rem;
+.map-editor-library-toggle {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .map-editor-actions {
@@ -2414,7 +2492,6 @@ body.multiplayer-room-connected .selection-exit-btn {
 }
 
 .map-editor-button:focus-visible,
-.map-editor-select:focus-visible,
 .map-editor-name-input:focus-visible,
 .map-editor-tool:focus-visible {
   outline: 2px solid #bd6c36;
@@ -2663,11 +2740,6 @@ body.multiplayer-room-connected .selection-exit-btn {
     min-width: 0;
   }
 
-  .map-editor-select-wrap {
-    min-width: 0;
-    width: 100%;
-  }
-
   .map-editor-actions {
     grid-column: 1 / -1;
     width: 100%;
@@ -2756,4 +2828,9 @@ body.multiplayer-room-connected .selection-exit-btn {
   .map-editor-canvas-wrap {
     min-height: 0;
   }
+}
+
+.map-preview-play > canvas:not(.rough-frame-canvas) {
+  width: 1.25rem !important;
+  height: 1.25rem !important;
 }

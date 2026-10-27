@@ -53,6 +53,7 @@ function showSignedIn(user) {
   signOutBtn.appendChild(createActionIconCanvas("exit", { w: 52, h: 36, strokeWidth: 2.2 }));
   signOutBtn.addEventListener("click", () => {
     localStorage.removeItem("sketchy_user");
+    window.dispatchEvent(new Event("sketchybook:auth-change"));
     renderSignInButton();
   });
 
@@ -178,6 +179,7 @@ async function handleAuthCode(code) {
       };
       localStorage.setItem("sketchy_user", JSON.stringify(user));
       showSignedIn(user);
+      window.dispatchEvent(new Event("sketchybook:auth-change"));
       await syncProgressToServerOnLogin();
       return;
     }

@@ -16,7 +16,12 @@ const canvas = document.querySelector("[data-map-canvas]");
 const nameInput = document.querySelector("[data-map-name]");
 const status = document.querySelector("[data-map-status]");
 const undoButton = document.querySelector("[data-map-undo]");
-const librarySelect = document.querySelector("[data-map-library]");
+const libraryToggle = document.querySelector("[data-map-library-toggle]");
+const myMapsBackdrop = document.querySelector("[data-my-maps-backdrop]");
+const myMapsGrid = document.querySelector("[data-my-maps-grid]");
+const myMapsStatus = document.querySelector("[data-my-maps-status]");
+const myMapsPicker = document.querySelector(".my-maps-picker");
+const myMapsCloseButton = document.querySelector("[data-my-maps-close]");
 const tools = Array.from(document.querySelectorAll("[data-map-tool]"));
 const propertyText = document.querySelector("[data-property-text]");
 const propertyTextWrap = document.querySelector("[data-property-text-wrap]");
@@ -189,6 +194,53 @@ function createSharedMapCard(map) {
   return card;
 }
 
+function createSavedMapCard(map) {
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "my-map-card";
+  card.setAttribute("aria-label", `Open ${map.name || "Untitled map"}`);
+  const preview = document.createElement("canvas");
+  preview.className = "my-map-preview";
+  preview.setAttribute("aria-hidden", "true");
+  const title = document.createElement("span");
+  title.className = "map-card-name";
+  title.textContent = map.name || "Untitled map";
+  card.append(preview, title);
+  drawSharedMapPreview(preview, map);
+  card.addEventListener("click", () => {
+    loadMap(map.id);
+    closeMyMapsPicker();
+  });
+  attachRoughFrame(card, { inset: 0, outside: 3, strokeWidth: 1.5, roughness: 1.6 });
+  return card;
+}
+
+function renderMyMapsPicker() {
+  myMapsGrid.replaceChildren();
+  if (!savedMapsCache.length) {
+    myMapsStatus.textContent = "No saved maps yet. Create and save a map to see it here.";
+    return;
+  }
+  myMapsStatus.textContent = "";
+  savedMapsCache.forEach((map) => myMapsGrid.appendChild(createSavedMapCard(map)));
+}
+
+function closeMyMapsPicker() {
+  myMapsBackdrop.hidden = true;
+  libraryToggle.setAttribute("aria-expanded", "false");
+  libraryToggle.focus();
+}
+
+async function openMyMapsPicker() {
+  myMapsBackdrop.hidden = false;
+  libraryToggle.setAttribute("aria-expanded", "true");
+  myMapsStatus.textContent = "Loading your maps…";
+  await refreshLibrary();
+  if (myMapsBackdrop.hidden) return;
+  renderMyMapsPicker();
+  myMapsCloseButton.focus();
+}
+
 async function refreshMapBoard() {
   mapBoardStatus.textContent = "Loading shared maps…";
   mapBoardGrid.querySelectorAll("[data-shared-map-card], .map-board-empty").forEach((card) => card.remove());
@@ -208,9 +260,11 @@ async function refreshMapBoard() {
 }
 
 async function openSharedMap(mapId) {
+  if (!requireMapEditorLogin()) return;
   mapBoardStatus.textContent = "Opening shared map…";
   try {
     const map = await fetchSharedMap(mapId);
+    if (!requireMapEditorLogin()) return;
     objects = map.objects.map((object) => ({ ...object }));
     nameInput.value = map.name || "Untitled map";
     currentMapId = createMapId();
@@ -1130,7 +1184,13 @@ function readSavedMaps() {
   }
 }
 
-async function refreshLibrary(selectedId = currentMapId) {
+function requireMapEditorLogin() {
+  if (isUserLoggedIn()) return true;
+  mapBoardStatus.textContent = "Log in to create or edit maps.";
+  return false;
+}
+
+async function refreshLibrary() {
   let maps;
   if (isUserLoggedIn()) {
     try {
@@ -1156,11 +1216,7 @@ async function refreshLibrary(selectedId = currentMapId) {
   savedMapsCache = [...maps].sort((first, second) =>
     String(second.updatedAt || "").localeCompare(String(first.updatedAt || ""))
   );
-  librarySelect.replaceChildren(new Option("Saved maps", ""));
-  savedMapsCache.forEach((map) =>
-    librarySelect.add(new Option(map.name || "Untitled map", map.id))
-  );
-  librarySelect.value = savedMapsCache.some((map) => map.id === selectedId) ? selectedId : "";
+  if (myMapsBackdrop && !myMapsBackdrop.hidden) renderMyMapsPicker();
 }
 
 function loadMap(mapId) {
@@ -1184,7 +1240,6 @@ function startNewMap() {
   history = [];
   selectedIndex = -1;
   nameInput.value = "Untitled map";
-  librarySelect.value = "";
   undoButton.disabled = true;
   if (editorView === "json") setEditorView("canvas");
   render();
@@ -1215,8 +1270,9 @@ async function saveMap() {
   };
   try {
     await saveAccountMap(currentMapId, map);
-    await refreshLibrary(currentMapId);
+    await refreshLibrary();
     setStatus(`Saved “${map.name}” to your account.`);
+    showMapToast(`Saved “${map.name}” to My Maps.`);
   } catch (error) {
     showMapToast(error.message || "Could not save map to your account.");
   }
@@ -1241,6 +1297,7 @@ function exportMap() {
 function initializeMapEditor() {
   if (!canvas || !dom.mapEditorPage) return;
   const backButton = document.querySelector("[data-map-editor-back]");
+  document.body.appendChild(myMapsBackdrop);
   mapToast = document.createElement("div");
   mapToast.className = "multiplayer-toast map-editor-toast";
   mapToast.setAttribute("role", "status");
@@ -1263,7 +1320,8 @@ function initializeMapEditor() {
     mapCreateButton,
     mapPlayButton,
     mapShareButton,
-    document.querySelector(".map-editor-select-wrap"),
+    libraryToggle,
+    myMapsPicker,
     document.querySelector(".map-editor-canvas-wrap"),
     document.querySelector(".map-editor-json-source"),
     document.querySelector(".map-property-range-frame"),
@@ -1310,13 +1368,14 @@ function initializeMapEditor() {
   mapBoardBackButton.addEventListener("click", () => setActivePage(dom.modePage));
   mapBoardRefreshButton.addEventListener("click", () => void refreshMapBoard());
   mapCreateButton.addEventListener("click", () => {
+    if (!requireMapEditorLogin()) return;
     startNewMap();
     setActivePage(dom.mapEditorPage);
   });
   void refreshMapBoard();
   window.addEventListener("sketchybook:map-board-open", () => void refreshMapBoard());
   window.addEventListener("sketchybook:map-board-open", () => {
-    void refreshLibrary(librarySelect.value || "");
+    void refreshLibrary();
   });
   referenceContent.innerHTML = DOMPurify.sanitize(marked.parse(objectsReference));
   referenceButton.addEventListener("click", () => {
@@ -1326,7 +1385,16 @@ function initializeMapEditor() {
     backButton.dataset.tooltip = "Close JSON Guide";
     backButton.focus();
   });
-  librarySelect.addEventListener("change", () => loadMap(librarySelect.value));
+  libraryToggle.addEventListener("click", () => {
+    if (myMapsBackdrop.hidden) void openMyMapsPicker();
+    else closeMyMapsPicker();
+  });
+  myMapsCloseButton.addEventListener("click", closeMyMapsPicker);
+  myMapsBackdrop.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.target === myMapsBackdrop) closeMyMapsPicker();
+  });
   viewTabs.forEach((tab) => {
     tab.addEventListener("click", () => setEditorView(tab.dataset.editorView));
   });
@@ -1400,7 +1468,9 @@ function initializeMapEditor() {
   window.addEventListener("resize", render);
   window.addEventListener("keydown", (event) => {
     if (!dom.mapEditorPage.classList.contains("is-active")) return;
-    if (event.key === "Escape" && !referencePanel.hidden) {
+    if (event.key === "Escape" && !myMapsBackdrop.hidden) {
+      closeMyMapsPicker();
+    } else if (event.key === "Escape" && !referencePanel.hidden) {
       closeReference();
     } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
       event.preventDefault();
@@ -1419,9 +1489,8 @@ function initializeMapEditor() {
 
   if (typeof ResizeObserver === "function")
     new ResizeObserver(render).observe(canvas.parentElement);
-  void refreshLibrary("").then(() => {
+  void refreshLibrary().then(() => {
     if (savedMapsCache.length) {
-      librarySelect.value = savedMapsCache[0].id;
       loadMap(savedMapsCache[0].id);
     }
   });

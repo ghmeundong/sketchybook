@@ -29,7 +29,7 @@ import {
 } from "../physics/physics.js";
 import { createPhysicsBodiesForGameObjects } from "../physics/bodySetup.js";
 import { Rotor } from "../../objects/index.js";
-import { syncProgressForMode } from "../../../services/auth.js";
+import { isUserLoggedIn, syncProgressForMode } from "../../../services/auth.js";
 import { fetchSharedMaps } from "../../../services/sharedMaps.js";
 import { createGameObjects } from "../../stages/gameObjectFactory.js";
 import { DIFFICULTY_LEVELS, getDifficultyRules } from "../config/difficultyLevels.js";
@@ -327,6 +327,12 @@ export function updateStageUrl(stageNumber = null) {
 }
 
 export function setActivePage(page) {
+  if (page === dom.mapEditorPage && !isUserLoggedIn()) {
+    page = dom.modePage;
+    const modeStatus = document.querySelector("[data-mode-status]");
+    if (modeStatus) modeStatus.textContent = "Log in to access the map editor.";
+  }
+
   [dom.modePage, dom.mapBoardPage, dom.mapEditorPage, dom.startPage, dom.selectionPage, dom.playPage].forEach(
     (item) => {
       if (!item) return;
@@ -351,6 +357,12 @@ export function setActivePage(page) {
     }
   }
 }
+
+window.addEventListener("sketchybook:auth-change", () => {
+  if (!isUserLoggedIn() && dom.mapEditorPage?.classList.contains("is-active")) {
+    setActivePage(dom.modePage);
+  }
+});
 
 export async function tryEnterFullscreen() {
   const isDesktop =
