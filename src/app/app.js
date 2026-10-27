@@ -19,6 +19,7 @@ import {
   getNextDifficulty,
   getPreviousDifficulty,
 } from "../game/engine/config/difficultyLevels.js";
+import { translateText } from "./localization.js";
 
 const startTitle = document.querySelector("[data-start-button]");
 const titleText = document.querySelector(".brand-title");
@@ -289,11 +290,18 @@ function updateDifficultyDisplay(difficulty = roomDifficultyContext || selectedD
     const isChallengeDescriptionVisible =
       difficulty === DIFFICULTY_LEVELS.INSANE ||
       (difficulty === DIFFICULTY_LEVELS.HARD && getChallengeModePreference());
-    difficultyDescription.innerHTML = isChallengeDescriptionVisible
-      ? `${summary} / <span class="challenge-mode-constraints">draw only one line / no clicks</span>`
-      : summary;
+    difficultyDescription.replaceChildren(document.createTextNode(translateText(summary)));
+    if (isChallengeDescriptionVisible) {
+      difficultyDescription.append(document.createTextNode(" / "));
+      const constraints = document.createElement("span");
+      constraints.className = "challenge-mode-constraints";
+      constraints.textContent = translateText("draw only one line / no clicks");
+      difficultyDescription.appendChild(constraints);
+    }
   }
 }
+
+window.addEventListener("sketchybook:language-change", () => updateDifficultyDisplay());
 
 function changeDifficulty(newDifficulty) {
   const previousDifficulty = selectedDifficulty;

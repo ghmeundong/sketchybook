@@ -15,6 +15,7 @@ import {
 import { BALL_COLOR, GOLD, INK, INK_SOFT } from "../theme.js";
 import { connectToRoom, createRoom } from "../services/multiplayer.js";
 import { getStoredUser } from "../services/auth.js";
+import { translateText } from "./localization.js";
 
 const singleButton = document.querySelector("[data-select-single]");
 const multiplayerButton = document.querySelector("[data-select-multiplayer]");
@@ -141,15 +142,17 @@ function updateRoomDifficultyDisplay() {
   const challengeModeEnabled =
     selectedRoomDifficulty === "insane" ||
     (selectedRoomDifficulty === "hard" && getChallengeModePreference());
-  roomDifficultyDescription.replaceChildren(document.createTextNode(config.summary));
+  roomDifficultyDescription.replaceChildren(document.createTextNode(translateText(config.summary)));
   if (!challengeModeEnabled) return;
 
   roomDifficultyDescription.append(document.createTextNode(" / "));
   const constraints = document.createElement("span");
   constraints.className = "challenge-mode-constraints";
-  constraints.textContent = "draw only one line / no clicks";
+  constraints.textContent = translateText("draw only one line / no clicks");
   roomDifficultyDescription.appendChild(constraints);
 }
+
+window.addEventListener("sketchybook:language-change", updateRoomDifficultyDisplay);
 
 function updateRoomDifficultyContext(difficulty = null) {
   window.dispatchEvent(
