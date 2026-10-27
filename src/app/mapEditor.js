@@ -551,9 +551,45 @@ function acceptJsonSuggestion(index = selectedSuggestionIndex) {
   jsonEditor.focus();
 }
 
+function insertJsonText(text, caretOffset = text.length) {
+  const start = jsonEditor.selectionStart;
+  const end = jsonEditor.selectionEnd;
+  const nextValue = jsonEditor.value.slice(0, start) + text + jsonEditor.value.slice(end);
+  const nextCursor = start + caretOffset;
+
+  jsonEditor.value = nextValue;
+  jsonEditor.setSelectionRange(nextCursor, nextCursor);
+  jsonEditor.dispatchEvent(new Event("input", { bubbles: true }));
+  jsonEditor.focus({ preventScroll: true });
+  jsonEditor.setSelectionRange(nextCursor, nextCursor);
+}
+
 function handleJsonEditorKeydown(event) {
-  if (jsonSuggestions.hidden || activeSuggestions.length === 0) return;
+  const hasSuggestions = !jsonSuggestions.hidden && activeSuggestions.length > 0;
+  if (event.key === "Enter") {
+    const cursor = jsonEditor.selectionStart;
+    if (cursor === jsonEditor.selectionEnd) {
+      const before = jsonEditor.value.slice(0, cursor);
+      const after = jsonEditor.value.slice(cursor);
+      const previousCharacter = before.at(-1);
+      const nextCharacter = after[0];
+      const isEmptyArray = previousCharacter === "[" && nextCharacter === "]";
+      const isEmptyObject = previousCharacter === "{" && nextCharacter === "}";
+
+      if (isEmptyArray || isEmptyObject) {
+        event.preventDefault();
+        const currentLine = before.slice(before.lastIndexOf("\n") + 1);
+        const indentation = currentLine.match(/^[ \t]*/)?.[0] || "";
+        const innerIndentation = `${indentation}  `;
+        const insertion = `\n${innerIndentation}\n${indentation}`;
+        insertJsonText(insertion, 1 + innerIndentation.length);
+        return;
+      }
+    }
+  }
+
   if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    if (!hasSuggestions) return;
     event.preventDefault();
     const direction = event.key === "ArrowDown" ? 1 : -1;
     selectedSuggestionIndex =
@@ -561,9 +597,30 @@ function handleJsonEditorKeydown(event) {
     jsonSuggestions.querySelectorAll("[role=option]").forEach((option, index) => {
       option.setAttribute("aria-selected", String(index === selectedSuggestionIndex));
     });
-  } else if (event.key === "Enter" || event.key === "Tab") {
+  } else if (
+    event.key === "Enter" &&
+    hasSuggestions &&
+    findJsonSuggestions(jsonEditor.value, jsonEditor.selectionStart)
+  ) {
     event.preventDefault();
     acceptJsonSuggestion();
+  } else if (event.key === "Enter") {
+    const cursor = jsonEditor.selectionStart;
+    if (cursor !== jsonEditor.selectionEnd) return;
+    const before = jsonEditor.value.slice(0, cursor);
+    const currentLine = before.slice(before.lastIndexOf("\n") + 1);
+    const indentation = currentLine.match(/^[ \t]*/)?.[0] || "";
+
+    event.preventDefault();
+    const insertion = `\n${indentation}`;
+    insertJsonText(insertion);
+  } else if (event.key === "Tab") {
+    event.preventDefault();
+    if (hasSuggestions) {
+      acceptJsonSuggestion();
+    } else {
+      insertJsonText("  ");
+    }
   } else if (event.key === "Escape") {
     jsonSuggestions.hidden = true;
   }

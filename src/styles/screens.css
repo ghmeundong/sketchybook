@@ -2298,54 +2298,6 @@ body.multiplayer-room-connected .selection-exit-btn {
   margin-top: 0.3rem;
 }
 
-.map-json-highlight {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  margin: 0;
-  padding: 0;
-  color: var(--ink-strong);
-  pointer-events: none;
-}
-
-.map-json-highlight code {
-  position: absolute;
-  top: 0;
-  left: 0;
-  display: block;
-  width: max-content;
-  min-width: 100%;
-  min-height: 100%;
-  padding: 1rem;
-  color: var(--ink-strong);
-  font-family: var(--font-mono, Consolas, monospace);
-  font-size: 0.84rem;
-  line-height: 1.55;
-  white-space: pre;
-  tab-size: 2;
-}
-
-.json-token-key {
-  color: #805c0b;
-}
-
-.json-token-string {
-  color: #27704d;
-}
-
-.json-token-number {
-  color: #2867a0;
-}
-
-.json-token-literal {
-  color: #a34a32;
-  font-weight: 700;
-}
-
-.json-token-punctuation {
-  color: #897a62;
-}
-
 .map-reference-content code {
   padding: 0.1rem 0.25rem;
   background: rgb(61 53 43 / 7%);
@@ -2510,7 +2462,6 @@ body.multiplayer-room-connected .selection-exit-btn {
 
 .map-editor-json-workspace textarea {
   position: relative;
-  z-index: 1;
   width: 100%;
   min-height: 0;
   flex: 1 1 auto;
@@ -2519,13 +2470,14 @@ body.multiplayer-room-connected .selection-exit-btn {
   border: 0;
   border-radius: 1px;
   outline: none;
-  background: transparent;
-  color: transparent;
-  caret-color: var(--ink-strong);
-  -webkit-text-fill-color: transparent;
+  background: #fffdf5;
+  color: var(--ink-strong);
   font-family: var(--font-mono, Consolas, monospace);
   font-size: 0.84rem;
+  font-weight: 400;
   line-height: 1.55;
+  letter-spacing: normal;
+  word-spacing: normal;
   tab-size: 2;
   white-space: pre;
   overflow: auto;
@@ -2538,6 +2490,10 @@ body.multiplayer-room-connected .selection-exit-btn {
 .map-editor-json-workspace textarea:focus-visible {
   outline: 2px solid #bd6c36;
   outline-offset: -3px;
+}
+
+html[lang="ko"] .map-editor-json-workspace textarea {
+  font-weight: 400;
 }
 
 .map-json-suggestions {

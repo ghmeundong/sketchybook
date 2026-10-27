@@ -302,4 +302,3 @@ objects: [
 ]
 };
 
-That's it — add new object types to `docs/OBJECTS.md` when you extend the engine.
