@@ -282,7 +282,7 @@ function updateDifficultyDisplay(difficulty = roomDifficultyContext || selectedD
   const config = DIFFICULTY_CONFIG[difficulty];
 
   if (difficultyNameDisplay) {
-    difficultyNameDisplay.textContent = config?.name || "Unknown";
+    difficultyNameDisplay.textContent = translateText(config?.name || "Unknown");
   }
 
   if (difficultyDescription) {

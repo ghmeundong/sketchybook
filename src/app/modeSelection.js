@@ -136,7 +136,7 @@ function initializeArtwork() {
 
 function updateRoomDifficultyDisplay() {
   const config = DIFFICULTY_CONFIG[selectedRoomDifficulty];
-  if (roomDifficultyName) roomDifficultyName.textContent = config.name;
+  if (roomDifficultyName) roomDifficultyName.textContent = translateText(config.name);
   if (!roomDifficultyDescription) return;
 
   const challengeModeEnabled =

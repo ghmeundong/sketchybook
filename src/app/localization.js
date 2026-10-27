@@ -614,8 +614,6 @@ export function initializeLocalization() {
   const initialLanguage = savedLanguage || (language.toLowerCase().startsWith("ko") ? "ko" : "en");
   const languageSelect = document.querySelector("[data-language-select]");
   languageSelect?.addEventListener("change", () => setLanguage(languageSelect.value));
-  setLanguage(initialLanguage);
-
   mutationObserver = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       if (mutation.type === "characterData") translateTextNode(mutation.target);
@@ -633,4 +631,5 @@ export function initializeLocalization() {
     attributes: true,
     attributeFilter: translatedAttributes,
   });
+  setLanguage(initialLanguage);
 }
