@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu } = require("electron");
 const path = require("node:path");
 
 const WEB_APP_URL = "https://ghmeundong.github.io/sketchybook/";
@@ -9,6 +9,7 @@ function createWindow() {
     height: 800,
     minWidth: 960,
     minHeight: 600,
+    autoHideMenuBar: true,
     backgroundColor: "#f5ebcf",
     icon: path.join(__dirname, "..", "dist", "sketchybook.ico"),
     fullscreenable: true,
@@ -18,6 +19,7 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
+  window.maximize();
 
   const notifyFullscreenChange = (isFullscreen) => {
     window.webContents.send("electron-fullscreen-change", isFullscreen);
@@ -28,7 +30,17 @@ function createWindow() {
   window.webContents.on("before-input-event", (event, input) => {
     if (input.type !== "keyDown") return;
 
-    if (input.key === "F11") {
+    const key = input.key.toLowerCase();
+    const isBlockedShortcut =
+      (input.control && key === "w") ||
+      (input.control && input.shift && key === "i") ||
+      key === "f12" ||
+      key === "f5" ||
+      (input.control && key === "r");
+
+    if (isBlockedShortcut) {
+      event.preventDefault();
+    } else if (input.key === "F11") {
       event.preventDefault();
       window.setFullScreen(!window.isFullScreen());
     } else if (input.key === "Escape" && window.isFullScreen()) {
@@ -52,6 +64,7 @@ ipcMain.handle("set-fullscreen", (event, isFullscreen) => {
 });
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   createWindow();
 
   app.on("activate", () => {
