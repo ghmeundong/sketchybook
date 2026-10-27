@@ -73,6 +73,7 @@ function getStoredSelectedDifficulty() {
 }
 
 let selectedDifficulty = getStoredSelectedDifficulty();
+let roomDifficultyContext = null;
 
 window.__delayLoadReady = true;
 
@@ -227,11 +228,13 @@ function showInsaneStartWarningModal() {
   createInsaneStartWarningModal();
 }
 
-function updateChallengeModeAvailability() {
+function updateChallengeModeAvailability(difficulty = roomDifficultyContext || selectedDifficulty) {
   if (!challengeModeToggle) return;
-  const config = DIFFICULTY_CONFIG[selectedDifficulty];
-  const isInsane = selectedDifficulty === DIFFICULTY_LEVELS.INSANE;
+  const config = DIFFICULTY_CONFIG[difficulty];
+  const isInsane = difficulty === DIFFICULTY_LEVELS.INSANE;
   const isAvailable = config?.enableChallengeMode || false;
+  const isRoomGuest =
+    roomDifficultyContext != null && document.body.classList.contains("multiplayer-guest");
 
   if (isInsane) {
     setChallengeModePreference(true);
@@ -239,14 +242,16 @@ function updateChallengeModeAvailability() {
     setChallengeModePreference(false);
   }
 
-  challengeModeToggle.disabled = !isAvailable || isInsane;
-  challengeModeToggle.style.opacity = isAvailable && !isInsane ? "1" : "0.5";
-  challengeModeToggle.style.cursor = isAvailable && !isInsane ? "pointer" : "not-allowed";
+  challengeModeToggle.disabled = !isAvailable || isInsane || isRoomGuest;
+  challengeModeToggle.style.opacity = challengeModeToggle.disabled ? "0.5" : "1";
+  challengeModeToggle.style.cursor = challengeModeToggle.disabled ? "not-allowed" : "pointer";
   challengeModeOption.tabIndex = challengeModeToggle.disabled ? 0 : -1;
   if (challengeModeToggle.disabled) {
-    challengeModeOption.dataset.tooltip = isInsane
-      ? "Challenge Mode is always on in Insane and cannot be turned off."
-      : "Challenge Mode is available on Hard and Insane levels only.";
+    challengeModeOption.dataset.tooltip = isRoomGuest
+      ? "Only the host can change Challenge Mode."
+      : isInsane
+        ? "Challenge Mode is always on in Insane and cannot be turned off."
+        : "Challenge Mode is available on Hard and Insane levels only.";
   } else {
     delete challengeModeOption.dataset.tooltip;
   }
@@ -261,8 +266,14 @@ function updateChallengeModeAvailability() {
   }
 }
 
-function updateDifficultyDisplay() {
-  const config = DIFFICULTY_CONFIG[selectedDifficulty];
+window.addEventListener("sketchybook:room-difficulty-context", (event) => {
+  const { difficulty } = event.detail || {};
+  roomDifficultyContext = Object.values(DIFFICULTY_LEVELS).includes(difficulty) ? difficulty : null;
+  updateChallengeModeAvailability();
+});
+
+function updateDifficultyDisplay(difficulty = roomDifficultyContext || selectedDifficulty) {
+  const config = DIFFICULTY_CONFIG[difficulty];
 
   if (difficultyNameDisplay) {
     difficultyNameDisplay.textContent = config?.name || "Unknown";
@@ -271,8 +282,8 @@ function updateDifficultyDisplay() {
   if (difficultyDescription) {
     const summary = config?.summary || config?.description || "";
     const isChallengeDescriptionVisible =
-      selectedDifficulty === DIFFICULTY_LEVELS.INSANE ||
-      (selectedDifficulty === DIFFICULTY_LEVELS.HARD && getChallengeModePreference());
+      difficulty === DIFFICULTY_LEVELS.INSANE ||
+      (difficulty === DIFFICULTY_LEVELS.HARD && getChallengeModePreference());
     difficultyDescription.innerHTML = isChallengeDescriptionVisible
       ? `${summary} / <span class="challenge-mode-constraints">draw only one line / no clicks</span>`
       : summary;
@@ -576,6 +587,7 @@ if (challengeModeToggle && challengeModeOption) {
     void challengeToggleSound.play().catch(() => {});
     syncChallengeModeToggleUI();
     updateDifficultyDisplay();
+    window.dispatchEvent(new Event("sketchybook:challenge-mode-change"));
   });
 }
 

@@ -3,7 +3,15 @@ import { attachRoughFrame } from "../game/ui/roughFrame.js";
 import { setActivePage, startStage, updateStageUrl } from "../game/engine/core/gameController.js";
 import { createActionIconCanvas } from "../game/ui/uiIcons.js";
 import { dom } from "../game/engine/core/domRefs.js";
-import { getChallengeModePreference } from "../game/engine/config/challengeMode.js";
+import {
+  getChallengeModePreference,
+  setChallengeModePreference,
+} from "../game/engine/config/challengeMode.js";
+import {
+  DIFFICULTY_CONFIG,
+  getNextDifficulty,
+  getPreviousDifficulty,
+} from "../game/engine/config/difficultyLevels.js";
 import { GOLD, INK, INK_SOFT } from "../theme.js";
 import { connectToRoom, createRoom } from "../services/multiplayer.js";
 import { getStoredUser } from "../services/auth.js";
@@ -28,7 +36,10 @@ const roomPlayerCount = document.querySelector("[data-room-player-count]");
 const roomPlayerList = document.querySelector("[data-room-player-list]");
 const roomLeaveButton = document.querySelector("[data-room-leave]");
 const roomSelectStageButton = document.querySelector("[data-room-select-stage]");
-const roomDifficultySelect = document.querySelector("[data-room-difficulty]");
+const roomDifficultyPreviousButton = document.querySelector("[data-room-difficulty-prev]");
+const roomDifficultyNextButton = document.querySelector("[data-room-difficulty-next]");
+const roomDifficultyName = document.querySelector("[data-room-difficulty-name]");
+const roomDifficultyDescription = document.querySelector("[data-room-difficulty-description]");
 const guestWaitingMessage = document.querySelector("[data-guest-waiting]");
 const roomSelectedStage = document.querySelector("[data-room-selected-stage]");
 const selectionStatus = document.querySelector("[data-multiplayer-selection-status]");
@@ -122,6 +133,69 @@ function initializeArtwork() {
   });
 }
 
+function updateRoomDifficultyDisplay() {
+  const config = DIFFICULTY_CONFIG[selectedRoomDifficulty];
+  if (roomDifficultyName) roomDifficultyName.textContent = config.name;
+  if (!roomDifficultyDescription) return;
+
+  const challengeModeEnabled =
+    selectedRoomDifficulty === "insane" ||
+    (selectedRoomDifficulty === "hard" && getChallengeModePreference());
+  roomDifficultyDescription.replaceChildren(document.createTextNode(config.summary));
+  if (!challengeModeEnabled) return;
+
+  roomDifficultyDescription.append(document.createTextNode(" / "));
+  const constraints = document.createElement("span");
+  constraints.className = "challenge-mode-constraints";
+  constraints.textContent = "draw only one line / no clicks";
+  roomDifficultyDescription.appendChild(constraints);
+}
+
+function updateRoomDifficultyContext(difficulty = null) {
+  window.dispatchEvent(
+    new CustomEvent("sketchybook:room-difficulty-context", { detail: { difficulty } })
+  );
+}
+
+function selectRoomDifficulty(difficulty) {
+  if (roomRole !== "host" || roomSocket?.readyState !== WebSocket.OPEN) return;
+  selectedRoomDifficulty = difficulty;
+  updateRoomDifficultyContext(difficulty);
+  updateRoomDifficultyDisplay();
+  publishRoomDifficulty();
+}
+
+function publishRoomDifficulty() {
+  if (roomRole !== "host" || roomSocket?.readyState !== WebSocket.OPEN) return;
+  roomSocket.send(
+    JSON.stringify({
+      type: "select-difficulty",
+      difficulty: selectedRoomDifficulty,
+      challengeModeEnabled:
+        selectedRoomDifficulty === "insane" ||
+        (selectedRoomDifficulty === "hard" && getChallengeModePreference()),
+    })
+  );
+}
+
+function drawModeCardArrows() {
+  document.querySelectorAll(".mode-card-arrow").forEach((canvas) => {
+    const size = 20;
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+    canvas.width = size * pixelRatio;
+    canvas.height = size * pixelRatio;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+    const arrow = rough.canvas(canvas);
+    const options = { stroke: "#9b6c28", strokeWidth: 1.8, roughness: 1.5, bowing: 1.2 };
+    arrow.line(2, 10, 17, 10, options);
+    arrow.line(11, 4, 17, 10, options);
+    arrow.line(17, 10, 11, 16, options);
+  });
+}
+
 function initializeModeSelection() {
   if (!singleButton || !multiplayerButton || !dom.modePage || !dom.startPage) return;
 
@@ -135,6 +209,12 @@ function initializeModeSelection() {
     inset: 0,
     outside: 3,
     strokeWidth: 1.7,
+    roughness: 1.6,
+  });
+  attachRoughFrame(document.querySelector("[data-room-code-input-wrap]"), {
+    inset: 0,
+    outside: 2,
+    strokeWidth: 1.5,
     roughness: 1.6,
   });
   attachRoughFrame(roomLeaveButton, { inset: 0, outside: 3, strokeWidth: 1.7, roughness: 1.6 });
@@ -156,7 +236,19 @@ function initializeModeSelection() {
     strokeWidth: 1.7,
     roughness: 1.6,
   });
+  if (roomDifficultyPreviousButton) {
+    roomDifficultyPreviousButton.replaceChildren(
+      createActionIconCanvas("prev", { w: 24, h: 24, strokeWidth: 2 })
+    );
+  }
+  if (roomDifficultyNextButton) {
+    roomDifficultyNextButton.replaceChildren(
+      createActionIconCanvas("next", { w: 24, h: 24, strokeWidth: 2 })
+    );
+  }
+  updateRoomDifficultyDisplay();
   initializeArtwork();
+  drawModeCardArrows();
   roomToast = document.createElement("div");
   roomToast.className = "multiplayer-toast";
   roomToast.setAttribute("role", "status");
@@ -260,18 +352,15 @@ function initializeModeSelection() {
     showHostStageSelection();
   });
 
-  roomDifficultySelect?.addEventListener("change", () => {
-    if (roomRole !== "host" || roomSocket?.readyState !== WebSocket.OPEN) {
-      if (roomDifficultySelect) roomDifficultySelect.value = selectedRoomDifficulty;
-      return;
-    }
-    roomSocket.send(
-      JSON.stringify({
-        type: "select-difficulty",
-        difficulty: roomDifficultySelect.value,
-        challengeModeEnabled: roomDifficultySelect.value === "hard" && getChallengeModePreference(),
-      })
-    );
+  roomDifficultyPreviousButton?.addEventListener("click", () => {
+    selectRoomDifficulty(getPreviousDifficulty(selectedRoomDifficulty));
+  });
+  roomDifficultyNextButton?.addEventListener("click", () => {
+    selectRoomDifficulty(getNextDifficulty(selectedRoomDifficulty));
+  });
+  window.addEventListener("sketchybook:challenge-mode-change", () => {
+    updateRoomDifficultyDisplay();
+    publishRoomDifficulty();
   });
 
   selectionLeaveButton?.addEventListener("click", leaveRoom);
@@ -499,7 +588,12 @@ function handleRoomMessage(message) {
       ? message.selectedDifficulty
       : "normal";
     selectedRoomChallengeMode = Boolean(message.challengeModeEnabled);
-    if (roomDifficultySelect) roomDifficultySelect.value = selectedRoomDifficulty;
+    if (selectedRoomDifficulty === "insane") setChallengeModePreference(true);
+    else if (selectedRoomDifficulty === "hard") {
+      setChallengeModePreference(selectedRoomChallengeMode);
+    } else if (selectedRoomDifficulty !== "hard") setChallengeModePreference(false);
+    updateRoomDifficultyContext(selectedRoomDifficulty);
+    updateRoomDifficultyDisplay();
     const host = message.players.find((player) => player.isHost);
     const self = message.players.find((player) => player.playerId === selfPlayerId);
     if (self) roomRole = self.isHost ? "host" : "guest";
@@ -647,7 +741,7 @@ function syncHostOnlyInteractionTooltips() {
       delete element.dataset.tooltip;
     }
   });
-  const difficultyControl = roomDifficultySelect?.closest(".room-difficulty-control");
+  const difficultyControl = roomDifficultyPreviousButton?.closest(".room-difficulty-control");
   if (difficultyControl) {
     difficultyControl.classList.toggle("is-host-locked", isGuest);
     if (isGuest) {
@@ -655,6 +749,8 @@ function syncHostOnlyInteractionTooltips() {
     } else {
       delete difficultyControl.dataset.tooltip;
     }
+    if (roomDifficultyPreviousButton) roomDifficultyPreviousButton.disabled = isGuest;
+    if (roomDifficultyNextButton) roomDifficultyNextButton.disabled = isGuest;
   }
 }
 
@@ -662,6 +758,7 @@ function updateRoomRoleUI(host) {
   guestWaitingMessage.hidden = roomRole === "host";
   roomSelectStageButton.hidden = roomRole !== "host";
   syncHostOnlyInteractionTooltips();
+  updateRoomDifficultyContext(selectedRoomDifficulty);
   if (roomRole === "host") {
     roomStatus.textContent = "You are the host. Choose a stage from the stage selection screen.";
     return;
@@ -740,8 +837,12 @@ function resetRoomPanel(status) {
   if (roomSelectStageButton) roomSelectStageButton.hidden = true;
   roomRole = "guest";
   document.body.classList.remove("multiplayer-guest");
-  roomDifficultySelect?.closest(".room-difficulty-control")?.classList.remove("is-host-locked");
-  roomDifficultySelect?.closest(".room-difficulty-control")?.removeAttribute("title");
+  updateRoomDifficultyContext();
+  const difficultyControl = roomDifficultyPreviousButton?.closest(".room-difficulty-control");
+  difficultyControl?.classList.remove("is-host-locked");
+  difficultyControl?.removeAttribute("title");
+  if (roomDifficultyPreviousButton) roomDifficultyPreviousButton.disabled = true;
+  if (roomDifficultyNextButton) roomDifficultyNextButton.disabled = true;
   syncHostOnlyInteractionTooltips();
   selectedRoomStage = null;
   roomCode = null;

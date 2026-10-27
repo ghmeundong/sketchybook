@@ -85,7 +85,7 @@
                 <span class="mode-card-title">Singleplayer</span>
                 <span class="mode-card-description">Draw, guide, and solve at your own pace.</span>
                 <span class="mode-card-action"
-                  >PLAY SOLO <span aria-hidden="true">&#8594;</span></span
+                  >PLAY SOLO <canvas class="mode-card-arrow" aria-hidden="true"></canvas></span
                 >
               </button>
               <button
@@ -98,7 +98,7 @@
                 <span class="mode-card-title">Multiplayer</span>
                 <span class="mode-card-description">Draw together from different devices.</span>
                 <span class="mode-card-action"
-                  >PLAY TOGETHER <span aria-hidden="true">&#8594;</span></span
+                  >PLAY TOGETHER <canvas class="mode-card-arrow" aria-hidden="true"></canvas></span
                 >
               </button>
               <button class="mode-card mode-maker-card" type="button" data-select-map-maker>
@@ -106,7 +106,7 @@
                 <span class="mode-card-title">Map Maker</span>
                 <span class="mode-card-description">Build and share your own maps.</span>
                 <span class="mode-card-action"
-                  >MAKE A MAP <span aria-hidden="true">&#8594;</span></span
+                  >MAKE A MAP <canvas class="mode-card-arrow" aria-hidden="true"></canvas></span
                 >
               </button>
             </div>
@@ -120,16 +120,18 @@
                 <form class="room-join-form" data-room-join-form>
                   <label class="room-code-label" for="room-code-input">Have a room code?</label>
                   <div class="room-code-entry">
-                    <input
-                      class="room-code-input"
-                      id="room-code-input"
-                      name="roomCode"
-                      type="text"
-                      inputmode="text"
-                      autocomplete="off"
-                      maxlength="6"
-                      aria-label="Room code"
-                    />
+                    <div class="room-code-input-wrap" data-room-code-input-wrap>
+                      <input
+                        class="room-code-input"
+                        id="room-code-input"
+                        name="roomCode"
+                        type="text"
+                        inputmode="text"
+                        autocomplete="off"
+                        maxlength="6"
+                        aria-label="Room code"
+                      />
+                    </div>
                     <button class="room-action-button room-join-button" type="submit">Join</button>
                   </div>
                 </form>
@@ -147,15 +149,37 @@
                 </div>
                 <p class="room-player-count" data-room-player-count aria-live="polite"></p>
                 <ul class="room-player-list" data-room-player-list></ul>
-                <label class="room-difficulty-control" for="room-difficulty">
-                  <span>Difficulty</span>
-                  <select id="room-difficulty" data-room-difficulty>
-                    <option value="easy">Easy</option>
-                    <option value="normal" selected>Normal</option>
-                    <option value="hard">Hard</option>
-                    <option value="insane">Insane</option>
-                  </select>
-                </label>
+                <div class="room-difficulty-control">
+                  <span class="room-difficulty-label">Difficulty</span>
+                  <div class="difficulty-selector room-difficulty-selector">
+                    <button
+                      class="difficulty-nav-btn"
+                      type="button"
+                      data-room-difficulty-prev
+                      aria-label="Previous difficulty"
+                    >
+                      &lt;
+                    </button>
+                    <div class="difficulty-display">
+                      <span class="difficulty-name" data-room-difficulty-name>Normal</span>
+                    </div>
+                    <button
+                      class="difficulty-nav-btn"
+                      type="button"
+                      data-room-difficulty-next
+                      aria-label="Next difficulty"
+                    >
+                      &gt;
+                    </button>
+                  </div>
+                  <p
+                    class="difficulty-description room-difficulty-description"
+                    data-room-difficulty-description
+                    aria-live="polite"
+                  >
+                    Floor on / normal draw / line limit 5000 / challenge mode unavailable
+                  </p>
+                </div>
                 <p class="guest-waiting-message" data-guest-waiting hidden>
                   Waiting for the host to choose a stage…
                 </p>
@@ -489,7 +513,10 @@
             </p>
             <div class="map-board-grid" data-map-board-grid>
               <button class="map-create-card" type="button" data-map-create>
-                <span class="map-create-preview"><span class="map-create-plus" aria-hidden="true">+</span></span>
+                <span class="map-create-preview">
+                  <canvas class="map-create-outline" data-map-create-outline aria-hidden="true"></canvas>
+                  <span class="map-create-plus" aria-hidden="true">+</span>
+                </span>
                 <span>Create a map</span>
               </button>
             </div>

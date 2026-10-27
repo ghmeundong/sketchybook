@@ -160,6 +160,34 @@ function drawSharedMapPreview(previewCanvas, map) {
   });
 }
 
+function drawMapCreateOutline() {
+  const outline = document.querySelector("[data-map-create-outline]");
+  if (!outline) return;
+
+  const draw = () => {
+    const bounds = outline.getBoundingClientRect();
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+    const width = Math.max(1, bounds.width);
+    const height = Math.max(1, bounds.height);
+    outline.width = Math.ceil(width * pixelRatio);
+    outline.height = Math.ceil(height * pixelRatio);
+    const context = outline.getContext("2d");
+    if (!context) return;
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+    rough.canvas(outline).rectangle(5, 5, width - 10, height - 10, {
+      stroke: "rgba(79, 59, 36, 0.55)",
+      strokeWidth: 1.5,
+      roughness: 1.6,
+      strokeLineDash: [5, 4],
+      fill: "transparent",
+    });
+  };
+
+  if (typeof ResizeObserver === "function") new ResizeObserver(draw).observe(outline);
+  window.requestAnimationFrame(draw);
+}
+
 function createSharedMapCard(map) {
   const card = document.createElement("article");
   card.className = "map-shared-card";
@@ -1343,6 +1371,7 @@ function initializeMapEditor() {
   mapBoardRefreshButton.appendChild(
     createActionIconCanvas("retry", { w: 48, h: 40, strokeWidth: 2.5 })
   );
+  drawMapCreateOutline();
   const closeReference = () => {
     referencePanel.hidden = true;
     referenceButton.setAttribute("aria-expanded", "false");

@@ -150,9 +150,11 @@
   font-weight: 900;
 }
 
-.mode-card-action span {
-  color: #9b6c28;
-  font-size: 1.05rem;
+.mode-card-arrow {
+  display: block;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
 }
 
 .mode-screen-status {
@@ -289,14 +291,23 @@
   gap: 0.65rem;
 }
 
+.room-code-input-wrap {
+  position: relative;
+  min-width: 0;
+  min-height: 2.7rem;
+  background: rgb(255 252 241 / 90%);
+}
+
 .room-code-input {
+  position: relative;
+  z-index: 1;
   width: 100%;
   min-width: 0;
   min-height: 2.7rem;
   padding: 0.5rem 0.7rem;
-  border: 1px solid rgb(79 59 36 / 38%);
+  border: 0;
   border-radius: 0;
-  background: rgb(255 252 241 / 90%);
+  background: transparent;
   color: var(--ink-strong);
   font: inherit;
   font-size: 1rem;
@@ -349,43 +360,32 @@
 }
 
 .room-difficulty-control {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
   width: 100%;
   color: var(--ink-strong);
   font-size: 0.85rem;
   font-weight: 800;
 }
 
-.room-difficulty-control select {
-  min-width: 9rem;
-  min-height: 2.4rem;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid rgb(60 47 31 / 28%);
-  border-radius: 0;
-  background: #fff8e8;
-  color: var(--ink);
-  font: inherit;
+.room-difficulty-label {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
 }
 
-.room-difficulty-control select:disabled {
-  opacity: 0.8;
+.room-difficulty-selector {
+  margin: 0.25rem 0 0;
 }
 
-.room-difficulty-control select:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: 2px;
+.room-difficulty-selector button {
+  position: relative;
 }
 
-.room-difficulty-control.is-host-locked {
-  cursor: not-allowed;
-}
-
-.room-difficulty-control.is-host-locked select {
-  cursor: not-allowed;
-  pointer-events: none;
+.room-difficulty-description {
+  max-width: 24rem;
+  margin: 0.15rem 0 0.5rem;
+  text-align: center;
 }
 
 body.multiplayer-guest [data-host-only-tooltip] {
@@ -1943,9 +1943,17 @@ body.multiplayer-room-connected .selection-exit-btn {
 }
 
 .map-create-preview {
+  position: relative;
   display: grid;
   place-items: center;
-  border: 1px dashed rgb(79 59 36 / 35%);
+}
+
+.map-create-outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .map-create-plus {
@@ -2833,4 +2841,13 @@ body.multiplayer-room-connected .selection-exit-btn {
 .map-preview-play > canvas:not(.rough-frame-canvas) {
   width: 1.25rem !important;
   height: 1.25rem !important;
+}
+
+.room-difficulty-selector button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.room-difficulty-control.is-host-locked .difficulty-selector button {
+  cursor: not-allowed;
 }
