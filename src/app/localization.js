@@ -150,6 +150,7 @@ const koreanText = {
     "저장된 맵이 없습니다. 맵을 만들고 저장하면 여기에 표시됩니다.",
   "Loading your maps…": "내 맵을 불러오는 중…",
   "Loading shared maps…": "공유 맵을 불러오는 중…",
+  "Not found": "찾을 수 없음",
   "No shared maps yet. Create one and share it with the community.":
     "아직 공유된 맵이 없습니다. 맵을 만들어 커뮤니티와 공유해 보세요.",
   "Opening shared map…": "공유 맵을 여는 중…",
