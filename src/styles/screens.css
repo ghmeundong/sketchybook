@@ -53,6 +53,11 @@
     2px 2px 0 rgb(79 59 36 / 18%);
 }
 
+.mode-screen-title,
+.brand-title {
+  font-family: sketchyfont, serif;
+}
+
 .mode-screen-prompt {
   margin: 0.8rem 0 1.5rem;
   color: var(--ink-soft);
@@ -915,6 +920,27 @@ body.settings-is-open .global-app-toolbar {
   align-items: flex-end;
   gap: 0.35rem;
   width: 100%;
+}
+
+.settings-language-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.settings-language-option select {
+  min-width: 7rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid rgb(79 59 36 / 35%);
+  background: var(--paper-bright);
+  color: var(--ink-strong);
+  font: inherit;
+  cursor: pointer;
 }
 
 .settings-volume-option {

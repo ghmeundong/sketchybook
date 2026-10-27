@@ -58,7 +58,9 @@ function showSignedIn(user) {
   });
 
   const label = document.createElement("span");
-  label.textContent = user.name || user.email || "Signed in";
+  const accountName = user.name || user.email;
+  label.className = accountName ? "auth-user-name" : "auth-user-status";
+  label.textContent = accountName || "Signed in";
   label.style.fontSize = "0.82rem";
   label.style.lineHeight = "1.2";
   label.style.color = INK;
@@ -220,7 +222,7 @@ export function initGoogleAuth() {
         const u = JSON.parse(raw);
         showSignedIn(u);
         return;
-      } catch (e) {
+      } catch {
         localStorage.removeItem("sketchy_user");
       }
     }

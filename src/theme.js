@@ -9,4 +9,27 @@ export const PAPER_CARD = "#f7ebc8";
 export const PAPER_BRIGHT = "#fff8e8";
 export const GOLD = "#d4af37";
 export const DANGER = "#c0392b";
-export const FONT_DISPLAY = "MyeongjoFont, serif";
+function getInitialKoreanLocale() {
+  try {
+    return (
+      localStorage.getItem("sketchybook.language") ||
+      (typeof navigator !== "undefined" ? navigator.languages?.[0] || navigator.language : "") ||
+      ""
+    )
+      .toLowerCase()
+      .startsWith("ko");
+  } catch {
+    return (
+      typeof navigator !== "undefined" &&
+      (navigator.languages?.[0] || navigator.language || "").toLowerCase().startsWith("ko")
+    );
+  }
+}
+
+export let FONT_DISPLAY = getInitialKoreanLocale()
+  ? "ryuryufont, myeongjofont, serif"
+  : "myeongjofont, serif";
+
+export function setDisplayLanguage(isKorean) {
+  FONT_DISPLAY = isKorean ? "ryuryufont, myeongjofont, serif" : "myeongjofont, serif";
+}

@@ -7,6 +7,8 @@ import { attachRoughFrame } from "../game/ui/roughFrame.js";
 import { createActionIconCanvas } from "../game/ui/uiIcons.js";
 import { GOLD, INK, INK_SOFT } from "../theme.js";
 import objectsReference from "../../docs/OBJECTS.md?raw";
+import objectsReferenceKo from "../../docs/OBJECTS.ko.md?raw";
+import { isKoreanLocale } from "./localization.js";
 import { fetchAccountMaps, saveAccountMap } from "../services/accountMaps.js";
 import { isUserLoggedIn } from "../services/auth.js";
 import { fetchSharedMap, fetchSharedMaps, publishSharedMap } from "../services/sharedMaps.js";
@@ -125,31 +127,49 @@ function drawSharedMapPreview(previewCanvas, map) {
     const y = centerY * height;
     const options = { stroke: INK, strokeWidth: 2, roughness: 1.5, seed: index + 1 };
     if (object.type === "platform") {
-      rc.rectangle(x - (object.width * width) / 2, y - (object.height * height) / 2,
-        object.width * width, object.height * height, options);
+      rc.rectangle(
+        x - (object.width * width) / 2,
+        y - (object.height * height) / 2,
+        object.width * width,
+        object.height * height,
+        options
+      );
     } else if (object.type === "star") {
       const radius = Math.max(5, (object.radius || 0.025) * height);
       const points = Array.from({ length: 10 }, (_, pointIndex) => {
-        const angle = -Math.PI / 2 + pointIndex * Math.PI / 5;
+        const angle = -Math.PI / 2 + (pointIndex * Math.PI) / 5;
         const size = pointIndex % 2 ? radius * 0.45 : radius;
         return [x + Math.cos(angle) * size, y + Math.sin(angle) * size];
       });
       rc.polygon(points, { ...options, stroke: "#a27a28", fill: GOLD, fillStyle: "solid" });
     } else if (object.type === "segment") {
-      rc.line(object.x1 * width, object.y1 * height, object.x2 * width, object.y2 * height, options);
+      rc.line(
+        object.x1 * width,
+        object.y1 * height,
+        object.x2 * width,
+        object.y2 * height,
+        options
+      );
     } else if (["complex", "poly", "rotor"].includes(object.type) && Array.isArray(object.points)) {
       const points = object.points.map((point) => [point.x * width, point.y * height]);
       if (points.length > 2 && object.closed !== false) rc.polygon(points, options);
-      else for (let pointIndex = 0; pointIndex < points.length - 1; pointIndex += 1) {
-        rc.line(...points[pointIndex], ...points[pointIndex + 1], options);
-      }
+      else
+        for (let pointIndex = 0; pointIndex < points.length - 1; pointIndex += 1) {
+          rc.line(...points[pointIndex], ...points[pointIndex + 1], options);
+        }
     } else if (object.type === "portal") {
-      rc.ellipse(x, y, object.width * width, object.height * height,
-        { ...options, stroke: object.portalId === "blue" ? "#4387c4" : "#e88936" });
+      rc.ellipse(x, y, object.width * width, object.height * height, {
+        ...options,
+        stroke: object.portalId === "blue" ? "#4387c4" : "#e88936",
+      });
     } else if (object.type === "stripedRect") {
-      rc.rectangle(x - (object.width * width) / 2, y - (object.height * height) / 2,
-        object.width * width, object.height * height,
-        { ...options, stroke: "#d84335", fill: "#e74c3c", fillStyle: "hachure", hachureGap: 8 });
+      rc.rectangle(
+        x - (object.width * width) / 2,
+        y - (object.height * height) / 2,
+        object.width * width,
+        object.height * height,
+        { ...options, stroke: "#d84335", fill: "#e74c3c", fillStyle: "hachure", hachureGap: 8 }
+      );
     } else {
       rc.circle(x, y, Math.max(8, (object.radius || 0.025) * height * 2), {
         ...options,
@@ -271,7 +291,9 @@ async function openMyMapsPicker() {
 
 async function refreshMapBoard() {
   mapBoardStatus.textContent = "Loading shared maps…";
-  mapBoardGrid.querySelectorAll("[data-shared-map-card], .map-board-empty").forEach((card) => card.remove());
+  mapBoardGrid
+    .querySelectorAll("[data-shared-map-card], .map-board-empty")
+    .forEach((card) => card.remove());
   try {
     const maps = await fetchSharedMaps();
     maps.forEach((map) => mapBoardGrid.appendChild(createSharedMapCard(map)));
@@ -303,7 +325,9 @@ async function openSharedMap(mapId) {
     setActivePage(dom.mapEditorPage);
     render();
     syncProperties();
-    setStatus(`Opened shared map by ${map.authorName || "Sketchybook player"}. Save to keep your own copy.`);
+    setStatus(
+      `Opened shared map by ${map.authorName || "Sketchybook player"}. Save to keep your own copy.`
+    );
   } catch (error) {
     mapBoardStatus.textContent = error.message || "Could not open this map.";
   }
@@ -1406,7 +1430,8 @@ function initializeMapEditor() {
   window.addEventListener("sketchybook:map-board-open", () => {
     void refreshLibrary();
   });
-  referenceContent.innerHTML = DOMPurify.sanitize(marked.parse(objectsReference));
+  const reference = isKoreanLocale() ? objectsReferenceKo : objectsReference;
+  referenceContent.innerHTML = DOMPurify.sanitize(marked.parse(reference));
   referenceButton.addEventListener("click", () => {
     referencePanel.hidden = false;
     referenceButton.setAttribute("aria-expanded", "true");

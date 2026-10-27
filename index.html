@@ -1,7 +1,8 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" translate="no">
   <head>
     <meta charset="UTF-8" />
+    <meta name="google" content="notranslate" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta
       name="description"
@@ -85,8 +86,8 @@
                 <span class="mode-card-title">Singleplayer</span>
                 <span class="mode-card-description">Draw, guide, and solve at your own pace.</span>
                 <span class="mode-card-action"
-                  >PLAY SOLO <canvas class="mode-card-arrow" aria-hidden="true"></canvas></span
-                >
+                  >PLAY SOLO <canvas class="mode-card-arrow" aria-hidden="true"></canvas
+                ></span>
               </button>
               <button
                 class="mode-card mode-multiplayer-card"
@@ -98,16 +99,16 @@
                 <span class="mode-card-title">Multiplayer</span>
                 <span class="mode-card-description">Draw together from different devices.</span>
                 <span class="mode-card-action"
-                  >PLAY TOGETHER <canvas class="mode-card-arrow" aria-hidden="true"></canvas></span
-                >
+                  >PLAY TOGETHER <canvas class="mode-card-arrow" aria-hidden="true"></canvas
+                ></span>
               </button>
               <button class="mode-card mode-maker-card" type="button" data-select-map-maker>
                 <canvas class="mode-card-art" data-mode-art="maker" aria-hidden="true"></canvas>
                 <span class="mode-card-title">Map Maker</span>
                 <span class="mode-card-description">Build and share your own maps.</span>
                 <span class="mode-card-action"
-                  >MAKE A MAP <canvas class="mode-card-arrow" aria-hidden="true"></canvas></span
-                >
+                  >MAKE A MAP <canvas class="mode-card-arrow" aria-hidden="true"></canvas
+                ></span>
               </button>
             </div>
             <p class="mode-screen-status" data-mode-status aria-live="polite"></p>
@@ -256,6 +257,13 @@
                     <span class="settings-toggle-switch-thumb"></span>
                   </button>
                 </div>
+                <label class="settings-language-option" for="language-select">
+                  <span>Language</span>
+                  <select id="language-select" data-language-select>
+                    <option value="en">English</option>
+                    <option value="ko">한국어</option>
+                  </select>
+                </label>
                 <div class="settings-volume-option">
                   <div class="settings-volume-label">
                     <span class="settings-volume-icon" data-audio-icon="music"></span>
@@ -514,7 +522,11 @@
             <div class="map-board-grid" data-map-board-grid>
               <button class="map-create-card" type="button" data-map-create>
                 <span class="map-create-preview">
-                  <canvas class="map-create-outline" data-map-create-outline aria-hidden="true"></canvas>
+                  <canvas
+                    class="map-create-outline"
+                    data-map-create-outline
+                    aria-hidden="true"
+                  ></canvas>
                   <span class="map-create-plus" aria-hidden="true">+</span>
                 </span>
                 <span>Create a map</span>

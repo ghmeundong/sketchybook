@@ -1,23 +1,26 @@
 import { INK, FONT_DISPLAY } from "../../theme.js";
+import { translateText } from "../../app/localization.js";
 
 export class TextLabel {
   constructor(opts = {}) {
     const { x, y, text, fontSize, color, fontFamily } = opts || {};
     this.nx = typeof x === "number" ? x : 0.5;
     this.ny = typeof y === "number" ? y : 0.2;
-    this.text = text || "";
+    this.sourceText = text || "";
+    this.text = translateText(this.sourceText);
     this.fontSize = typeof fontSize === "number" ? fontSize : 0.04;
     this.color = typeof color === "string" ? color : INK;
-    this.fontFamily = typeof fontFamily === "string" ? fontFamily : FONT_DISPLAY;
+    this.fontFamily = typeof fontFamily === "string" ? fontFamily : null;
     this.texture = null;
     this.textureOffset = null;
     this._lastCanvasSize = null;
+    this._lastFontFamily = null;
   }
 
   createTexture(canvasW, canvasH) {
     const fontPx =
       this.fontSize > 1 ? this.fontSize : Math.max(10, Math.round(this.fontSize * canvasH));
-    const fontFamily = this.fontFamily || "MyeongjoFont, serif";
+    const fontFamily = this.fontFamily || FONT_DISPLAY;
     const lines = String(this.text)
       .split("\n")
       .map((line) => line.trim());
@@ -69,15 +72,23 @@ export class TextLabel {
       height,
     };
     this._lastCanvasSize = { w: canvasW, h: canvasH };
+    this._lastFontFamily = fontFamily;
   }
 
   draw(canvasW, canvasH, ctx) {
     if (!ctx) return;
+    const nextText = translateText(this.sourceText);
+    const fontFamily = this.fontFamily || FONT_DISPLAY;
+    if (this.text !== nextText) {
+      this.text = nextText;
+      this.texture = null;
+    }
     if (
       !this.texture ||
       !this._lastCanvasSize ||
       this._lastCanvasSize.w !== canvasW ||
-      this._lastCanvasSize.h !== canvasH
+      this._lastCanvasSize.h !== canvasH ||
+      this._lastFontFamily !== fontFamily
     ) {
       this.createTexture(canvasW, canvasH);
     }

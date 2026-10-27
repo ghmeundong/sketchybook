@@ -18,6 +18,18 @@
   --font-display: myeongjofont, serif;
 }
 
+@font-face {
+  font-family: ryuryufont;
+  src: url("../assets/font/온글잎-류류체/온글잎 류류체.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+html[lang="ko"] {
+  --font-display: ryuryufont, myeongjofont, serif;
+}
+
 /* Mobile landscape optimization */
 @media (width <= 1024px) and (orientation: landscape) {
   :root {
@@ -63,6 +75,14 @@ html {
   src: url("../assets/font/sketchy-font/Sketchy-1jX4.ttf") format("truetype");
   font-weight: 400;
   font-style: normal;
+}
+
+@font-face {
+  font-family: sketchyfont;
+  src: url("../assets/font/sketchy-font/Sketchy-1jX4.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
 body {
