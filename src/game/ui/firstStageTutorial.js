@@ -80,12 +80,14 @@ export function removeActiveTutorial() {
   activeTutorial = null;
 }
 
-export function startFirstStageTutorial(board, canvas, ball) {
+export function startFirstStageTutorial(board, canvas, ball, { force = false } = {}) {
   removeActiveTutorial();
   const status = readFirstStageTutorialStatus();
-  if (!shouldShowFirstStageTutorial(status) || !board || !canvas || !ball) return false;
+  if ((!force && !shouldShowFirstStageTutorial(status)) || !board || !canvas || !ball) {
+    return false;
+  }
 
-  writeFirstStageTutorialStatus("in_progress");
+  if (!force) writeFirstStageTutorialStatus("in_progress");
   const overlay = document.createElement("div");
   overlay.className = "first-stage-tutorial";
   overlay.setAttribute("role", "group");
@@ -124,7 +126,7 @@ export function startFirstStageTutorial(board, canvas, ball) {
   };
 
   const finish = (nextStatus) => {
-    writeFirstStageTutorialStatus(nextStatus);
+    if (!force) writeFirstStageTutorialStatus(nextStatus);
     removeActiveTutorial();
   };
   const onBallClick = () => finish("completed");
@@ -146,11 +148,11 @@ export function startFirstStageTutorial(board, canvas, ball) {
   return true;
 }
 
-export function startSecondStageTutorial(board, canvas, platforms) {
+export function startSecondStageTutorial(board, canvas, platforms, { force = false } = {}) {
   removeActiveTutorial();
   const status = readSecondStageTutorialStatus();
   if (
-    !shouldShowSecondStageTutorial(status) ||
+    (!force && !shouldShowSecondStageTutorial(status)) ||
     !board ||
     !canvas ||
     !Array.isArray(platforms) ||
@@ -159,7 +161,7 @@ export function startSecondStageTutorial(board, canvas, platforms) {
     return false;
   }
 
-  writeSecondStageTutorialStatus(getSecondStageTutorialStatusOnEntry(status));
+  if (!force) writeSecondStageTutorialStatus(getSecondStageTutorialStatusOnEntry(status));
   const overlay = document.createElement("div");
   overlay.className = "first-stage-tutorial first-stage-tutorial-line";
   overlay.setAttribute("role", "group");
@@ -227,6 +229,10 @@ export function startSecondStageTutorial(board, canvas, platforms) {
   };
 
   const onStageClear = (event) => {
+    if (force && event.detail?.stageNumber === 2) {
+      removeActiveTutorial();
+      return;
+    }
     const nextStatus = getSecondStageTutorialStatusAfterClear(
       readSecondStageTutorialStatus(),
       event.detail?.stageNumber
@@ -248,13 +254,16 @@ export function startSecondStageTutorial(board, canvas, platforms) {
   return true;
 }
 
-export function startThirdStageTutorial(board, retryButton) {
+export function startThirdStageTutorial(board, retryButton, { force = false } = {}) {
   removeActiveTutorial();
   const status = readThirdStageTutorialStatus();
-  if (!shouldShowThirdStageTutorial(status) || !board || !retryButton) return false;
+  if ((!force && !shouldShowThirdStageTutorial(status)) || !board || !retryButton) return false;
 
-  const initialStatus = getThirdStageTutorialStatusOnEntry(status);
-  writeThirdStageTutorialStatus(initialStatus);
+  let tutorialStatus = force
+    ? "in_progress_stage3_space"
+    : getThirdStageTutorialStatusOnEntry(status);
+  if (!tutorialStatus) return false;
+  if (!force) writeThirdStageTutorialStatus(tutorialStatus);
 
   const overlay = document.createElement("div");
   overlay.className = "first-stage-tutorial first-stage-tutorial-keys";
@@ -308,31 +317,36 @@ export function startThirdStageTutorial(board, retryButton) {
   };
 
   const updatePhase = () => {
-    const isResetPhase = readThirdStageTutorialStatus() === "in_progress_stage3_reset";
+    const isResetPhase = tutorialStatus === "in_progress_stage3_reset";
     overlay.classList.toggle("is-reset-phase", isResetPhase);
     if (isResetPhase) updateResetSpotlight();
   };
   const onSpacebar = () => {
-    const nextStatus = advanceThirdStageTutorial(readThirdStageTutorialStatus());
+    const nextStatus = advanceThirdStageTutorial(tutorialStatus);
     if (nextStatus === "in_progress_stage3_reset") {
-      writeThirdStageTutorialStatus(nextStatus);
+      tutorialStatus = nextStatus;
+      if (!force) writeThirdStageTutorialStatus(nextStatus);
       updatePhase();
     }
   };
   const onStageRetry = (event) => {
     if (event.detail?.stageNumber !== 3) return;
-    const currentStatus = readThirdStageTutorialStatus();
+    const currentStatus = tutorialStatus;
     if (currentStatus === "in_progress_stage3_space") {
-      event.preventDefault();
+      if (!force) event.preventDefault();
       return;
     }
     if (shouldCompleteTutorialOnReset(currentStatus, 3)) {
-      writeThirdStageTutorialStatus("completed");
+      if (!force) writeThirdStageTutorialStatus("completed");
       removeActiveTutorial();
     }
   };
   const onStageClear = (event) => {
     if (event.detail?.stageNumber !== 3) return;
+    if (force) {
+      removeActiveTutorial();
+      return;
+    }
     const nextStatus = getThirdStageTutorialStatusAfterClear(
       readThirdStageTutorialStatus(),
       event.detail.stageNumber
@@ -358,11 +372,18 @@ export function startThirdStageTutorial(board, retryButton) {
   return true;
 }
 
-export function startStageFiveRotorTutorial(board, canvas, rotor, platform, star) {
+export function startStageFiveRotorTutorial(
+  board,
+  canvas,
+  rotor,
+  platform,
+  star,
+  { force = false } = {}
+) {
   removeActiveTutorial();
   const status = readStageFiveTutorialStatus();
   if (
-    !shouldShowStageFiveRotorTutorial(status) ||
+    (!force && !shouldShowStageFiveRotorTutorial(status)) ||
     !board ||
     !canvas ||
     !rotor ||
@@ -372,9 +393,10 @@ export function startStageFiveRotorTutorial(board, canvas, rotor, platform, star
     return false;
   }
 
-  const initialStatus = getStageFiveTutorialStatusOnEntry(status);
+  let tutorialStatus = force ? "in_progress_first_line" : getStageFiveTutorialStatusOnEntry(status);
+  const initialStatus = tutorialStatus;
   if (!initialStatus) return false;
-  writeStageFiveTutorialStatus(initialStatus);
+  if (!force) writeStageFiveTutorialStatus(initialStatus);
   const overlay = document.createElement("div");
   overlay.className = "first-stage-tutorial first-stage-tutorial-line first-stage-five-tutorial";
   overlay.setAttribute("role", "group");
@@ -463,7 +485,7 @@ export function startStageFiveRotorTutorial(board, canvas, rotor, platform, star
   };
 
   const renderLineForCurrentPhase = () => {
-    const isSecondLine = readStageFiveTutorialStatus() === "in_progress_second_line";
+    const isSecondLine = tutorialStatus === "in_progress_second_line";
     const startPoint = isSecondLine ? secondLineStart : firstLineStart;
     const endPoint = isSecondLine ? secondLineEnd : firstLineEnd;
     if (!startPoint || !endPoint) return;
@@ -479,6 +501,10 @@ export function startStageFiveRotorTutorial(board, canvas, rotor, platform, star
   };
 
   const onStageClear = (event) => {
+    if (force && event.detail?.stageNumber === 5) {
+      removeActiveTutorial();
+      return;
+    }
     const nextStatus = getStageFiveTutorialStatusAfterClear(
       readStageFiveTutorialStatus(),
       event.detail?.stageNumber
@@ -488,10 +514,11 @@ export function startStageFiveRotorTutorial(board, canvas, rotor, platform, star
     removeActiveTutorial();
   };
   const onStageFiveStroke = () => {
-    const currentStatus = readStageFiveTutorialStatus();
+    const currentStatus = tutorialStatus;
     const nextStatus = advanceStageFiveTutorialAfterStroke(currentStatus);
     if (!nextStatus || nextStatus === currentStatus) return;
-    writeStageFiveTutorialStatus(nextStatus);
+    tutorialStatus = nextStatus;
+    if (!force) writeStageFiveTutorialStatus(nextStatus);
     overlay.classList.add("is-second-line");
     renderLineForCurrentPhase();
     line.style.animation = "none";
@@ -501,11 +528,12 @@ export function startStageFiveRotorTutorial(board, canvas, rotor, platform, star
     cursor.style.animation = "";
   };
   const onStageRetry = (event) => {
-    const currentStatus = readStageFiveTutorialStatus();
+    const currentStatus = tutorialStatus;
     const nextStatus = restartStageFiveTutorialAfterReset(currentStatus, event.detail?.stageNumber);
     if (!nextStatus) return;
 
-    writeStageFiveTutorialStatus(nextStatus);
+    tutorialStatus = nextStatus;
+    if (!force) writeStageFiveTutorialStatus(nextStatus);
     overlay.classList.remove("is-second-line");
     renderLineForCurrentPhase();
     line.style.animation = "none";
@@ -531,9 +559,14 @@ export function startStageFiveRotorTutorial(board, canvas, rotor, platform, star
   return true;
 }
 
-export function startStageNineHatchedCircleTutorial(board, canvas, circle) {
+export function startStageNineHatchedCircleTutorial(board, canvas, circle, { force = false } = {}) {
   removeActiveTutorial();
-  if (!shouldShowStageNineTutorial(readStageNineTutorialStatus()) || !board || !canvas || !circle) {
+  if (
+    (!force && !shouldShowStageNineTutorial(readStageNineTutorialStatus())) ||
+    !board ||
+    !canvas ||
+    !circle
+  ) {
     return false;
   }
 
@@ -607,7 +640,7 @@ export function startStageNineHatchedCircleTutorial(board, canvas, circle) {
     if (event.detail?.stageNumber === 9) removeActiveTutorial();
   };
   const onStageNineStroke = () => {
-    writeStageNineTutorialStatus("completed");
+    if (!force) writeStageNineTutorialStatus("completed");
     removeActiveTutorial();
   };
   window.addEventListener("sketchybook:stage-nine-stroke", onStageNineStroke);

@@ -894,6 +894,35 @@ body.settings-is-open .global-app-toolbar {
   text-align: center !important;
 }
 
+.tutorial-stage-play-button {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.35rem;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  color: var(--ink);
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tutorial-stage-play-button:hover,
+.tutorial-stage-play-button:focus-visible {
+  color: var(--ink-strong);
+}
+
+.tutorial-stage-play-button.is-disabled {
+  color: var(--ink-soft);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.tutorial-stage-play-button.is-disabled:hover {
+  color: var(--ink-soft);
+}
+
 .selection-help-actions {
   position: absolute;
   top: clamp(0.75rem, 2vw, 1.25rem);

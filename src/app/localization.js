@@ -81,6 +81,9 @@ const koreanText = {
   "Drag:": "드래그:",
   "Draw a line to guide the ball": "선을 그려 공을 안내하세요",
   "Retry the stage": "스테이지 다시 시작",
+  "Play tutorial stages": "튜토리얼 스테이지 플레이",
+  "Tutorial stages are unavailable while you are connected to a multiplayer room.":
+    "멀티플레이 방을 생성했거나 참가 중에는 튜토리얼 스테이지를 플레이할 수 없습니다.",
   "Previous difficulty": "이전 난이도",
   "Next difficulty": "다음 난이도",
   "Floor on / easy draw / no challenge": "바닥 있음 / 쉬운 그리기 / 도전 모드 없음",

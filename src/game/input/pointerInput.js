@@ -32,10 +32,12 @@ import {
   getLineLengthLimit,
   isDrawLimitReached,
   updateDrawLimitProgressUI,
+  completeTutorialStageThreeAfterReset,
   initializeStage,
   resizeCanvas,
   hideStageClearOverlay,
   startPlayground,
+  startStage,
 } from "../engine/core/gameController.js";
 import { recordPlaygroundStroke } from "../ui/playgroundHistory.js";
 import {
@@ -632,9 +634,12 @@ export function initPointerInput() {
         detail: { stageNumber: state.currentStageNumber },
       });
       if (!window.dispatchEvent(retryEvent)) return;
+      if (completeTutorialStageThreeAfterReset()) return;
       hideStageClearOverlay();
       if (state.isPlayground) {
         await startPlayground();
+      } else if (state.isTutorialPlay) {
+        await startStage(state.currentStageNumber, { tutorialPlay: true });
       } else {
         await initializeStage(state.currentStageNumber);
         resizeCanvas();

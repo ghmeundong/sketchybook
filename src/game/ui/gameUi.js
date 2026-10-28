@@ -150,6 +150,7 @@ export function showStageClearOverlay({
   canvas,
   stageNumber,
   difficulty,
+  clearMessage = "Stage Cleared!",
   showScore = true,
   onAfterSave,
   onScoreStarAppear,
@@ -159,7 +160,7 @@ export function showStageClearOverlay({
   const stars = showScore
     ? getStageStarRating(stageClearState.stageMinEvents, stageClearState.stageEventCount)
     : 0;
-  message.querySelector(".stage-clear-title").textContent = "Stage Cleared!";
+  message.querySelector(".stage-clear-title").textContent = clearMessage;
   renderStageScoreStars({ message, stars, onStarAppear: onScoreStarAppear });
 
   if (showScore && stageNumber) {

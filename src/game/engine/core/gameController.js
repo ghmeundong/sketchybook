@@ -50,6 +50,11 @@ import {
 } from "../../audio/gameAudio.js";
 import { drawingAudio } from "../../audio/drawingAudioInstance.js";
 import {
+  TUTORIAL_PLAY_STAGE_NUMBERS,
+  getNextTutorialPlayStage,
+  shouldClearTutorialStageThreeAfterReset,
+} from "../config/tutorialPlay.js";
+import {
   updateStageSelectionPage,
   refreshStageSelectionButtons,
 } from "../../ui/selectionScreen.js";
@@ -71,11 +76,15 @@ import {
 const isItchBuild = import.meta.env.MODE === "itch";
 const MULTIPLAYER_PHYSICS_STEP_MS = 1000 / 60;
 const MAX_MULTIPLAYER_STEPS_PER_FRAME = 8;
+let tutorialStageThreeSpacebarUsed = false;
 
 state.currentDifficulty = getInitialDifficulty();
 state.difficultyRules = getDifficultyRules(state.currentDifficulty);
 let roomModeOverride = null;
 let previousRoomMode = null;
+let tutorialReturnPage = null;
+let tutorialRoomBackButton = null;
+let tutorialRoomBackWasHidden = true;
 
 function clearRoomModeOverride() {
   if (previousRoomMode) {
@@ -114,6 +123,12 @@ window.addEventListener("sketchybook:room-lobby", () => {
 
 window.addEventListener("sketchybook:room-closed", () => {
   clearRoomModeOverride();
+});
+
+window.addEventListener("sketchybook:tutorial-spacebar", () => {
+  if (state.isTutorialPlay && state.currentStageNumber === 3) {
+    tutorialStageThreeSpacebarUsed = true;
+  }
 });
 
 export function getInitialDifficulty() {
@@ -270,6 +285,7 @@ export function lockLandscapeOrientation() {
 }
 
 export function resetStageState() {
+  tutorialStageThreeSpacebarUsed = false;
   if (state.stageClearOverlayTimer) {
     clearTimeout(state.stageClearOverlayTimer);
     state.stageClearOverlayTimer = null;
@@ -417,6 +433,26 @@ function returnFromMapTest() {
   }
 }
 
+function returnFromTutorialPlay() {
+  const returnPage = tutorialReturnPage || dom.startPage;
+  tutorialReturnPage = null;
+  state.isTutorialPlay = false;
+  removeActiveTutorial();
+  hideStageClearOverlay();
+  setActivePage(returnPage);
+  if (tutorialRoomBackButton) {
+    tutorialRoomBackButton.hidden = tutorialRoomBackWasHidden;
+    tutorialRoomBackButton = null;
+  }
+  if (state.animationFrameId) {
+    cancelAnimationFrame(state.animationFrameId);
+    state.animationFrameId = null;
+  }
+  if (returnPage === dom.startPage) {
+    window.dispatchEvent(new Event("sketchybook:show-start"));
+  }
+}
+
 export function createStageClearOverlay() {
   if (!dom.board || state.stageClearOverlay) return;
   const stageClearOverlayRef = { current: null };
@@ -433,16 +469,24 @@ export function createStageClearOverlay() {
         returnFromMapTest();
         return true;
       }
+      if (state.isTutorialPlay) {
+        returnFromTutorialPlay();
+        return true;
+      }
+      const returnPage = state.isPlayground ? dom.modePage : dom.selectionPage;
       hideStageClearOverlay();
-      setActivePage(state.isPlayground ? dom.modePage : dom.selectionPage);
+      setActivePage(returnPage);
       if (state.animationFrameId) cancelAnimationFrame(state.animationFrameId);
       return true;
     },
     onRetry: async () => {
       if (!dispatchStageRetryRequest()) return false;
+      if (completeTutorialStageThreeAfterReset()) return true;
       hideStageClearOverlay();
       if (state.isMapTest && state.mapTestDefinition) {
         await startMapTest(state.mapTestDefinition);
+      } else if (state.isTutorialPlay) {
+        await startStage(state.currentStageNumber, { tutorialPlay: true });
       } else {
         await initializeStage(state.currentStageNumber);
         resizeCanvas();
@@ -459,14 +503,18 @@ export function createStageClearOverlay() {
         return true;
       }
 
-      const next = Math.min((state.currentStageNumber || 1) + 1, totalStageCount);
-      const nextEvent = new CustomEvent("sketchybook:stage-next", {
-        cancelable: true,
-        detail: { stageNumber: next },
-      });
-      if (!window.dispatchEvent(nextEvent)) return false;
+      const next = state.isTutorialPlay
+        ? getNextTutorialPlayStage(state.currentStageNumber)
+        : Math.min((state.currentStageNumber || 1) + 1, totalStageCount);
+      if (!state.isTutorialPlay) {
+        const nextEvent = new CustomEvent("sketchybook:stage-next", {
+          cancelable: true,
+          detail: { stageNumber: next },
+        });
+        if (!window.dispatchEvent(nextEvent)) return false;
+      }
       hideStageClearOverlay();
-      await startStage(next);
+      await startStage(next, { tutorialPlay: state.isTutorialPlay });
       return true;
     },
   });
@@ -483,7 +531,7 @@ export function showStageClearOverlay(message = "Stage Cleared!") {
   state.stageClearMessage.querySelector(".stage-clear-title").textContent = message;
 
   // Challenge 모드로 클리어한 경우 저장
-  if (state.challengeModeEnabled) {
+  if (state.challengeModeEnabled && !state.isTutorialPlay) {
     setChallengeCleared(state.currentStageNumber);
   }
 
@@ -498,7 +546,8 @@ export function showStageClearOverlay(message = "Stage Cleared!") {
     canvas: dom.canvas,
     stageNumber: state.isMapTest ? null : state.currentStageNumber,
     difficulty: state.currentDifficulty,
-    showScore: !state.isMapTest,
+    clearMessage: state.isTutorialPlay ? "Tutorial Cleared!" : "Stage Cleared!",
+    showScore: !state.isMapTest && !state.isTutorialPlay,
     onAfterSave: () => {
       refreshStageSelectionButtons();
     },
@@ -515,6 +564,18 @@ function dispatchStageRetryRequest() {
   );
 }
 
+export function completeTutorialStageThreeAfterReset() {
+  const shouldClear = shouldClearTutorialStageThreeAfterReset({
+    isTutorialPlay: state.isTutorialPlay,
+    stageNumber: state.currentStageNumber,
+    spacebarUsed: tutorialStageThreeSpacebarUsed,
+  });
+  tutorialStageThreeSpacebarUsed = false;
+  if (!shouldClear || state.stageCleared) return false;
+  completeStageClear();
+  return true;
+}
+
 export function hideStageClearOverlay() {
   hideStageClearOverlayUI(state.stageClearOverlay, dom.canvas);
 }
@@ -523,13 +584,15 @@ function completeStageClear() {
   state.stageCleared = true;
   drawingAudio.stop();
   const currentMode = state.currentDifficulty;
-  syncProgressForMode(currentMode).catch((err) => {
-    console.error("[Sync] 데이터 동기화 실패:", err);
-  });
+  if (!state.isTutorialPlay) {
+    syncProgressForMode(currentMode).catch((err) => {
+      console.error("[Sync] 데이터 동기화 실패:", err);
+    });
+  }
   state.stageClearOverlayTimer = window.setTimeout(() => {
     state.stageClearOverlayTimer = null;
     playStageClearSound();
-    showStageClearOverlay("Stage Cleared!");
+    showStageClearOverlay(state.isTutorialPlay ? "Tutorial Cleared!" : "Stage Cleared!");
   }, 750);
   if (state.currentStage && typeof state.currentStage.onClear === "function") {
     try {
@@ -577,11 +640,17 @@ export function createGameExitButton() {
     const exitEvent = new CustomEvent("sketchybook:game-exit", { cancelable: true });
     if (!window.dispatchEvent(exitEvent)) return;
     const wasMapTest = state.isMapTest;
+    if (state.isTutorialPlay) {
+      returnFromTutorialPlay();
+      return;
+    }
     if (wasMapTest) {
       returnFromMapTest();
     } else {
+      const returnPage = state.isPlayground ? dom.modePage : dom.selectionPage;
       hideStageClearOverlay();
-      setActivePage(state.isPlayground ? dom.modePage : dom.selectionPage);
+      state.isTutorialPlay = false;
+      setActivePage(returnPage);
     }
     if (state.animationFrameId) cancelAnimationFrame(state.animationFrameId);
   });
@@ -605,11 +674,14 @@ export function createGameRetryButton() {
   gameRetryButton.appendChild(createActionIconCanvas("retry", { w: 60, h: 48, strokeWidth: 2.5 }));
   gameRetryButton.addEventListener("click", async () => {
     if (!dispatchStageRetryRequest()) return;
+    if (completeTutorialStageThreeAfterReset()) return;
     hideStageClearOverlay();
     if (state.isMapTest && state.mapTestDefinition) {
       await startMapTest(state.mapTestDefinition);
     } else if (state.isPlayground) {
       await startPlayground();
+    } else if (state.isTutorialPlay) {
+      await startStage(state.currentStageNumber, { tutorialPlay: true });
     } else {
       await initializeStage(state.currentStageNumber);
       resizeCanvas();
@@ -640,46 +712,57 @@ export function getRequestedStageFromUrl() {
   return Number.isInteger(value) && value >= 1 && value <= totalStageCount ? value : null;
 }
 
-export async function startStage(stageNumber) {
+export async function startStage(stageNumber, { tutorialPlay = false } = {}) {
   if (!stageNumber) {
     return;
   }
   removeActiveTutorial();
+  if (tutorialPlay) {
+    state.currentDifficulty = DIFFICULTY_LEVELS.EASY;
+    state.difficultyRules = getDifficultyRules(DIFFICULTY_LEVELS.EASY);
+  }
   state.currentStageNumber = stageNumber;
   state.isPlayground = false;
+  state.isTutorialPlay = tutorialPlay;
   setActivePage(dom.playPage);
   await tryEnterFullscreen();
   updateStageUrl(stageNumber);
   await initializeStage(stageNumber);
   resizeCanvas();
   if (
-    state.currentDifficulty === DIFFICULTY_LEVELS.HARD ||
-    state.currentDifficulty === DIFFICULTY_LEVELS.INSANE
+    !tutorialPlay &&
+    (state.currentDifficulty === DIFFICULTY_LEVELS.HARD ||
+      state.currentDifficulty === DIFFICULTY_LEVELS.INSANE)
   ) {
     return;
   }
   if (stageNumber === 1 && !isRoomConnected()) {
     const ball = state.gameObjects.find((object) => object instanceof Ball);
-    startFirstStageTutorial(dom.board, dom.canvas, ball);
+    startFirstStageTutorial(dom.board, dom.canvas, ball, { force: state.isTutorialPlay });
   } else if (stageNumber === 2 && !isRoomConnected()) {
     const platforms = state.gameObjects.filter((object) => object instanceof Platform);
-    startSecondStageTutorial(dom.board, dom.canvas, platforms);
+    startSecondStageTutorial(dom.board, dom.canvas, platforms, { force: state.isTutorialPlay });
   } else if (stageNumber === 3 && !isRoomConnected()) {
-    startThirdStageTutorial(dom.board, state.gameRetryButton);
+    startThirdStageTutorial(dom.board, state.gameRetryButton, { force: state.isTutorialPlay });
   } else if (stageNumber === 5 && !isRoomConnected()) {
     const rotor = state.gameObjects.find((object) => object instanceof Rotor);
     const platform = state.gameObjects.find((object) => object instanceof Platform);
     const star = state.gameObjects.find((object) => object instanceof Star);
-    startStageFiveRotorTutorial(dom.board, dom.canvas, rotor, platform, star);
+    startStageFiveRotorTutorial(dom.board, dom.canvas, rotor, platform, star, {
+      force: state.isTutorialPlay,
+    });
   } else if (stageNumber === 9 && !isRoomConnected()) {
     const circle = state.gameObjects.find((object) => object instanceof CircleObject);
-    startStageNineHatchedCircleTutorial(dom.board, dom.canvas, circle);
+    startStageNineHatchedCircleTutorial(dom.board, dom.canvas, circle, {
+      force: state.isTutorialPlay,
+    });
   }
 }
 
 export async function startPlayground({ mapTestDefinition = null } = {}) {
   removeActiveTutorial();
   state.isPlayground = true;
+  state.isTutorialPlay = false;
   state.isMapTest = Boolean(mapTestDefinition);
   state.mapTestDefinition = mapTestDefinition;
   state.currentDifficulty = DIFFICULTY_LEVELS.EASY;
@@ -743,6 +826,7 @@ window.addEventListener("sketchybook:start-playground", () => {
 
 window.addEventListener("sketchybook:start-game", async (event) => {
   clearRoomModeOverride();
+  state.isTutorialPlay = false;
   const requestedDifficulty = event.detail?.difficulty;
   if (Object.values(DIFFICULTY_LEVELS).includes(requestedDifficulty)) {
     state.currentDifficulty = requestedDifficulty;
@@ -756,6 +840,20 @@ window.addEventListener("sketchybook:start-game", async (event) => {
   setActivePage(dom.selectionPage);
   updateStageSelectionPage();
   await tryEnterFullscreen();
+});
+
+window.addEventListener("sketchybook:start-tutorial-play", async () => {
+  clearRoomModeOverride();
+  tutorialReturnPage =
+    [dom.modePage, dom.startPage, dom.selectionPage].find((page) =>
+      page?.classList.contains("is-active")
+    ) || dom.startPage;
+  tutorialRoomBackButton = document.querySelector("[data-room-back]");
+  tutorialRoomBackWasHidden = tutorialRoomBackButton?.hidden ?? true;
+  if (tutorialRoomBackButton) tutorialRoomBackButton.hidden = true;
+  state.currentDifficulty = DIFFICULTY_LEVELS.EASY;
+  state.difficultyRules = getDifficultyRules(state.currentDifficulty);
+  await startStage(TUTORIAL_PLAY_STAGE_NUMBERS[0], { tutorialPlay: true });
 });
 
 export async function initializePageFlow() {

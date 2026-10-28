@@ -34,6 +34,7 @@ const settingsPanel = document.getElementById("start-settings-panel");
 const settingsCloseButtons = document.querySelectorAll("[data-settings-close]");
 const helpToggle = document.querySelector("[data-help-toggle]");
 const helpPanel = document.getElementById("start-help-panel");
+const tutorialStagePlayButton = document.querySelector("[data-tutorial-stage-play]");
 const difficultyPrevBtn = document.querySelector("[data-difficulty-prev]");
 const difficultyNextBtn = document.querySelector("[data-difficulty-next]");
 const difficultyNameDisplay = document.getElementById("difficulty-name");
@@ -581,6 +582,35 @@ if (helpToggle && helpPanel) {
   });
 }
 
+if (tutorialStagePlayButton) {
+  attachRoughFrame(tutorialStagePlayButton, {
+    inset: 1,
+    outside: 3,
+    strokeWidth: 1.5,
+    roughness: 1.6,
+  });
+  const syncTutorialStagePlayAvailability = (isRoomConnected) => {
+    tutorialStagePlayButton.setAttribute("aria-disabled", String(isRoomConnected));
+    tutorialStagePlayButton.classList.toggle("is-disabled", isRoomConnected);
+    if (isRoomConnected) {
+      tutorialStagePlayButton.dataset.tooltip =
+        "Tutorial stages are unavailable while you are connected to a multiplayer room.";
+    } else {
+      delete tutorialStagePlayButton.dataset.tooltip;
+    }
+  };
+  syncTutorialStagePlayAvailability(body.classList.contains("multiplayer-room-connected"));
+  const roomConnectionObserver = new MutationObserver(() => {
+    syncTutorialStagePlayAvailability(body.classList.contains("multiplayer-room-connected"));
+  });
+  roomConnectionObserver.observe(body, { attributes: true, attributeFilter: ["class"] });
+  tutorialStagePlayButton.addEventListener("click", () => {
+    if (tutorialStagePlayButton.getAttribute("aria-disabled") === "true") return;
+    setHelpPanelVisible(false);
+    launchGameFromStart(true, "sketchybook:start-tutorial-play");
+  });
+}
+
 if (challengeModeToggle && challengeModeOption) {
   const challengeToggleSound = new Audio(challengeToggleSoundUrl);
   challengeToggleSound.preload = "auto";
@@ -654,7 +684,7 @@ document.addEventListener("click", (event) => {
   }
 });
 
-function launchGameFromStart(force = false) {
+function launchGameFromStart(force = false, eventName = "sketchybook:start-game") {
   if (!force && startTitle.dataset.loading === "true") {
     return;
   }
@@ -664,7 +694,7 @@ function launchGameFromStart(force = false) {
   gameStartSound.currentTime = 0;
   void gameStartSound.play().catch(() => {});
   window.dispatchEvent(
-    new CustomEvent("sketchybook:start-game", {
+    new CustomEvent(eventName, {
       detail: { difficulty: selectedDifficulty },
     })
   );
