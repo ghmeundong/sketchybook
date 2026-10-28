@@ -83,6 +83,7 @@ state.difficultyRules = getDifficultyRules(state.currentDifficulty);
 let roomModeOverride = null;
 let previousRoomMode = null;
 let tutorialReturnPage = null;
+let tutorialReturnDifficulty = null;
 let tutorialRoomBackButton = null;
 let tutorialRoomBackWasHidden = true;
 
@@ -437,6 +438,11 @@ function returnFromTutorialPlay() {
   const returnPage = tutorialReturnPage || dom.startPage;
   tutorialReturnPage = null;
   state.isTutorialPlay = false;
+  if (Object.values(DIFFICULTY_LEVELS).includes(tutorialReturnDifficulty)) {
+    state.currentDifficulty = tutorialReturnDifficulty;
+    state.difficultyRules = getDifficultyRules(tutorialReturnDifficulty);
+  }
+  tutorialReturnDifficulty = null;
   removeActiveTutorial();
   hideStageClearOverlay();
   setActivePage(returnPage);
@@ -842,6 +848,9 @@ window.addEventListener("sketchybook:start-game", async (event) => {
 
 window.addEventListener("sketchybook:start-tutorial-play", async () => {
   clearRoomModeOverride();
+  if (!state.isTutorialPlay) {
+    tutorialReturnDifficulty = state.currentDifficulty;
+  }
   tutorialReturnPage =
     [dom.modePage, dom.startPage, dom.selectionPage].find((page) =>
       page?.classList.contains("is-active")

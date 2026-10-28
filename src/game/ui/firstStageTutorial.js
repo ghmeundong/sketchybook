@@ -1,3 +1,4 @@
+import rough from "roughjs";
 import {
   readFirstStageTutorialStatus,
   readSecondStageTutorialStatus,
@@ -32,6 +33,7 @@ let activeTutorial = null;
 
 function createKeycapShape() {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const roughSvg = rough.svg(svg);
   svg.classList.add("first-stage-tutorial-keycap-shape");
   svg.setAttribute("viewBox", "0 0 400 180");
   svg.setAttribute("preserveAspectRatio", "none");
@@ -41,27 +43,36 @@ function createKeycapShape() {
     [
       "first-stage-tutorial-keycap-side",
       "M72 12 L42 34 L12 132 Q8 148 28 150 H62 L58 104 Q52 100 56 88 Z",
+      "#eee9df",
     ],
     [
       "first-stage-tutorial-keycap-side",
       "M328 12 L358 34 L388 132 Q392 148 372 150 H338 L342 104 Q348 100 344 88 Z",
+      "#eee9df",
     ],
-    ["first-stage-tutorial-keycap-front", "M58 98 H342 L372 150 H28 Z"],
+    ["first-stage-tutorial-keycap-front", "M58 98 H342 L372 150 H28 Z", "#e3ddd1"],
     [
       "first-stage-tutorial-keycap-top",
       "M82 8 H318 Q326 8 330 16 L348 86 Q352 98 336 98 H64 Q48 98 52 86 L70 16 Q74 8 82 8 Z",
+      "#fffdf8",
     ],
     [
       "first-stage-tutorial-keycap-outline",
       "M82 8 H318 Q326 8 330 16 L358 34 L388 132 Q392 148 372 150 H28 Q8 148 12 132 L42 34 L70 16 Q74 8 82 8 Z",
+      null,
     ],
   ];
 
-  for (const [className, pathData] of paths) {
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.classList.add(className);
-    path.setAttribute("d", pathData);
-    svg.append(path);
+  for (const [className, pathData, fill] of paths) {
+    const shape = roughSvg.path(pathData, {
+      stroke: "#25221e",
+      strokeWidth: className === "first-stage-tutorial-keycap-outline" ? 2.2 : 1.8,
+      roughness: 1.25,
+      bowing: 0.8,
+      ...(fill ? { fill, fillStyle: "solid" } : {}),
+    });
+    shape.classList.add(className);
+    svg.append(shape);
   }
 
   return svg;
