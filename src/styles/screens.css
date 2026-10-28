@@ -43,7 +43,7 @@
 }
 
 .mode-screen-title {
-  margin: 0 0 clamp(1rem, 3vh, 1.8rem);
+  margin: 0 0 clamp(2.5rem, 7vh, 4rem);
   font-family: var(--font-display);
   font-size: clamp(2.2rem, 7vh, 4.6rem);
   font-weight: 900;

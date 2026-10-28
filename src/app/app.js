@@ -155,7 +155,7 @@ function createDifficultyStartWarningModal(difficulty) {
   const isInsane = difficulty === DIFFICULTY_LEVELS.INSANE;
   const titleText = isInsane ? "Insane difficulty" : "Hard difficulty";
   const messageText = isInsane
-    ? "We strongly recommend that you understand every mechanic, map structure, and principle before attempting this level. This is not a level created for fun; it is a brutal challenge designed for the most unforgiving difficulty. Tutorials are unavailable on Hard and Insane difficulties."
+    ? "We strongly recommend that you understand every mechanic, map structure, and principle before attempting this level. This is not a level created for fun; it is a brutal challenge designed for the most unforgiving difficulty. Tutorials are unavailable."
     : "Tutorials are unavailable on Hard difficulty. Review the game mechanics before starting, because no in-game tutorial guidance will appear.";
 
   const modal = document.createElement("div");

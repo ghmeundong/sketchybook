@@ -1059,7 +1059,7 @@ function onPointerUp(event) {
         height: height / point.height,
       });
       selectedIndex = objects.length - 1;
-      setStatus(pointerAction.type === "platform" ? "Platform added." : "Forbidden Zone added.");
+      setStatus(pointerAction.type === "platform" ? "Platform added." : "Striped added.");
     } else {
       setStatus("Drag to draw a platform.");
     }
