@@ -240,7 +240,7 @@
   font-size: clamp(0.95rem, 3.2vw, 1.4rem);
   font-weight: 800;
   white-space: nowrap;
-  transform: perspective(180px) translateX(-50%) rotateX(56deg) scaleX(1.08);
+  transform: perspective(180px) translateX(-50%) rotateX(36deg) scaleX(1.08);
   transform-origin: center;
 }
 
@@ -274,7 +274,7 @@
 }
 
 .first-stage-tutorial-key-mark.first-stage-tutorial-space-mark {
-  transform: perspective(180px) translateX(-50%) rotateX(56deg) scaleX(1.08);
+  transform: perspective(180px) translateX(-50%) rotateX(36deg) scaleX(1.08);
 }
 
 .first-stage-tutorial-reset-spotlight,
