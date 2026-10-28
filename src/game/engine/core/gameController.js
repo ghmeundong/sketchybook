@@ -448,9 +448,7 @@ function returnFromTutorialPlay() {
     cancelAnimationFrame(state.animationFrameId);
     state.animationFrameId = null;
   }
-  if (returnPage === dom.startPage) {
-    window.dispatchEvent(new Event("sketchybook:show-start"));
-  }
+  window.dispatchEvent(new Event("sketchybook:show-start"));
 }
 
 export function createStageClearOverlay() {
