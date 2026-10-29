@@ -291,7 +291,8 @@
   pointer-events: none;
 }
 
-.first-stage-tutorial-keys.is-reset-phase .first-stage-tutorial-keycap {
+.first-stage-tutorial-keys.is-reset-phase .first-stage-tutorial-keycap,
+.first-stage-tutorial-keys.is-reset-phase .first-stage-tutorial-keycap-shadow {
   display: none;
 }
 

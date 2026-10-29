@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   TUTORIAL_PLAY_STAGE_NUMBERS,
   getNextTutorialPlayStage,
+  shouldBlockTutorialStageThreeClear,
   shouldClearTutorialStageThreeAfterReset,
 } from "../src/game/engine/config/tutorialPlay.js";
 
@@ -34,6 +35,37 @@ describe("tutorial stage play", () => {
         isTutorialPlay: false,
         stageNumber: 3,
         spacebarUsed: true,
+      })
+    ).toBe(false);
+  });
+
+  it("blocks the ordinary Stage 3 tutorial clear until reset is accepted", () => {
+    expect(
+      shouldBlockTutorialStageThreeClear({
+        isTutorialPlay: true,
+        stageNumber: 3,
+        resetAccepted: false,
+      })
+    ).toBe(true);
+    expect(
+      shouldBlockTutorialStageThreeClear({
+        isTutorialPlay: true,
+        stageNumber: 3,
+        resetAccepted: true,
+      })
+    ).toBe(false);
+    expect(
+      shouldBlockTutorialStageThreeClear({
+        isTutorialPlay: false,
+        stageNumber: 3,
+        resetAccepted: false,
+      })
+    ).toBe(false);
+    expect(
+      shouldBlockTutorialStageThreeClear({
+        isTutorialPlay: true,
+        stageNumber: 2,
+        resetAccepted: false,
       })
     ).toBe(false);
   });

@@ -12,3 +12,7 @@ export function shouldClearTutorialStageThreeAfterReset({
 }) {
   return isTutorialPlay && stageNumber === 3 && spacebarUsed;
 }
+
+export function shouldBlockTutorialStageThreeClear({ isTutorialPlay, stageNumber, resetAccepted }) {
+  return isTutorialPlay && stageNumber === 3 && !resetAccepted;
+}

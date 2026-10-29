@@ -52,6 +52,7 @@ import { drawingAudio } from "../../audio/drawingAudioInstance.js";
 import {
   TUTORIAL_PLAY_STAGE_NUMBERS,
   getNextTutorialPlayStage,
+  shouldBlockTutorialStageThreeClear,
   shouldClearTutorialStageThreeAfterReset,
 } from "../config/tutorialPlay.js";
 import {
@@ -77,6 +78,7 @@ const isItchBuild = import.meta.env.MODE === "itch";
 const MULTIPLAYER_PHYSICS_STEP_MS = 1000 / 60;
 const MAX_MULTIPLAYER_STEPS_PER_FRAME = 8;
 let tutorialStageThreeSpacebarUsed = false;
+let tutorialStageThreeResetPending = false;
 
 state.currentDifficulty = getInitialDifficulty();
 state.difficultyRules = getDifficultyRules(state.currentDifficulty);
@@ -576,15 +578,24 @@ export function completeTutorialStageThreeAfterReset() {
   });
   tutorialStageThreeSpacebarUsed = false;
   if (!shouldClear || state.stageCleared) return false;
-  completeStageClear();
-  return true;
+  tutorialStageThreeResetPending = true;
+  return false;
 }
 
 export function hideStageClearOverlay() {
   hideStageClearOverlayUI(state.stageClearOverlay, dom.canvas);
 }
 
-function completeStageClear() {
+function completeStageClear({ resetAccepted = false } = {}) {
+  if (
+    shouldBlockTutorialStageThreeClear({
+      isTutorialPlay: state.isTutorialPlay,
+      stageNumber: state.currentStageNumber,
+      resetAccepted,
+    })
+  ) {
+    return false;
+  }
   state.stageCleared = true;
   drawingAudio.stop();
   const currentMode = state.currentDifficulty;
@@ -720,6 +731,9 @@ export async function startStage(stageNumber, { tutorialPlay = false } = {}) {
   if (!stageNumber) {
     return;
   }
+  if (!(tutorialPlay && stageNumber === 3)) {
+    tutorialStageThreeResetPending = false;
+  }
   removeActiveTutorial();
   if (tutorialPlay) {
     state.currentDifficulty = DIFFICULTY_LEVELS.EASY;
@@ -733,6 +747,11 @@ export async function startStage(stageNumber, { tutorialPlay = false } = {}) {
   updateStageUrl(stageNumber);
   await initializeStage(stageNumber);
   resizeCanvas();
+  if (tutorialStageThreeResetPending && tutorialPlay && stageNumber === 3) {
+    tutorialStageThreeResetPending = false;
+    completeStageClear({ resetAccepted: true });
+    return;
+  }
   if (
     !tutorialPlay &&
     (state.currentDifficulty === DIFFICULTY_LEVELS.HARD ||
