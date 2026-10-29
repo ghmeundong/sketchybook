@@ -1490,9 +1490,9 @@ function initializeMapEditor() {
       roughness: 1.5,
     });
   });
-  backButton.appendChild(createActionIconCanvas("exit", { w: 56, h: 40, strokeWidth: 2.4 }));
+  backButton.appendChild(createActionIconCanvas("exit", { w: 60, h: 48, strokeWidth: 2.5 }));
   mapBoardBackButton.appendChild(
-    createActionIconCanvas("exit", { w: 56, h: 40, strokeWidth: 2.4 })
+    createActionIconCanvas("exit", { w: 60, h: 48, strokeWidth: 2.5 })
   );
   mapBoardRefreshButton.appendChild(
     createActionIconCanvas("retry", { w: 48, h: 40, strokeWidth: 2.5 })

@@ -39,7 +39,7 @@ function showSignedIn(user) {
 
   const signOutBtn = document.createElement("button");
   signOutBtn.type = "button";
-  signOutBtn.className = "game-exit-btn sign-out-btn";
+  signOutBtn.className = "game-exit-btn sign-out-btn screen-exit-icon";
   signOutBtn.setAttribute("aria-label", "Sign out");
   signOutBtn.dataset.tooltip = "Sign out";
   signOutBtn.style.background = "transparent";
@@ -50,7 +50,7 @@ function showSignedIn(user) {
   signOutBtn.style.alignItems = "center";
   signOutBtn.style.justifyContent = "center";
   signOutBtn.style.opacity = "0.7";
-  signOutBtn.appendChild(createActionIconCanvas("exit", { w: 52, h: 36, strokeWidth: 2.2 }));
+  signOutBtn.appendChild(createActionIconCanvas("exit", { w: 60, h: 48, strokeWidth: 2.5 }));
   signOutBtn.addEventListener("click", () => {
     localStorage.removeItem("sketchy_user");
     window.dispatchEvent(new Event("sketchybook:auth-change"));

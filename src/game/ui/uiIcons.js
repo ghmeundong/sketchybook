@@ -76,12 +76,16 @@ export function createActionIconCanvas(
   type,
   { w = 64, h = 40, stroke = INK, fill = INK, strokeWidth = 3, muted = false } = {}
 ) {
+  const iconWidth = type === "exit" ? 60 : w;
+  const iconHeight = type === "exit" ? 48 : h;
+  const iconStrokeWidth = type === "exit" ? 2.5 : strokeWidth;
   const canvas = document.createElement("canvas");
+  if (type === "exit") canvas.classList.add("screen-exit-icon");
   const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-  canvas.width = w * dpr;
-  canvas.height = h * dpr;
-  canvas.style.width = `${w}px`;
-  canvas.style.height = `${h}px`;
+  canvas.width = iconWidth * dpr;
+  canvas.height = iconHeight * dpr;
+  canvas.style.width = `${iconWidth}px`;
+  canvas.style.height = `${iconHeight}px`;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) {
@@ -92,7 +96,7 @@ export function createActionIconCanvas(
   const rc = rough.canvas(canvas);
   const lineOptions = {
     stroke,
-    strokeWidth,
+    strokeWidth: iconStrokeWidth,
     roughness: 1.4,
   };
   const fillOptions = {

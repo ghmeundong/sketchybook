@@ -770,6 +770,17 @@
   left: 1rem;
 }
 
+.selection-exit-btn,
+.multiplayer-global-back,
+.game-exit-btn.game-hud-corner-btn {
+  position: fixed;
+  top: var(--screen-corner-inset);
+  left: var(--screen-corner-inset);
+  width: calc(60px + var(--screen-corner-padding) + var(--screen-corner-padding));
+  height: calc(48px + var(--screen-corner-padding) + var(--screen-corner-padding));
+  padding: var(--screen-corner-padding);
+}
+
 .game-retry-btn.game-hud-corner-btn {
   right: 1rem;
 }

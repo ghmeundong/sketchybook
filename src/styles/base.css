@@ -5,6 +5,7 @@
   --body-font-size: clamp(15px, 1.1vw + 0.8rem, 18px);
   --screen-corner-inset: clamp(0.8rem, 2vw, 1.2rem);
   --screen-corner-padding: 0.5rem;
+  --screen-control-size: 48px;
 
   /* Shared color palette */
   --ink: #4f3b24;
