@@ -134,6 +134,11 @@ describe("createStrokeBody", () => {
     expect(stroke.centerOfMass.y).toBeCloseTo(3.3333333333);
     expect(stroke.points[0].restX).toBeCloseTo(-6.6666666667);
     expect(stroke.points[0].restY).toBeCloseTo(-3.3333333333);
+    expect(stroke.renderPoints).toEqual([
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+    ]);
   });
 });
 

@@ -271,6 +271,7 @@ export function createStrokeBody(points) {
 
   return {
     points: nodes,
+    renderPoints: points.map((point) => ({ x: point.x, y: point.y })),
     body: {
       x: centerX,
       y: centerY,

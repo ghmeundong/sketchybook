@@ -30,16 +30,22 @@ export function drawStroke(start, end, width = 8, options = {}) {
   targetRough.ctx.save();
   targetRough.ctx.globalAlpha = alpha;
   const step = Math.max(1, scaledWidth * 0.22);
-  for (let i = 0; i <= distance; i += step) {
+  let sampleIndex = 0;
+  for (let i = 0; i <= distance; i += step, sampleIndex += 1) {
     const t = distance === 0 ? 0 : i / distance;
     targetRough.circle(start.x + dx * t, start.y + dy * t, scaledWidth, {
       stroke: "none",
       fill: targetColor,
       fillStyle: "solid",
       roughness: options.roughness ?? 2.0,
+      seed: options.seed == null ? undefined : options.seed + sampleIndex,
     });
   }
   targetRough.ctx.restore();
+}
+
+export function getStrokeSegmentSeed(index) {
+  return index * 10000 + 1;
 }
 
 export function drawStrokePreview(points) {
@@ -76,6 +82,7 @@ export function drawStrokePreview(points) {
     for (let index = 0; index < points.length - 1; index += 1) {
       drawStroke(points[index], points[index + 1], 8, {
         roughCanvasOverride: rc,
+        seed: getStrokeSegmentSeed(index),
       });
     }
     state.currentStrokePreviewLastIndex = Math.max(0, points.length - 1);
@@ -88,6 +95,7 @@ export function drawStrokePreview(points) {
     for (let index = Math.max(0, lastIdx); index < points.length - 1; index += 1) {
       drawStroke(points[index], points[index + 1], 8, {
         roughCanvasOverride: rc,
+        seed: getStrokeSegmentSeed(index),
       });
     }
     state.currentStrokePreviewLastIndex = Math.max(0, points.length - 1);
@@ -100,7 +108,7 @@ export function createStrokeTexture(stroke) {
     return;
   }
 
-  const points = stroke.points;
+  const points = stroke.renderPoints?.length >= 2 ? stroke.renderPoints : stroke.points;
   const centerX = stroke.body.x;
   const centerY = stroke.body.y;
   let minX = Infinity;
@@ -144,6 +152,7 @@ export function createStrokeTexture(stroke) {
       roughness: 2.0,
       targetCanvas: offscreen,
       roughCanvasOverride: offscreenRough,
+      seed: getStrokeSegmentSeed(i),
     });
   }
 
@@ -245,6 +254,7 @@ export function ensureFloorTexture() {
       roughness: 2.3,
       targetCanvas: floorCanvas,
       roughCanvasOverride: roughFloor,
+      seed: getStrokeSegmentSeed(index),
     });
   }
 
