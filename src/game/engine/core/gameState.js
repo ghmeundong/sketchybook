@@ -6,6 +6,7 @@ export const state = {
   currentDifficulty: null,
   difficultyRules: null,
   electronFullscreen: null,
+  windowFocused: true,
   challengeModeEnabled: false,
   challengeModeStrokeCount: 0,
 
@@ -51,6 +52,14 @@ export const state = {
   playgroundRedoStack: [],
   lastPhysicsTime: 0,
   physicsAccumulatorMs: 0,
+  physicsSimulationTimeMs: null,
+  pendingPhysicsEvents: [],
+  physicsCatchupNeeded: false,
+  physicsCatchupPending: false,
+  physicsCatchupActive: false,
+  physicsCatchupTargetTimeMs: null,
+  physicsCatchupRequestInFlight: false,
+  physicsCatchupOverlay: null,
   totalDrawnLength: 0,
   drawLimitProgressTrackDrawn: false,
 

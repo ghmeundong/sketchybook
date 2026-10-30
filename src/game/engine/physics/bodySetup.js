@@ -1,11 +1,5 @@
 import { resolveCircleRadius } from "../core/geometry.js";
-import {
-  createCircleBody,
-  createBoxBody,
-  createEdgeBody,
-  getPhysicsScaleProfile,
-  resolveLaunchMotionScale,
-} from "./physics.js";
+import { createCircleBody, createBoxBody, createEdgeBody } from "./physics.js";
 import {
   CircleObject,
   Ball,
@@ -14,24 +8,11 @@ import {
   ComplexObject,
   Rotor,
 } from "../../objects/index.js";
-import { state } from "../core/gameState.js";
 
 export function getBallImpulseValues() {
-  const profile = getPhysicsScaleProfile();
-  const referenceDimension = 900;
-  const viewportDimension =
-    state.canvasHeight > 0 ? Math.min(state.canvasWidth, state.canvasHeight) : referenceDimension;
-  const dimensionScale = viewportDimension / referenceDimension;
-  const physicsScale = profile?.scale ?? Math.min(1, Math.max(0.5, dimensionScale));
-  const motionScale = resolveLaunchMotionScale({
-    viewportDimension,
-    referenceDimension,
-    scale: physicsScale,
-  });
-
   return {
-    linear: 99999 * motionScale,
-    angular: 99999 * motionScale,
+    linear: 99999,
+    angular: 99999,
   };
 }
 

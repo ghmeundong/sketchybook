@@ -41,6 +41,22 @@
   overflow: hidden;
 }
 
+.multiplayer-catchup-overlay {
+  position: absolute;
+  z-index: 90;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(30 34 31 / 34%);
+  color: #fffdf5;
+  font-weight: 800;
+  pointer-events: auto;
+}
+
+.multiplayer-catchup-overlay[hidden] {
+  display: none;
+}
+
 .first-stage-tutorial {
   position: absolute;
   z-index: 75;
@@ -767,18 +783,25 @@
 }
 
 .game-exit-btn.game-hud-corner-btn {
-  left: 1rem;
+  left: var(--screen-corner-inset);
 }
 
 .selection-exit-btn,
 .multiplayer-global-back,
 .game-exit-btn.game-hud-corner-btn {
-  position: fixed;
+  position: absolute;
   top: var(--screen-corner-inset);
   left: var(--screen-corner-inset);
   width: calc(60px + var(--screen-corner-padding) + var(--screen-corner-padding));
   height: calc(48px + var(--screen-corner-padding) + var(--screen-corner-padding));
   padding: var(--screen-corner-padding);
+}
+
+.selection-exit-btn canvas,
+.multiplayer-global-back canvas,
+.game-exit-btn.game-hud-corner-btn canvas {
+  width: 60px;
+  height: 48px;
 }
 
 .game-retry-btn.game-hud-corner-btn {

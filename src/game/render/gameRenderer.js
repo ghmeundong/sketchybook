@@ -1,6 +1,6 @@
 import rough from "roughjs";
 import { state } from "../engine/core/gameState.js";
-import { getPhysicsScaleProfile } from "../engine/physics/physics.js";
+import { getPhysicsScaleProfile, resolveStrokeThickness } from "../engine/physics/physics.js";
 import { INK } from "../../theme.js";
 
 export function getRenderDpr() {
@@ -14,11 +14,6 @@ export function getCanvasPixelSize(width, height, dpr = getRenderDpr()) {
   };
 }
 
-export function getStrokeWidth() {
-  const viewportScale = state.canvasHeight > 0 ? state.canvasHeight / 900 : 1;
-  return Math.min(10, Math.max(4, 8 * viewportScale));
-}
-
 export function drawStroke(start, end, width = 8, options = {}) {
   const targetRough = options.roughCanvasOverride || state.roughCanvas;
   if (!targetRough || !state.coordinateSystem) {
@@ -27,7 +22,7 @@ export function drawStroke(start, end, width = 8, options = {}) {
 
   const targetColor = options.color || INK;
   const alpha = options.alpha ?? 0.15;
-  const scaledWidth = Math.max(1.5, width * 0.55 * (getStrokeWidth() / 8));
+  const scaledWidth = resolveStrokeThickness(width);
   const dx = end.x - start.x;
   const dy = end.y - start.y;
   const distance = Math.hypot(dx, dy);
@@ -52,18 +47,21 @@ export function drawStrokePreview(points) {
 
   const dpr = getRenderDpr();
   if (!state.previewCtx || !state.previewCanvas) return;
+  const viewWidth = state.coordinateSystem?.viewportWidth ?? state.canvasWidth;
+  const viewHeight = state.coordinateSystem?.viewportHeight ?? state.canvasHeight;
+  const viewScale = state.coordinateSystem?.scaleX ?? 1;
 
   // Ensure preview canvas uses same pixel size as main canvas
-  const pixelSize = getCanvasPixelSize(state.canvasWidth, state.canvasHeight, dpr);
+  const pixelSize = getCanvasPixelSize(viewWidth, viewHeight, dpr);
   if (
     state.previewCanvas.width !== pixelSize.width ||
     state.previewCanvas.height !== pixelSize.height
   ) {
     state.previewCanvas.width = pixelSize.width;
     state.previewCanvas.height = pixelSize.height;
-    state.previewCanvas.style.width = `${Math.max(1, state.canvasWidth)}px`;
-    state.previewCanvas.style.height = `${Math.max(1, state.canvasHeight)}px`;
-    state.previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    state.previewCanvas.style.width = `${Math.max(1, viewWidth)}px`;
+    state.previewCanvas.style.height = `${Math.max(1, viewHeight)}px`;
+    state.previewCtx.setTransform(dpr * viewScale, 0, 0, dpr * viewScale, 0, 0);
     state.currentStrokePreviewLastIndex = 0; // force full redraw on resize
   }
 
@@ -97,7 +95,7 @@ export function drawStrokePreview(points) {
   }
 }
 
-export function createStrokeTexture(stroke, previewSource) {
+export function createStrokeTexture(stroke) {
   if (!stroke?.points?.length) {
     return;
   }
@@ -131,40 +129,7 @@ export function createStrokeTexture(stroke, previewSource) {
     y: node.y - minY + padding,
   }));
 
-  // If a preview source canvas is provided, copy the relevant region from
-  // that canvas into the stroke texture so the appearance remains identical
-  // between preview and finalized physics stroke.
-  if (previewSource && previewSource instanceof HTMLCanvasElement) {
-    const offscreen = document.createElement("canvas");
-    offscreen.width = width;
-    offscreen.height = height;
-    const offscreenCtx = offscreen.getContext("2d");
-    offscreenCtx.clearRect(0, 0, width, height);
-
-    // previewSource is a high-DPR canvas (internal pixels = css * dpr).
-    const dpr = getRenderDpr();
-    const sx = (centerX + minX - padding) * dpr;
-    const sy = (centerY + minY - padding) * dpr;
-    const sw = width * dpr;
-    const sh = height * dpr;
-
-    try {
-      offscreenCtx.drawImage(previewSource, sx, sy, sw, sh, 0, 0, width, height);
-      stroke.texture = offscreen;
-      stroke.textureOffset = {
-        centerX: -minX + padding,
-        centerY: -minY + padding,
-        width,
-        height,
-      };
-      return;
-    } catch (e) {
-      console.warn("createStrokeTexture: drawImage from previewSource failed:", e);
-      // fall through to generate texture procedurally
-    }
-  }
-
-  // Fall back: procedurally render the textured stroke into an offscreen canvas.
+  // Generate from logical points so a blank or scaled preview cannot erase a stroke.
   const offscreen = document.createElement("canvas");
   offscreen.width = width;
   offscreen.height = height;
@@ -217,7 +182,7 @@ export function drawPhysicsStroke(stroke) {
   ctx.save();
   ctx.globalAlpha = 0.18;
   ctx.strokeStyle = INK;
-  ctx.lineWidth = Math.max(1.5, 8 * 0.55 * (getStrokeWidth() / 8));
+  ctx.lineWidth = resolveStrokeThickness();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.beginPath();
@@ -322,7 +287,7 @@ export function render() {
     ctx.save();
     ctx.globalAlpha = 0.55;
     ctx.strokeStyle = stroke.color || INK;
-    ctx.lineWidth = Math.max(1.5, (stroke.width || 8) * 0.55 * (getStrokeWidth() / 8));
+    ctx.lineWidth = resolveStrokeThickness(stroke.width || 8);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();

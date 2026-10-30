@@ -26,6 +26,19 @@ describe("createCoordinateSystem", () => {
     expect(logicalPoint.y).toBeCloseTo(450);
   });
 
+  it("preserves aspect ratio and reverses the letterbox offset", () => {
+    const system = createCoordinateSystem({ viewportWidth: 844, viewportHeight: 390 });
+    const screenPoint = system.toScreenPoint({ x: 800, y: 450 });
+    const logicalPoint = system.toLogicalPoint(screenPoint);
+
+    expect(system.scaleX).toBeCloseTo(390 / 900);
+    expect(system.scaleY).toBeCloseTo(390 / 900);
+    expect(system.offsetX).toBeCloseTo((844 - 1600 * (390 / 900)) / 2);
+    expect(screenPoint).toEqual({ x: 422, y: 195 });
+    expect(logicalPoint.x).toBeCloseTo(800);
+    expect(logicalPoint.y).toBeCloseTo(450);
+  });
+
   it("keeps input aligned when the viewport has been rotated 90 degrees", () => {
     const logicalWidth = 1600;
     const logicalHeight = 900;

@@ -207,6 +207,21 @@ export class MultiplayerRoom {
       return;
     }
 
+    if (payload?.type === "sync-request") {
+      const clientTime = Number.isFinite(payload.clientTime) ? payload.clientTime : null;
+      socket.send(
+        JSON.stringify({
+          type: "room-sync",
+          clientTime,
+          serverTime: Date.now(),
+          roomSequence: (await this.state.storage.get("roomSequence")) || 0,
+          stageNumber: await this.state.storage.get("selectedStage"),
+          status: await this.state.storage.get("status"),
+        })
+      );
+      return;
+    }
+
     const player = socket.deserializeAttachment();
     if (payload?.type === "stage-clear") {
       if (!player?.isHost) {
@@ -917,7 +932,17 @@ function validateSharedMap(map) {
     return `Map must contain no more than ${MAX_SHARED_MAP_OBJECTS} objects.`;
   }
   const validTypes = new Set([
-    "platform", "circle", "ball", "star", "stripedRect", "portal", "segment", "complex", "poly", "rotor", "text",
+    "platform",
+    "circle",
+    "ball",
+    "star",
+    "stripedRect",
+    "portal",
+    "segment",
+    "complex",
+    "poly",
+    "rotor",
+    "text",
   ]);
   let hasBall = false;
   let hasStar = false;
@@ -928,24 +953,40 @@ function validateSharedMap(map) {
     hasBall ||= object.type === "ball";
     hasStar ||= object.type === "star";
     const isNumber = (value) => typeof value === "number" && Number.isFinite(value);
-    const hasNormalizedPosition = (x, y) => isNumber(x) && isNumber(y) && x >= 0 && x <= 1 && y >= 0 && y <= 1;
+    const hasNormalizedPosition = (x, y) =>
+      isNumber(x) && isNumber(y) && x >= 0 && x <= 1 && y >= 0 && y <= 1;
     if (object.type === "segment") {
-      if (!hasNormalizedPosition(object.x1, object.y1) || !hasNormalizedPosition(object.x2, object.y2)) {
+      if (
+        !hasNormalizedPosition(object.x1, object.y1) ||
+        !hasNormalizedPosition(object.x2, object.y2)
+      ) {
         return `Line ${index + 1} needs normalized endpoints.`;
       }
     } else if (["complex", "poly", "rotor"].includes(object.type)) {
-      if (!Array.isArray(object.points) || object.points.length < 2 || object.points.length > 128 ||
-        object.points.some((point) => !point || !hasNormalizedPosition(point.x, point.y))) {
+      if (
+        !Array.isArray(object.points) ||
+        object.points.length < 2 ||
+        object.points.length > 128 ||
+        object.points.some((point) => !point || !hasNormalizedPosition(point.x, point.y))
+      ) {
         return `Shape ${index + 1} needs 2 to 128 normalized points.`;
       }
     } else if (!hasNormalizedPosition(object.x, object.y)) {
       return `Object ${index + 1} needs a normalized x and y position.`;
     }
-    if (["platform", "stripedRect", "portal"].includes(object.type) &&
-      (!isNumber(object.width) || object.width <= 0 || !isNumber(object.height) || object.height <= 0)) {
+    if (
+      ["platform", "stripedRect", "portal"].includes(object.type) &&
+      (!isNumber(object.width) ||
+        object.width <= 0 ||
+        !isNumber(object.height) ||
+        object.height <= 0)
+    ) {
       return `Object ${index + 1} needs positive width and height values.`;
     }
-    if (["ball", "circle", "star"].includes(object.type) && (!isNumber(object.radius) || object.radius <= 0)) {
+    if (
+      ["ball", "circle", "star"].includes(object.type) &&
+      (!isNumber(object.radius) || object.radius <= 0)
+    ) {
       return `Object ${index + 1} needs a positive radius.`;
     }
     if (object.type === "text" && (typeof object.text !== "string" || object.text.length > 200)) {
@@ -993,12 +1034,20 @@ async function handleSharedMapsRequest(request, env) {
     if (!/^[\da-f-]{36}$/i.test(mapId)) return errorResponse("Invalid shared map ID.", 400);
     const row = await env.DB.prepare(
       "SELECT id, name, author_name, map_json, created_at FROM shared_maps WHERE id = ?"
-    ).bind(mapId).first();
+    )
+      .bind(mapId)
+      .first();
     if (!row) return errorResponse("Shared map not found.", 404);
     const map = JSON.parse(row.map_json);
     return jsonResponse({
       ok: true,
-      map: { id: row.id, name: row.name, authorName: row.author_name, objects: map.objects, createdAt: row.created_at },
+      map: {
+        id: row.id,
+        name: row.name,
+        authorName: row.author_name,
+        objects: map.objects,
+        createdAt: row.created_at,
+      },
     });
   }
 
@@ -1030,9 +1079,10 @@ async function handleSharedMapsRequest(request, env) {
   }
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
-  const authorName = String(tokenPayload.name || tokenPayload.email || "Sketchybook player")
-    .replace(/[<>\p{Cc}]/gu, "")
-    .slice(0, 40) || "Sketchybook player";
+  const authorName =
+    String(tokenPayload.name || tokenPayload.email || "Sketchybook player")
+      .replace(/[<>\p{Cc}]/gu, "")
+      .slice(0, 40) || "Sketchybook player";
   await env.DB.prepare(
     `INSERT INTO shared_maps (id, owner_sub, source_id, author_name, name, map_json, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -1041,10 +1091,14 @@ async function handleSharedMapsRequest(request, env) {
        name = excluded.name,
        map_json = excluded.map_json,
        updated_at = excluded.updated_at`
-  ).bind(id, tokenPayload.sub, body.sourceId, authorName, map.name.trim(), mapJson, now, now).run();
+  )
+    .bind(id, tokenPayload.sub, body.sourceId, authorName, map.name.trim(), mapJson, now, now)
+    .run();
   const saved = await env.DB.prepare(
     "SELECT id, updated_at FROM shared_maps WHERE owner_sub = ? AND source_id = ?"
-  ).bind(tokenPayload.sub, body.sourceId).first();
+  )
+    .bind(tokenPayload.sub, body.sourceId)
+    .first();
   return jsonResponse({ ok: true, id: saved.id, updatedAt: saved.updated_at });
 }
 

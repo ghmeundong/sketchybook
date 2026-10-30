@@ -12,45 +12,35 @@ let physicsRightWall = null;
 let physicsScaleProfile = null;
 
 export function createDeviceSafePhysicsProfile({
-  width,
-  height,
-  dpr = 1,
+  logicalWidth = 1600,
+  logicalHeight = 900,
   referenceWidth = 1600,
   referenceHeight = 900,
-  minScale = 0.75,
-  maxScale = 1.35,
-}) {
-  const widthScale = width / referenceWidth;
-  const heightScale = height / referenceHeight;
-  const scale = Math.min(Math.max(Math.min(widthScale, heightScale), minScale), maxScale);
-  const safeDpr = Math.max(1, Number.isFinite(dpr) ? dpr : 1);
-
-  const massScaleFactor = scale * scale;
+} = {}) {
+  const safeReferenceWidth =
+    Number.isFinite(referenceWidth) && referenceWidth > 0 ? referenceWidth : 1600;
+  const safeReferenceHeight =
+    Number.isFinite(referenceHeight) && referenceHeight > 0 ? referenceHeight : 900;
+  const safeLogicalWidth =
+    Number.isFinite(logicalWidth) && logicalWidth > 0 ? logicalWidth : safeReferenceWidth;
+  const safeLogicalHeight =
+    Number.isFinite(logicalHeight) && logicalHeight > 0 ? logicalHeight : safeReferenceHeight;
 
   return {
-    scale,
-    massScaleFactor,
-    screenToWorld: 1 / scale,
-    worldToScreen: scale,
-    gravity: { x: 0, y: DEFAULT_GRAVITY_Y * scale },
-    floorY: height - 32 * scale,
-    impulseMultiplier: 1.4 * scale,
-    radiusMultiplier: scale,
-    maxSubsteps: Math.min(4, Math.max(1, Math.round(60 / safeDpr))),
+    scale: 1,
+    scaleX: 1,
+    scaleY: 1,
+    massScaleFactor: 1,
+    screenToWorld: 1,
+    worldToScreen: 1,
+    gravity: { x: 0, y: DEFAULT_GRAVITY_Y },
+    floorY: safeLogicalHeight - 32,
+    impulseMultiplier: 1.4,
+    radiusMultiplier: 1,
+    logicalWidth: safeLogicalWidth,
+    logicalHeight: safeLogicalHeight,
+    maxSubsteps: 4,
   };
-}
-
-export function resolveLaunchMotionScale({
-  viewportDimension,
-  referenceDimension = 900,
-  scale = 1,
-}) {
-  const safeViewportDimension = Number.isFinite(viewportDimension)
-    ? viewportDimension
-    : referenceDimension;
-  const safeReferenceDimension = Number.isFinite(referenceDimension) ? referenceDimension : 900;
-  const dimensionRatio = safeViewportDimension / safeReferenceDimension;
-  return dimensionRatio * dimensionRatio * scale;
 }
 
 export function setPhysicsScaleProfile(profile) {
@@ -62,6 +52,10 @@ export function setPhysicsScaleProfile(profile) {
 
 export function getPhysicsScaleProfile() {
   return physicsScaleProfile;
+}
+
+export function resolveStrokeThickness(strokeWidth = 8) {
+  return strokeWidth * 0.55;
 }
 
 export function isBodyTouchingSurface(body) {
@@ -92,16 +86,7 @@ function ensurePhysicsGround(floorY, options = {}) {
   if (physicsLeftWall) physicsWorld.destroyBody(physicsLeftWall);
   if (physicsRightWall) physicsWorld.destroyBody(physicsRightWall);
 
-  // 1. 물리 시뮬레이션은 CSS 픽셀 좌표계를 기준으로 합니다.
-  // Prefer the main game canvas explicitly to avoid accidentally selecting
-  // preview or other canvases that may be present in the DOM.
-  const canvas =
-    typeof document !== "undefined"
-      ? document.querySelector("#game-canvas") || document.querySelector("canvas")
-      : null;
-  const fallbackWidth =
-    typeof window !== "undefined" && Number.isFinite(window.innerWidth) ? window.innerWidth : 800;
-  const gameWidth = canvas ? canvas.clientWidth : fallbackWidth;
+  const gameWidth = physicsScaleProfile?.logicalWidth ?? 1600;
 
   // 2. 바닥 생성 (0부터 gameWidth까지)
   physicsGround = physicsWorld.createBody();
@@ -153,7 +138,7 @@ function createPlanckBody(stroke, floorY, options = {}) {
     const angle = Math.atan2(dy, dx);
     const midpointX = (start.x + end.x) / 2 - stroke.body.x;
     const midpointY = (start.y + end.y) / 2 - stroke.body.y;
-    const thickness = 1.8;
+    const thickness = resolveStrokeThickness();
 
     const fixture = body.createFixture({
       shape: planck.Box(length / 2, thickness / 2, planck.Vec2(midpointX, midpointY), angle),

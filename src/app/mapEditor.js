@@ -14,6 +14,10 @@ import { isUserLoggedIn } from "../services/auth.js";
 import { fetchSharedMap, fetchSharedMaps, publishSharedMap } from "../services/sharedMaps.js";
 
 const STORAGE_KEY = "sketchybook.customMaps";
+const MAX_JSON_EDITOR_CHARS = 64 * 1024;
+const MAX_MAP_OBJECTS = 100;
+const MAX_SHAPE_POINTS = 128;
+const MAX_TEXT_OBJECT_CHARS = 200;
 const canvas = document.querySelector("[data-map-canvas]");
 const nameInput = document.querySelector("[data-map-name]");
 const status = document.querySelector("[data-map-status]");
@@ -666,6 +670,9 @@ function commitJsonSession() {
 }
 
 function validateMapJson(value) {
+  if (value.length > MAX_JSON_EDITOR_CHARS) {
+    throw new Error(`JSON input must be no more than ${MAX_JSON_EDITOR_CHARS} characters.`);
+  }
   const data = JSON.parse(value);
   const supportedTypes = new Set([
     "platform",
@@ -686,6 +693,9 @@ function validateMapJson(value) {
   if (!Array.isArray(data.objects)) {
     throw new Error('The map must contain an "objects" array.');
   }
+  if (data.objects.length > MAX_MAP_OBJECTS) {
+    throw new Error(`Map must contain no more than ${MAX_MAP_OBJECTS} objects.`);
+  }
 
   data.objects.forEach((object, index) => {
     if (!object || typeof object !== "object" || Array.isArray(object)) {
@@ -703,6 +713,7 @@ function validateMapJson(value) {
       if (
         !Array.isArray(object.points) ||
         object.points.length < 2 ||
+        object.points.length > MAX_SHAPE_POINTS ||
         object.points.some(
           (point) => !point || !isFiniteNumber(point.x) || !isFiniteNumber(point.y)
         )
@@ -728,8 +739,13 @@ function validateMapJson(value) {
     ) {
       throw new Error(`Object ${index + 1} needs a positive numeric radius.`);
     }
-    if (object.type === "text" && typeof object.text !== "string") {
-      throw new Error(`Text object ${index + 1} needs a string text value.`);
+    if (
+      object.type === "text" &&
+      (typeof object.text !== "string" || object.text.length > MAX_TEXT_OBJECT_CHARS)
+    ) {
+      throw new Error(
+        `Text object ${index + 1} needs text with at most ${MAX_TEXT_OBJECT_CHARS} characters.`
+      );
     }
   });
 
@@ -1606,6 +1622,11 @@ function initializeMapEditor() {
   });
 
   jsonEditor.addEventListener("input", () => {
+    if (jsonEditor.value.length > MAX_JSON_EDITOR_CHARS) {
+      jsonSuggestions.hidden = true;
+      jsonStatus.textContent = `JSON input must be no more than ${MAX_JSON_EDITOR_CHARS} characters.`;
+      return;
+    }
     renderJsonHighlight();
     refreshJsonSuggestions();
     applyMapJson();

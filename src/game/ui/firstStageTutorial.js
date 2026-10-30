@@ -28,6 +28,7 @@ import {
   writeThirdStageTutorialStatus,
 } from "../../app/tutorialState.js";
 import { translateText } from "../../app/localization.js";
+import { DEFAULT_LOGICAL_HEIGHT, DEFAULT_LOGICAL_WIDTH } from "../engine/core/coordinates.js";
 
 let activeTutorial = null;
 
@@ -211,13 +212,14 @@ export function startSecondStageTutorial(board, canvas, platforms, { force = fal
   const updateTargetPositions = () => {
     const boardRect = board.getBoundingClientRect();
     const canvasRect = canvas.getBoundingClientRect();
-    const scaleX = canvasRect.width / (canvas.width || canvasRect.width || 1);
-    const scaleY = canvasRect.height / (canvas.height || canvasRect.height || 1);
     [firstTarget, secondTarget] = getFacingPlatformCorners(
       platforms[0],
       platforms[1],
-      { width: canvas.width, height: canvas.height },
-      { x: scaleX, y: scaleY }
+      { width: DEFAULT_LOGICAL_WIDTH, height: DEFAULT_LOGICAL_HEIGHT },
+      {
+        x: canvasRect.width / DEFAULT_LOGICAL_WIDTH,
+        y: canvasRect.height / DEFAULT_LOGICAL_HEIGHT,
+      }
     );
     firstTarget.x += canvasRect.left - boardRect.left;
     firstTarget.y += canvasRect.top - boardRect.top;
@@ -448,8 +450,6 @@ export function startStageFiveRotorTutorial(
   const updateLinePositions = () => {
     boardRect = board.getBoundingClientRect();
     const canvasRect = canvas.getBoundingClientRect();
-    const scaleX = canvasRect.width / (canvas.width || canvasRect.width || 1);
-    const scaleY = canvasRect.height / (canvas.height || canvasRect.height || 1);
     const rotorPoints = rotor.normalizedPoints || [];
     const bounds = rotorPoints.reduce(
       (result, point) => ({
@@ -469,8 +469,8 @@ export function startStageFiveRotorTutorial(
       y: bounds.top - (bounds.bottom - bounds.top) * 0.85,
     };
     const toBoardPoint = (point) => ({
-      x: canvasRect.left - boardRect.left + point.x * canvas.width * scaleX,
-      y: canvasRect.top - boardRect.top + point.y * canvas.height * scaleY,
+      x: canvasRect.left - boardRect.left + point.x * canvasRect.width,
+      y: canvasRect.top - boardRect.top + point.y * canvasRect.height,
     });
     firstLineStart = toBoardPoint(rotorStart);
     const referenceEndPoint = toBoardPoint(rotorEnd);
@@ -484,12 +484,17 @@ export function startStageFiveRotorTutorial(
       y: firstLineStart.y - lineLength * Math.sin(lineAngle),
     };
 
-    secondLineStart = toBoardPoint({ x: 0.5, y: (canvas.height - 24) / canvas.height });
+    secondLineStart = toBoardPoint({
+      x: 0.5,
+      y: (DEFAULT_LOGICAL_HEIGHT - 32) / DEFAULT_LOGICAL_HEIGHT,
+    });
     const starRadius =
-      star.radius > 1 ? star.radius : star.radius * Math.min(canvas.width, canvas.height);
+      star.radius > 1
+        ? star.radius
+        : star.radius * Math.min(DEFAULT_LOGICAL_WIDTH, DEFAULT_LOGICAL_HEIGHT);
     secondLineEnd = toBoardPoint({
       x: star.nx,
-      y: (star.ny * canvas.height + starRadius) / canvas.height,
+      y: star.ny + starRadius / DEFAULT_LOGICAL_HEIGHT,
     });
 
     renderLineForCurrentPhase();
@@ -624,14 +629,17 @@ export function startStageNineHatchedCircleTutorial(board, canvas, circle, { for
   const updatePositions = () => {
     const boardRect = board.getBoundingClientRect();
     const canvasRect = canvas.getBoundingClientRect();
-    const scaleX = canvasRect.width / (canvas.width || canvasRect.width || 1);
-    const scaleY = canvasRect.height / (canvas.height || canvasRect.height || 1);
     const radius =
-      circle.radius > 1 ? circle.radius : circle.radius * Math.min(canvas.width, canvas.height);
-    const center = { x: circle.nx * canvas.width, y: circle.ny * canvas.height };
+      circle.radius > 1
+        ? circle.radius
+        : circle.radius * Math.min(DEFAULT_LOGICAL_WIDTH, DEFAULT_LOGICAL_HEIGHT);
+    const center = {
+      x: circle.nx * DEFAULT_LOGICAL_WIDTH,
+      y: circle.ny * DEFAULT_LOGICAL_HEIGHT,
+    };
     const toBoardPoint = (point) => ({
-      x: canvasRect.left - boardRect.left + point.x * scaleX,
-      y: canvasRect.top - boardRect.top + point.y * scaleY,
+      x: canvasRect.left - boardRect.left + (point.x / DEFAULT_LOGICAL_WIDTH) * canvasRect.width,
+      y: canvasRect.top - boardRect.top + (point.y / DEFAULT_LOGICAL_HEIGHT) * canvasRect.height,
     });
     const start = toBoardPoint({ x: center.x - radius * 2, y: center.y + radius * 1.5 });
     const end = toBoardPoint({ x: center.x + radius * 2, y: center.y - radius * 1.5 });

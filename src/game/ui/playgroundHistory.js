@@ -1,5 +1,9 @@
 import { createActionIconCanvas } from "./uiIcons.js";
-import { destroyStrokeBody, initializeStrokeBody } from "../engine/physics/physics.js";
+import {
+  destroyStrokeBody,
+  getPhysicsScaleProfile,
+  initializeStrokeBody,
+} from "../engine/physics/physics.js";
 import { dom } from "../engine/core/domRefs.js";
 import { state } from "../engine/core/gameState.js";
 
@@ -37,7 +41,7 @@ export function undoPlaygroundStroke() {
 export function redoPlaygroundStroke() {
   if (!state.isPlayground || state.playgroundRedoStack.length === 0) return;
   const stroke = state.playgroundRedoStack.pop();
-  const floorY = (dom.canvas?.clientHeight || 0) - 24;
+  const floorY = getPhysicsScaleProfile()?.floorY ?? state.canvasHeight - 32;
   initializeStrokeBody(stroke, floorY, {
     type: "dynamic",
     skipGround: false,

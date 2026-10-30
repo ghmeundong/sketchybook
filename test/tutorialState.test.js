@@ -56,12 +56,14 @@ describe("first-stage tutorial state", () => {
     const [first, second] = getFacingPlatformCorners(
       { nx: 0.3, ny: 0.45, width: 0.1, height: 0.05 },
       { nx: 0.7, ny: 0.55, width: 0.1, height: 0.05 },
-      { width: 1000, height: 500 },
-      { x: 1, y: 1 }
+      { width: 1600, height: 900 },
+      { x: 0.4, y: 0.4 }
     );
 
-    expect(first).toEqual({ x: 350, y: 212.5, radius: 24 });
-    expect(second).toEqual({ x: 650, y: 262.5, radius: 24 });
+    expect(first).toEqual({ x: 224, y: 153, radius: 24 });
+    expect(second.x).toBeCloseTo(416);
+    expect(second.y).toBeCloseTo(189);
+    expect(second.radius).toBe(24);
   });
 
   it("shows each stage tutorial based only on that stage's own completion", () => {

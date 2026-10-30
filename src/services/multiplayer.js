@@ -74,7 +74,11 @@ export function connectToRoom(
         socket.addEventListener("message", (event) => {
           try {
             const message = JSON.parse(event.data);
-            if (message.type === "pong" && Number.isFinite(message.clientTime)) {
+            if (
+              (message.type === "pong" || message.type === "room-sync") &&
+              Number.isFinite(message.clientTime) &&
+              Number.isFinite(message.serverTime)
+            ) {
               const roundTrip = Date.now() - message.clientTime;
               message.serverOffset = message.serverTime - (message.clientTime + roundTrip / 2);
               serverClockOffset = message.serverOffset;
@@ -156,6 +160,16 @@ export function isRoomConnected() {
 
 export function getServerTime() {
   return Date.now() + serverClockOffset;
+}
+
+export function requestRoomSync() {
+  if (!isRoomConnected()) return false;
+  try {
+    activeSocket.send(JSON.stringify({ type: "sync-request", clientTime: Date.now() }));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function sendRoomStrokePreview(strokeId, sequence, points) {

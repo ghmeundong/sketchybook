@@ -609,6 +609,14 @@ function handleRoomMessage(message) {
     return;
   }
 
+  if (message.type === "room-sync") {
+    if (Number.isFinite(message.serverOffset)) {
+      serverClockOffset = message.serverOffset;
+    }
+    window.dispatchEvent(new CustomEvent("sketchybook:room-sync", { detail: message }));
+    return;
+  }
+
   if (message.type === "room-start") {
     clearTimeout(roomStartTimer);
     selectedRoomStage = message.stageNumber;

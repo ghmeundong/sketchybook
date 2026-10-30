@@ -10,8 +10,8 @@ describe("processBallObjectInteractions", () => {
 
     const result = processBallObjectInteractions({
       gameObjects: [ball, star],
-      canvasWidth: 800,
-      canvasHeight: 450,
+      canvasWidth: 1600,
+      canvasHeight: 900,
       onStarCollected: (collectedStar) => collected.push(collectedStar),
     });
 
@@ -27,8 +27,8 @@ describe("processBallObjectInteractions", () => {
     expect(
       processBallObjectInteractions({
         gameObjects: [ball, star],
-        canvasWidth: 800,
-        canvasHeight: 450,
+        canvasWidth: 1600,
+        canvasHeight: 900,
       })
     ).toEqual({ hasStars: true, allStarsCollected: false });
   });
@@ -37,8 +37,8 @@ describe("processBallObjectInteractions", () => {
     expect(
       processBallObjectInteractions({
         gameObjects: [],
-        canvasWidth: 800,
-        canvasHeight: 450,
+        canvasWidth: 1600,
+        canvasHeight: 900,
       })
     ).toEqual({ hasStars: false, allStarsCollected: false });
   });

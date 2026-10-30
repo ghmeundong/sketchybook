@@ -12,31 +12,24 @@ export function getStrokeDistance(points) {
   return distance;
 }
 
-export function getLogicalStrokeDistance(points, coordinateSystem) {
-  if (!Array.isArray(points) || points.length < 2) {
-    return 0;
-  }
-
-  if (!coordinateSystem) {
-    return getStrokeDistance(points);
-  }
-
-  const logicalPoints = points.map((point) => coordinateSystem.toLogicalPoint(point));
-  return getStrokeDistance(logicalPoints);
+export function getLogicalStrokeDistance(points) {
+  return getStrokeDistance(points);
 }
 
-export function exceedsLineLengthLimit({
-  totalDrawnLength,
-  stroke,
-  lineLengthLimit,
-  coordinateSystem,
-}) {
+export function getLogicalInputTolerance(screenPixels, coordinateSystem) {
+  const scale = coordinateSystem?.scaleX;
+  if (!Number.isFinite(scale) || scale <= 0) {
+    return screenPixels;
+  }
+  return screenPixels / scale;
+}
+
+export function exceedsLineLengthLimit({ totalDrawnLength, stroke, lineLengthLimit }) {
   if (lineLengthLimit == null) {
     return false;
   }
 
-  const nextTotalDrawnLength =
-    totalDrawnLength + getLogicalStrokeDistance(stroke, coordinateSystem);
+  const nextTotalDrawnLength = totalDrawnLength + getLogicalStrokeDistance(stroke);
   const comparisonTolerance =
     Number.EPSILON * Math.max(1, Math.abs(nextTotalDrawnLength), Math.abs(lineLengthLimit)) * 10;
   return nextTotalDrawnLength > lineLengthLimit + comparisonTolerance;

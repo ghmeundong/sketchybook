@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { createCoordinateSystem } from "../src/game/engine/core/coordinates.js";
 import {
   exceedsLineLengthLimit,
+  getLogicalInputTolerance,
   getLogicalStrokeDistance,
   getStrokeDistance,
   shouldRejectStroke,
 } from "../src/game/input/drawingPolicy.js";
 
 describe("drawing policy distance", () => {
+  it("keeps click tolerance constant in screen pixels across viewport scales", () => {
+    expect(getLogicalInputTolerance(6, { scaleX: 0.25 })).toBe(24);
+    expect(getLogicalInputTolerance(6, { scaleX: 1 })).toBe(6);
+    expect(getLogicalInputTolerance(6, { scaleX: 2 })).toBe(3);
+  });
+
   it("calculates screen distance for raw points", () => {
     expect(
       getStrokeDistance([
@@ -17,31 +23,19 @@ describe("drawing policy distance", () => {
     ).toBe(5);
   });
 
-  it("calculates logical distance independently of viewport scale", () => {
-    const coordinateSystem = createCoordinateSystem({
-      viewportWidth: 2240,
-      viewportHeight: 1260,
-    });
-
+  it("calculates stroke distance directly in logical coordinates", () => {
     expect(
-      getLogicalStrokeDistance(
-        [
-          { x: 0, y: 0 },
-          { x: 700, y: 0 },
-        ],
-        coordinateSystem
-      )
-    ).toBeCloseTo(500);
+      getLogicalStrokeDistance([
+        { x: 0, y: 0 },
+        { x: 500, y: 0 },
+      ])
+    ).toBe(500);
   });
 
   it("rejects only when the logical total exceeds the configured limit", () => {
-    const coordinateSystem = createCoordinateSystem({
-      viewportWidth: 2240,
-      viewportHeight: 1260,
-    });
     const stroke = [
       { x: 0, y: 0 },
-      { x: 700, y: 0 },
+      { x: 500, y: 0 },
     ];
 
     expect(
@@ -49,7 +43,6 @@ describe("drawing policy distance", () => {
         totalDrawnLength: 0,
         stroke,
         lineLengthLimit: 500,
-        coordinateSystem,
       })
     ).toBe(false);
     expect(
@@ -57,7 +50,6 @@ describe("drawing policy distance", () => {
         totalDrawnLength: 1,
         stroke,
         lineLengthLimit: 500,
-        coordinateSystem,
       })
     ).toBe(true);
   });

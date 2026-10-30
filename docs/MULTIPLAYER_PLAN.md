@@ -77,9 +77,132 @@ The current prototype streams visual previews while drawing and retains release-
 - Every client displays the live stroke as it is drawn. On release, it keeps the accepted stroke visible as a non-collidable preview until creating its local physics body at `applyAt`. The author does not get an earlier collision than peers under normal delivery conditions.
 - Ball launches are room actions too: the server deduplicates each player's event ID, assigns the shared room sequence and an `applyAt` after the last accepted stroke/launch, then broadcasts it. The event describes the launch action rather than device-specific impulse values, so each client applies its locally scaled equivalent at the same scheduled time.
 - A new room inherits the host's globally selected difficulty (with Normal as fallback when no valid selection exists). The host can change the room difficulty in the lobby; the Durable Object persists and broadcasts the selection, and only the host may change it. The selected difficulty and applicable Challenge Mode setting are included with the room start and applied by every client for the whole stage. Stage completion is determined by the host and relayed once for the selected stage; participants use the host's event count for the completion score. Next-stage, retry (including the HUD button and R shortcut), and exit actions are host-controlled and broadcast as a room start/lobby transition, so guests cannot locally change stages or leave the shared game accidentally.
-- While connected to a room, physics uses 1/60-second steps and retains elapsed-time debt instead of dropping time after a delayed animation frame. It processes at most eight catch-up steps per rendered frame, then drains any remaining debt over subsequent frames. Hidden-tab gameplay retains its multiplayer simulation timestamp; leaving/resetting the stage clears it.
+- While connected to a room, physics uses 1/60-second steps and retains elapsed-time debt instead of dropping time after a delayed animation frame. It processes at most eight catch-up steps per rendered frame, then drains any remaining debt over subsequent frames. On window blur or tab hiding, the local simulation pauses but preserves its last simulation timestamp. On focus return, the client requests the current server time and room sequence, blocks game input, and replays queued room actions while advancing up to 120 fixed steps per rendered frame. It requests a fresh clock sample if it remains more than 100 ms behind, then unlocks input when close to the latest room time. This requires the existing WebSocket to remain connected; reconnect replay is not implemented.
 
-This remains a cooperative prototype, not an authoritative simulation. Host-controlled stage completion avoids a participant advancing ahead when local physics diverges, but a host whose client is frozen may delay completion. Fixed-step catch-up avoids permanently losing simulation time after a short freeze, but a late client temporarily trails the room and independent Planck worlds can still diverge after collisions. It cannot guarantee that late forces are inserted at the exact historical point in a frozen client's physics timeline. To eliminate that remaining difference, make the host (or server) authoritative: periodically publish tick-stamped state snapshots for every dynamic body and accepted event sequence; clients detect a stale tick, stop trusting local physics, restore the latest snapshot, then replay buffered room actions or interpolate to the next snapshot. Host loss/freeze requires authority handoff or a server simulation. Do not claim exact resynchronization until this snapshot/replay path and deterministic body identity are implemented and tested.
+This remains a cooperative prototype, not an authoritative simulation. Host-controlled stage completion avoids a participant advancing ahead when local physics diverges, but a host whose client is frozen may delay completion. Focus-resume catch-up replays timestamped room actions only when the WebSocket remained connected and those messages were delivered; independent Planck worlds can still diverge after collisions, and a disconnected client cannot recover missed actions yet. It cannot guarantee that late forces are inserted at the exact historical point in a frozen client's physics timeline. To eliminate that remaining difference, make the host (or server) authoritative: periodically publish tick-stamped state snapshots for every dynamic body and accepted event sequence; clients detect a stale tick, stop trusting local physics, restore the latest snapshot, then replay buffered room actions or interpolate to the next snapshot. Host loss/freeze requires authority handoff or a server simulation. Do not claim exact resynchronization until this snapshot/replay path and deterministic body identity are implemented and tested.
+
+## Practical Synchronization Recovery Without Server Physics
+
+Server-side Planck simulation is not required for a reliable cooperative multiplayer prototype. A more practical goal is to establish a common event timeline, recover missed events, and periodically realign clients to a known host state. This is eventually consistent synchronization, not a promise that every independently simulated frame will always be identical.
+
+### 1. Use room tick and event sequence as the primary timeline
+
+Define a monotonically increasing `roomTick` for each room, driven from the room start time and a fixed simulation step. Use `roomSequence` as the order of accepted room actions, while `applyTick` is the fixed tick at which those actions take effect.
+
+Every accepted `stroke`, `launch`, preview cancellation, and later gameplay action should include both values:
+
+```json
+{
+  "roomSequence": 42,
+  "applyTick": 1800
+}
+```
+
+The Durable Object remains a thin ordering authority. It validates input, assigns sequence and tick values, deduplicates event IDs, and broadcasts the immutable accepted action. It should not calculate the physics outcome. The millisecond `applyAt` clock remains useful as an estimation mechanism, but clients must key action replay and state recovery by tick and sequence.
+
+All clients must use the same fixed physics step and apply accepted actions in sequence order. If a room action is received after its apply tick, the server and client must follow a documented late-event policy: reserve a future tick, make the rescheduled tick immutable once accepted, and preserve the original action data without creating device-local timing differences.
+
+### 2. Retain recent authoritative room events for replay
+
+The Durable Object should retain a bounded event log containing accepted actions after a replay cursor. The log must support lookup by `roomSequence`, such as “events after sequence N,” and must retain enough entries to cover reconnect latency and the snapshot cadence.
+
+A recovery request should be explicit:
+
+```json
+{
+  "type": "room_resync_request",
+  "lastRoomSequence": 41,
+  "lastRoomTick": 1790
+}
+```
+
+The Durable Object replies with a snapshot and the accepted events missing since the requested sequence, in ascending order. Clients insert the events into the same fixed-tick queue and replay them only when the base state and tick are valid. Do not rebuild state by applying actions based solely on delivery time.
+
+Recommended event-log rules:
+
+- Deduplicate by the immutable `eventId`.
+- Store immutable accepted strokes, launches, stage actions, and cancellations.
+- Enforce a maximum room age and entry count so the log is bounded.
+- Advance the replay cursor only after a snapshot covers the corresponding tick.
+- Prune events only after their replay window and snapshot dependencies are obsolete.
+- Rejoin from the snapshot when the requested sequence has already been pruned.
+
+This also addresses reconnects and temporary WebSocket stalls. Receiving the current clock is insufficient when one or more accepted actions were never delivered.
+
+### 3. Use periodic host snapshots as a common recovery state
+
+The room host periodically publishes a physics snapshot rather than continually requiring the server to simulate physics. The snapshot should contain at least:
+
+- host player ID and room identifier;
+- snapshot tick and the latest accepted room sequence;
+- all dynamic body states; and
+- gameplay state needed to restore the room, such as collected stars, active drawing segments, stage state, scores, and completed actions.
+
+Dynamic and collidable objects must have stable, deterministic IDs across every client. Snapshot fields should be normalized and serialized in a consistent body-ID order. A possible payload is:
+
+```json
+{
+  "type": "host_snapshot",
+  "roomSequence": 42,
+  "roomTick": 1800,
+  "bodies": {
+    "ball:0": { "x": 800, "y": 450, "vx": 2.1, "vy": -0.4, "angle": 0.2, "angularVelocity": 0.1 }
+  },
+  "starsCollected": ["star-1"],
+  "activeStrokes": ["stroke-18"]
+}
+
+```
+
+The host snapshot must be validated and relayed by the Durable Object, which keeps only the latest safe snapshot. Clients restore the snapshot, reset or reconstruct known bodies, clear queued replay outside the snapshot scope, and replay accepted events whose sequence is newer than the snapshot sequence. Until replay is complete, multiplayer input should remain locked to prevent a second local timeline from being introduced.
+
+This retains local physics simulation, avoids running Planck in the Durable Object, and repairs long-running drift or a client that was paused for an extended period. Exact parity is still not guaranteed, because independent clients may execute different engine versions or floating-point behavior.
+
+### 4. Separate render correction from simulation correction
+
+When local state differs only slightly from the host snapshot, render interpolation is preferred. Clients should smooth visual position and velocity toward the received state rather than modifying the physics world every frame. This keeps collision trajectories from receiving additional, frame-dependent perturbations.
+
+Use a larger correction threshold for the physics simulation:
+
+1. Below the small-error threshold: interpolate rendered state only.
+2. Between the small-error and resynchronization thresholds: reduce render interpolation latency and record a divergence warning.
+3. Above the resynchronization threshold: lock multiplayer input, restore the latest snapshot, and replay events after the snapshot sequence.
+
+A teleport-type correction is appropriate after a long freeze, a missing snapshot, or a state topology mismatch such as a missing object. It should not be used for every small frame-to-frame difference.
+
+### 5. Detect divergence with normalized checksums
+
+The client can periodically calculate a lightweight state checksum from:
+
+- normalized `roomTick` and latest applied `roomSequence`;
+- sorted stable body IDs; and
+- quantized position, velocity, and angle values.
+
+The checksum does not repair physics and should not become authoritative evidence. It is used to detect persistent disagreement and to help isolate which tick first diverged. Preserve an optional diagnostic state sample with previous applied actions so network testing can identify collisions that require deterministic fixes or tighter snapshot cadence.
+
+### Recovery model
+
+For routine corrections, the preferred sequence is:
+
+1. restore the latest host snapshot;
+2. discard client state after that snapshot;
+3. replay the Durable Object event log for sequences newer than the snapshot;
+4. advance fixed ticks to the current authorized tick; and
+5. resume local physics and smooth minor rendering differences.
+
+On focus return, a client should request clock information only as an additional hint. Its primary synchronization check is the latest snapshot, current room sequence, and missing-event range.
+
+## Recommended Multiplayer Priority
+
+For the no-server-physics design, implement in this order:
+
+1. Replace `applyAt`-only replay with shared `roomTick` plus immutable `applyTick` scheduling based on accepted room sequence.
+2. Add bounded Durable Object event retention and `roomSequence`-based event resending.
+3. Add host snapshots with stable object IDs, validation, relay, latest snapshot retention, snapshot replay, and host handoff policy.
+4. Add small-error interpolation, large-error snapshot reset, and periodic checksum diagnostics.
+5. Measure actual divergence under focused tests before introducing server authority or Planck into the Durable Object.
+
+This ordering keeps the Durable Object as a sequence coordinator and snapshot relay rather than an authoritative physics simulator. It also defines a host authority boundary that must be handled separately: host departure or permanent host freeze requires host promotion or a client-controlled pause, and it should not silently leave guests running incompatible timelines.
 
 ## Validation Plan
 

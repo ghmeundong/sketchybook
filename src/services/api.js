@@ -7,9 +7,12 @@ if (typeof window !== "undefined") {
   if (
     API_BASE_URL === DEFAULT_LOCAL ||
     /localhost/.test(API_BASE_URL) ||
-    host.endsWith(".github.dev")
+    host.endsWith(".github.dev") ||
+    host.endsWith(".devtunnels.ms")
   ) {
-    if (host.endsWith(".github.dev")) {
+    if (host.endsWith(".devtunnels.ms")) {
+      API_BASE_URL = window.location.origin;
+    } else if (host.endsWith(".github.dev")) {
       // remove possible '-5173' or other suffixes and build Codespaces backend host
       const baseHost = host.replace(/-\d+$/, "").replace(".github.dev", "").replace(".app", "");
       API_BASE_URL = `https://${baseHost}-8787.app.github.dev`;

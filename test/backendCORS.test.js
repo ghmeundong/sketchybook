@@ -72,6 +72,25 @@ describe("backend CORS handling", () => {
     await expect(response.json()).resolves.toEqual({ status: "waiting" });
   });
 
+  it("replies to a room sync request with server time and current room sequence", async () => {
+    const socket = createTestSocket({ isHost: false, playerId: "guest" });
+    const room = new MultiplayerRoom({
+      storage: createTestStorage({ status: "started", selectedStage: 6, roomSequence: 23 }),
+      getWebSockets: () => [socket],
+    });
+
+    await room.webSocketMessage(socket, JSON.stringify({ type: "sync-request", clientTime: 1234 }));
+
+    expect(socket.sent.at(-1)).toMatchObject({
+      type: "room-sync",
+      clientTime: 1234,
+      roomSequence: 23,
+      stageNumber: 6,
+      status: "started",
+    });
+    expect(socket.sent.at(-1).serverTime).toBeGreaterThan(0);
+  });
+
   it("creates rooms with the requested difficulty and Challenge Mode setting", async () => {
     const storage = createTestStorage();
     storage.setAlarm = async () => {};

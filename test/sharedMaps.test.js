@@ -14,7 +14,8 @@ function createSharedMapsDatabase() {
         },
         async run() {
           if (sql.includes("INSERT INTO shared_maps")) {
-            const [id, ownerSub, sourceId, authorName, name, mapJson, createdAt, updatedAt] = bindings;
+            const [id, ownerSub, sourceId, authorName, name, mapJson, createdAt, updatedAt] =
+              bindings;
             const existing = [...rows.values()].find(
               (row) => row.owner_sub === ownerSub && row.source_id === sourceId
             );
@@ -32,14 +33,18 @@ function createSharedMapsDatabase() {
           return { success: true };
         },
         async all() {
-          return { results: [...rows.values()].sort((a, b) => b.updated_at.localeCompare(a.updated_at)) };
+          return {
+            results: [...rows.values()].sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
+          };
         },
         async first() {
           if (sql.includes("WHERE id = ?")) return rows.get(bindings[0]) || null;
           if (sql.includes("WHERE owner_sub = ? AND source_id = ?")) {
-            return [...rows.values()].find(
-              (row) => row.owner_sub === bindings[0] && row.source_id === bindings[1]
-            ) || null;
+            return (
+              [...rows.values()].find(
+                (row) => row.owner_sub === bindings[0] && row.source_id === bindings[1]
+              ) || null
+            );
           }
           return null;
         },
@@ -65,7 +70,9 @@ afterEach(() => {
 describe("shared map API", () => {
   it("returns the public map board from D1", async () => {
     const database = createSharedMapsDatabase();
-    const response = await backend.fetch(new Request("https://api.example/api/maps"), { DB: database });
+    const response = await backend.fetch(new Request("https://api.example/api/maps"), {
+      DB: database,
+    });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ ok: true, maps: [] });
@@ -87,22 +94,24 @@ describe("shared map API", () => {
   });
 
   it("stores valid maps for the public board and rejects maps without a ball or star", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () =>
-      Response.json({ sub: "user-123", name: "Map Author", aud: "test-client" })
-    ));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ sub: "user-123", name: "Map Author", aud: "test-client" }))
+    );
     const database = createSharedMapsDatabase();
     const env = { DB: database, GOOGLE_CLIENT_ID: "test-client" };
-    const upload = (map, sourceId = "local-map-1") => backend.fetch(
-      new Request("https://api.example/api/maps", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer valid-token",
-        },
-        body: JSON.stringify({ sourceId, map }),
-      }),
-      env
-    );
+    const upload = (map, sourceId = "local-map-1") =>
+      backend.fetch(
+        new Request("https://api.example/api/maps", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer valid-token",
+          },
+          body: JSON.stringify({ sourceId, map }),
+        }),
+        env
+      );
 
     const invalidResponse = await upload({ ...validMap, objects: [validMap.objects[0]] });
     expect(invalidResponse.status).toBe(400);

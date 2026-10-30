@@ -6,9 +6,11 @@ export function createCoordinateSystem(options = {}) {
   const logicalHeight = options.logicalHeight ?? DEFAULT_LOGICAL_HEIGHT;
   const viewportWidth = options.viewportWidth ?? window.innerWidth;
   const viewportHeight = options.viewportHeight ?? window.innerHeight;
-
-  const scaleX = viewportWidth / logicalWidth;
-  const scaleY = viewportHeight / logicalHeight;
+  const scale = Math.min(viewportWidth / logicalWidth, viewportHeight / logicalHeight);
+  const scaleX = scale;
+  const scaleY = scale;
+  const offsetX = (viewportWidth - logicalWidth * scale) / 2;
+  const offsetY = (viewportHeight - logicalHeight * scale) / 2;
 
   return {
     logicalWidth,
@@ -17,11 +19,13 @@ export function createCoordinateSystem(options = {}) {
     viewportHeight,
     scaleX,
     scaleY,
+    offsetX,
+    offsetY,
     toScreenX(x) {
-      return x * scaleX;
+      return offsetX + x * scaleX;
     },
     toScreenY(y) {
-      return y * scaleY;
+      return offsetY + y * scaleY;
     },
     toScreenPoint(point) {
       return {
@@ -30,10 +34,10 @@ export function createCoordinateSystem(options = {}) {
       };
     },
     toLogicalX(x) {
-      return x / scaleX;
+      return (x - offsetX) / scaleX;
     },
     toLogicalY(y) {
-      return y / scaleY;
+      return (y - offsetY) / scaleY;
     },
     toLogicalPoint(point) {
       return {

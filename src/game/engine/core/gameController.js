@@ -1,7 +1,10 @@
 import rough from "roughjs";
-import { createCoordinateSystem } from "./coordinates.js";
+import {
+  createCoordinateSystem,
+  DEFAULT_LOGICAL_HEIGHT,
+  DEFAULT_LOGICAL_WIDTH,
+} from "./coordinates.js";
 import { loadStage } from "../../levels/loader/stageLoader.js";
-import { resolveCircleRadius, segmentIntersectsCircle, segmentIntersectsRect } from "./geometry.js";
 import { getStagePageIndexForStage } from "../../levels/pages/stagePages.js";
 import { rescaleLocalPoint, rescalePoint } from "../systems/resizeState.js";
 import { shouldDeferResize } from "../systems/layoutSync.js";
@@ -15,7 +18,12 @@ import {
 } from "../../ui/gameUi.js";
 import { getChallengeModePreference, setChallengeModePreference } from "../config/challengeMode.js";
 import { shouldAdvancePhysics } from "../config/inputRules.js";
-import { consumePhysicsStepBatch, shouldRebuildPhysicsWorld } from "../physics/physicsState.js";
+import {
+  createPhysicsCatchupBatch,
+  consumeDuePhysicsEvents,
+  consumePhysicsStepBatch,
+  shouldRebuildPhysicsWorld,
+} from "../physics/physicsState.js";
 import { isChallengeClearedLocal, saveChallengeCleared } from "../../ui/stageProgress.js";
 import {
   stepPhysicsWorld,
@@ -38,6 +46,7 @@ import { state } from "./gameState.js";
 import {
   render,
   createStrokeTexture,
+  drawStrokePreview,
   getCanvasPixelSize,
   getRenderDpr,
 } from "../../render/gameRenderer.js";
@@ -64,7 +73,7 @@ import {
   removePlaygroundHistoryButtons,
 } from "../../ui/playgroundHistory.js";
 import { INK } from "../../../theme.js";
-import { isRoomConnected } from "../../../services/multiplayer.js";
+import { getServerTime, isRoomConnected, requestRoomSync } from "../../../services/multiplayer.js";
 import {
   startFirstStageTutorial,
   startSecondStageTutorial,
@@ -77,6 +86,8 @@ import {
 const isItchBuild = import.meta.env.MODE === "itch";
 const MULTIPLAYER_PHYSICS_STEP_MS = 1000 / 60;
 const MAX_MULTIPLAYER_STEPS_PER_FRAME = 8;
+const MAX_ROOM_CATCHUP_STEPS_PER_FRAME = 120;
+const ROOM_SYNC_TOLERANCE_MS = 100;
 let tutorialStageThreeSpacebarUsed = false;
 let tutorialStageThreeResetPending = false;
 
@@ -97,6 +108,78 @@ function clearRoomModeOverride() {
   }
   roomModeOverride = null;
   previousRoomMode = null;
+}
+
+function setRoomCatchupOverlay(visible) {
+  if (!dom.board) return;
+  if (!state.physicsCatchupOverlay) {
+    state.physicsCatchupOverlay = document.createElement("div");
+    state.physicsCatchupOverlay.className = "multiplayer-catchup-overlay";
+    state.physicsCatchupOverlay.setAttribute("role", "status");
+    state.physicsCatchupOverlay.setAttribute("aria-live", "polite");
+    state.physicsCatchupOverlay.textContent = "Synchronizing room...";
+    state.physicsCatchupOverlay.hidden = true;
+    dom.board.append(state.physicsCatchupOverlay);
+  }
+  state.physicsCatchupOverlay.hidden = !visible;
+}
+
+function resetRoomCatchup() {
+  state.physicsCatchupNeeded = false;
+  state.physicsCatchupPending = false;
+  state.physicsCatchupActive = false;
+  state.physicsCatchupTargetTimeMs = null;
+  state.physicsCatchupRequestInFlight = false;
+  setRoomCatchupOverlay(false);
+}
+
+function requestRoomCatchupSync() {
+  if (!isRoomConnected() || state.physicsCatchupRequestInFlight) return;
+  state.physicsCatchupPending = true;
+  state.physicsCatchupRequestInFlight = requestRoomSync();
+}
+
+function finishRoomCatchup() {
+  if (state.physicsSimulationTimeMs == null) {
+    state.physicsSimulationTimeMs = getServerTime();
+  }
+  const lagMs = Math.max(0, getServerTime() - state.physicsSimulationTimeMs);
+  if (lagMs > ROOM_SYNC_TOLERANCE_MS && isRoomConnected()) {
+    state.physicsCatchupActive = false;
+    state.physicsCatchupNeeded = true;
+    requestRoomCatchupSync();
+    return;
+  }
+
+  state.physicsAccumulatorMs = lagMs;
+  state.physicsCatchupNeeded = false;
+  state.physicsCatchupPending = false;
+  state.physicsCatchupActive = false;
+  state.physicsCatchupTargetTimeMs = null;
+  state.physicsCatchupRequestInFlight = false;
+  state.lastPhysicsTime = 0;
+  setRoomCatchupOverlay(false);
+}
+
+function receiveRoomSync(message) {
+  if (
+    !state.physicsCatchupNeeded ||
+    !Number.isFinite(message?.serverTime) ||
+    message.status !== "started" ||
+    message.stageNumber !== state.currentStageNumber
+  ) {
+    return;
+  }
+
+  state.physicsCatchupRequestInFlight = false;
+  if (state.physicsSimulationTimeMs == null) {
+    state.physicsSimulationTimeMs = message.serverTime;
+  }
+  state.physicsCatchupTargetTimeMs = Math.max(state.physicsSimulationTimeMs, message.serverTime);
+  state.physicsCatchupPending = false;
+  state.physicsCatchupActive =
+    state.physicsCatchupTargetTimeMs - state.physicsSimulationTimeMs > ROOM_SYNC_TOLERANCE_MS;
+  if (!state.physicsCatchupActive) finishRoomCatchup();
 }
 
 window.addEventListener("sketchybook:room-mode", (event) => {
@@ -122,10 +205,16 @@ window.addEventListener("sketchybook:room-mode", (event) => {
 
 window.addEventListener("sketchybook:room-lobby", () => {
   clearRoomModeOverride();
+  resetRoomCatchup();
 });
 
 window.addEventListener("sketchybook:room-closed", () => {
   clearRoomModeOverride();
+  resetRoomCatchup();
+});
+
+window.addEventListener("sketchybook:room-sync", (event) => {
+  receiveRoomSync(event.detail);
 });
 
 window.addEventListener("sketchybook:tutorial-spacebar", () => {
@@ -326,6 +415,9 @@ export function resetStageState() {
   state.drawLimitProgressTrackDrawn = false;
   state.lastPhysicsTime = 0;
   state.physicsAccumulatorMs = 0;
+  state.physicsSimulationTimeMs = null;
+  state.pendingPhysicsEvents = [];
+  resetRoomCatchup();
   state.floorTextureCanvas = null;
   state.floorTextureKey = null;
   state.currentStrokePreviewDirty = false;
@@ -908,9 +1000,6 @@ export async function initializeStage(stageNumberOverride) {
     stageNumberOverride,
     state.currentDifficulty
   );
-  if (state.currentStage?.coordinateSystem) {
-    state.coordinateSystem = state.currentStage.coordinateSystem;
-  }
   if (typeof state.currentStage?.initialize === "function") {
     state.currentStage.initialize();
   }
@@ -946,13 +1035,21 @@ export function resizeCanvas() {
     return;
   }
 
-  const measuredWidth = dom.board.clientWidth;
-  const measuredHeight = dom.board.clientHeight;
+  const boardWidth = dom.board.clientWidth;
+  const boardHeight = dom.board.clientHeight;
   const dpr = getRenderDpr();
 
-  if (shouldDeferResize(measuredWidth, measuredHeight)) {
+  if (shouldDeferResize(boardWidth, boardHeight)) {
     return;
   }
+
+  const measuredWidth = DEFAULT_LOGICAL_WIDTH;
+  const measuredHeight = DEFAULT_LOGICAL_HEIGHT;
+  const viewScale = Math.min(boardWidth / measuredWidth, boardHeight / measuredHeight);
+  const viewWidth = measuredWidth * viewScale;
+  const viewHeight = measuredHeight * viewScale;
+  const viewLeft = (boardWidth - viewWidth) / 2;
+  const viewTop = (boardHeight - viewHeight) / 2;
 
   const previousCanvasWidth = state.canvasWidth;
   const previousCanvasHeight = state.canvasHeight;
@@ -1017,46 +1114,36 @@ export function resizeCanvas() {
       });
     }
   }
-  let previewSnapshot = null;
-  if (
-    state.currentStroke?.length &&
-    state.previewCanvas &&
-    previousCanvasWidth > 0 &&
-    previousCanvasHeight > 0
-  ) {
-    previewSnapshot = document.createElement("canvas");
-    previewSnapshot.width = state.previewCanvas.width;
-    previewSnapshot.height = state.previewCanvas.height;
-    const snapshotCtx = previewSnapshot.getContext("2d");
-    snapshotCtx?.drawImage(state.previewCanvas, 0, 0);
-  }
   state.canvasWidth = measuredWidth;
   state.canvasHeight = measuredHeight;
 
-  const canvasPixelSize = getCanvasPixelSize(state.canvasWidth, state.canvasHeight, dpr);
+  const canvasPixelSize = getCanvasPixelSize(viewWidth, viewHeight, dpr);
   dom.canvas.width = canvasPixelSize.width;
   dom.canvas.height = canvasPixelSize.height;
-  dom.canvas.style.width = `${state.canvasWidth}px`;
-  dom.canvas.style.height = `${state.canvasHeight}px`;
+  dom.canvas.style.inset = "auto";
+  dom.canvas.style.left = `${viewLeft}px`;
+  dom.canvas.style.top = `${viewTop}px`;
+  dom.canvas.style.width = `${viewWidth}px`;
+  dom.canvas.style.height = `${viewHeight}px`;
 
   state.ctx = dom.canvas.getContext("2d");
   if (!state.ctx) {
     return;
   }
 
-  state.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  state.ctx.setTransform(dpr * viewScale, 0, 0, dpr * viewScale, 0, 0);
   const nextPhysicsProfile = createDeviceSafePhysicsProfile({
-    width: state.canvasWidth,
-    height: state.canvasHeight,
-    dpr,
+    logicalWidth: state.canvasWidth,
+    logicalHeight: state.canvasHeight,
   });
   setPhysicsScaleProfile(nextPhysicsProfile);
   state.ctx.clearRect(0, 0, state.canvasWidth, state.canvasHeight);
 
   state.coordinateSystem = createCoordinateSystem({
-    viewportWidth: state.canvasWidth,
-    viewportHeight: state.canvasHeight,
+    viewportWidth: viewWidth,
+    viewportHeight: viewHeight,
   });
+  if (state.currentStage) state.currentStage.coordinateSystem = state.coordinateSystem;
   state.roughCanvas = rough.canvas(dom.canvas);
   state.roughCanvas.ctx.globalAlpha = 1;
 
@@ -1066,32 +1153,23 @@ export function resizeCanvas() {
     state.previewCanvas = document.createElement("canvas");
     state.previewCanvas.className = "game-preview-canvas";
     state.previewCanvas.style.position = "absolute";
-    state.previewCanvas.style.inset = "0";
     state.previewCanvas.style.pointerEvents = "none";
     state.previewCanvas.style.zIndex = "50";
     if (dom.board) dom.board.appendChild(state.previewCanvas);
   }
-  const previewPixelSize = getCanvasPixelSize(state.canvasWidth, state.canvasHeight, dpr);
+  const previewPixelSize = getCanvasPixelSize(viewWidth, viewHeight, dpr);
   state.previewCanvas.width = previewPixelSize.width;
   state.previewCanvas.height = previewPixelSize.height;
-  state.previewCanvas.style.width = `${Math.max(1, state.canvasWidth)}px`;
-  state.previewCanvas.style.height = `${Math.max(1, state.canvasHeight)}px`;
+  state.previewCanvas.style.inset = "auto";
+  state.previewCanvas.style.left = `${viewLeft}px`;
+  state.previewCanvas.style.top = `${viewTop}px`;
+  state.previewCanvas.style.width = `${Math.max(1, viewWidth)}px`;
+  state.previewCanvas.style.height = `${Math.max(1, viewHeight)}px`;
   state.previewCtx = state.previewCanvas.getContext("2d");
-  state.previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  state.previewCtx.setTransform(dpr * viewScale, 0, 0, dpr * viewScale, 0, 0);
   state.previewCtx.clearRect(0, 0, state.canvasWidth, state.canvasHeight);
-  if (previewSnapshot && previousCanvasWidth > 0 && previousCanvasHeight > 0) {
-    state.previewCtx.drawImage(
-      previewSnapshot,
-      0,
-      0,
-      previewSnapshot.width,
-      previewSnapshot.height,
-      0,
-      0,
-      state.canvasWidth,
-      state.canvasHeight
-    );
-  }
+  state.currentStrokePreviewLastIndex = 0;
+  if (state.currentStroke?.length > 1) drawStrokePreview(state.currentStroke);
 
   if (needsLayoutRemap && state.gameObjects.length) {
     remapGameObjects(
@@ -1169,9 +1247,7 @@ export function resizeCanvas() {
     }
   }
 
-  const floorYForPhysics = dom.canvas?.clientHeight
-    ? dom.canvas.clientHeight - 24
-    : state.canvasHeight - 24;
+  const floorYForPhysics = nextPhysicsProfile.floorY;
 
   createPhysicsBodiesForGameObjects({
     gameObjects: state.gameObjects,
@@ -1187,6 +1263,7 @@ export function resizeCanvas() {
     const scaleY = state.canvasHeight / previousCanvasHeight;
     state.lastPhysicsTime = 0;
     state.physicsAccumulatorMs = 0;
+    state.physicsSimulationTimeMs = getServerTime();
     for (const [object, bodyStates] of objectPhysicsStates) {
       const bodies = object.physicsBody
         ? [object.physicsBody]
@@ -1240,14 +1317,27 @@ export function resizeCanvas() {
 
 export function syncGamePlayState() {
   const isGameActive = dom.playPage?.classList.contains("is-active");
-  const isPageVisible = !document.hidden;
+  const isPageVisible = !document.hidden && state.windowFocused;
+  const multiplayer = isRoomConnected();
 
   if (!shouldAdvancePhysics({ isGameActive, isPageVisible })) {
-    if (!isRoomConnected()) {
-      state.lastPhysicsTime = 0;
+    state.lastPhysicsTime = 0;
+    if (isGameActive && multiplayer) {
+      state.physicsCatchupNeeded = true;
+      state.physicsCatchupPending = true;
+      state.physicsCatchupActive = false;
+      state.physicsCatchupTargetTimeMs = null;
+      state.physicsCatchupRequestInFlight = false;
+      setRoomCatchupOverlay(true);
+    } else {
       state.physicsAccumulatorMs = 0;
+      state.physicsSimulationTimeMs = null;
+      resetRoomCatchup();
     }
     if (state.isDrawing) {
+      if (multiplayer) {
+        window.dispatchEvent(new CustomEvent("sketchybook:room-input-interrupted"));
+      }
       state.isDrawing = false;
       state.lastPoint = null;
       if (state.previewCtx) state.previewCtx.clearRect(0, 0, state.canvasWidth, state.canvasHeight);
@@ -1255,32 +1345,71 @@ export function syncGamePlayState() {
       state.currentStrokePreviewLastIndex = 0;
       state.currentStroke = null;
     }
+    return;
+  }
+
+  if (isGameActive && multiplayer && state.physicsCatchupNeeded) {
+    setRoomCatchupOverlay(true);
+    requestRoomCatchupSync();
+  }
+}
+
+function syncPhysicsGameObjects() {
+  if (!state.gameObjects?.length) return;
+  for (const obj of state.gameObjects) {
+    if (obj.physicsBody) {
+      const position = obj.physicsBody.getPosition();
+      obj.screenX = position.x;
+      obj.screenY = position.y;
+      if (typeof obj.physicsBody.getAngle === "function") {
+        obj.angle = obj.physicsBody.getAngle();
+      }
+      if (
+        obj instanceof Rotor &&
+        obj.spinMode === "auto" &&
+        typeof obj.physicsBody.setAngularVelocity === "function"
+      ) {
+        obj.physicsBody.setAngularVelocity(
+          typeof obj.motorSpeed === "number" ? obj.motorSpeed : 1.5
+        );
+      }
+    } else {
+      obj.screenX = obj.nx * state.canvasWidth;
+      obj.screenY = obj.ny * state.canvasHeight;
+    }
   }
 }
 
 export function tick(timestamp = 0) {
   const isGameActive = dom.playPage?.classList.contains("is-active");
-  const isPageVisible = !document.hidden;
+  const isPageVisible = !document.hidden && state.windowFocused;
   const shouldRunSimulation = shouldAdvancePhysics({ isGameActive, isPageVisible });
 
   if (!shouldRunSimulation) {
+    syncGamePlayState();
     state.animationFrameId = window.requestAnimationFrame(tick);
     return;
   }
 
-  const height = dom.canvas?.clientHeight || 0;
+  if (isRoomConnected() && state.physicsCatchupNeeded) {
+    setRoomCatchupOverlay(true);
+    requestRoomCatchupSync();
+  }
+
   const profile =
     getPhysicsScaleProfile() ||
     createDeviceSafePhysicsProfile({
-      width: state.canvasWidth || window.innerWidth || 900,
-      height: state.canvasHeight || window.innerHeight || 600,
-      dpr: window.devicePixelRatio || 1,
+      logicalWidth: DEFAULT_LOGICAL_WIDTH,
+      logicalHeight: DEFAULT_LOGICAL_HEIGHT,
     });
-  const floorY = profile?.floorY ?? height - 24;
+  const floorY = profile?.floorY ?? DEFAULT_LOGICAL_HEIGHT - 32;
 
   if (shouldRunSimulation) {
     if (state.lastPhysicsTime === 0) {
       state.lastPhysicsTime = timestamp;
+      if (state.physicsSimulationTimeMs == null) {
+        state.physicsSimulationTimeMs = getServerTime();
+      }
     }
 
     const elapsed = Math.max(0, timestamp - state.lastPhysicsTime);
@@ -1288,27 +1417,48 @@ export function tick(timestamp = 0) {
       const nextProfile =
         profile ||
         createDeviceSafePhysicsProfile({
-          width: state.canvasWidth || window.innerWidth || 900,
-          height: state.canvasHeight || window.innerHeight || 600,
-          dpr: window.devicePixelRatio || 1,
+          logicalWidth: DEFAULT_LOGICAL_WIDTH,
+          logicalHeight: DEFAULT_LOGICAL_HEIGHT,
         });
       setPhysicsScaleProfile(nextProfile);
 
-      const multiplayer = isRoomConnected();
-      const stepBatch = multiplayer
-        ? consumePhysicsStepBatch({
-            elapsedMs: elapsed,
-            accumulatedMs: state.physicsAccumulatorMs,
+      const isCatchingUp = isRoomConnected() && state.physicsCatchupActive;
+      const isWaitingForRoomSync = isRoomConnected() && state.physicsCatchupPending;
+      const catchupBatch = isCatchingUp
+        ? createPhysicsCatchupBatch({
+            currentTimeMs: state.physicsSimulationTimeMs,
+            targetTimeMs: state.physicsCatchupTargetTimeMs,
             stepMs: MULTIPLAYER_PHYSICS_STEP_MS,
-            maxSteps: MAX_MULTIPLAYER_STEPS_PER_FRAME,
+            maxSteps: MAX_ROOM_CATCHUP_STEPS_PER_FRAME,
           })
-        : { stepCount: 1, remainingMs: 0 };
-      const { stepCount } = stepBatch;
-      const deltaSeconds = multiplayer
-        ? MULTIPLAYER_PHYSICS_STEP_MS / 1000
-        : Math.min(elapsed / 1000, 0.032);
+        : null;
+      const stepBatch =
+        !isCatchingUp && !isWaitingForRoomSync
+          ? consumePhysicsStepBatch({
+              elapsedMs: elapsed,
+              accumulatedMs: state.physicsAccumulatorMs,
+              stepMs: MULTIPLAYER_PHYSICS_STEP_MS,
+              maxSteps: MAX_MULTIPLAYER_STEPS_PER_FRAME,
+            })
+          : null;
+      const stepCount = catchupBatch?.stepCount ?? stepBatch?.stepCount ?? 0;
+      const deltaSeconds = MULTIPLAYER_PHYSICS_STEP_MS / 1000;
+      let simulationTimeMs = state.physicsSimulationTimeMs;
 
       for (let step = 0; step < stepCount; step += 1) {
+        simulationTimeMs += MULTIPLAYER_PHYSICS_STEP_MS;
+        if (isRoomConnected()) {
+          const dueEvents = consumeDuePhysicsEvents(state.pendingPhysicsEvents, simulationTimeMs);
+          state.pendingPhysicsEvents = dueEvents.pendingEvents;
+          dueEvents.dueEvents.forEach((event) => {
+            try {
+              event.apply();
+            } catch (error) {
+              console.warn("scheduled room action failed:", error);
+            }
+          });
+        }
+
         if (state.currentStage && typeof state.currentStage.update === "function") {
           state.currentStage.update(state.physicsStrokes, floorY, {
             deltaTime: deltaSeconds,
@@ -1329,41 +1479,32 @@ export function tick(timestamp = 0) {
             updateStrokeBody(stroke, floorY);
           });
         }
+
+        if (isCatchingUp) {
+          syncPhysicsGameObjects();
+          processBallObjectInteractions({
+            gameObjects: state.gameObjects,
+            canvasWidth: state.canvasWidth,
+            canvasHeight: state.canvasHeight,
+          });
+        }
       }
 
       state.lastPhysicsTime = timestamp;
-      state.physicsAccumulatorMs = stepBatch.remainingMs;
+      if (catchupBatch) {
+        state.physicsAccumulatorMs = catchupBatch.remainingMs;
+      } else if (stepBatch) {
+        state.physicsAccumulatorMs = stepBatch.remainingMs;
+      }
+      state.physicsSimulationTimeMs = simulationTimeMs;
       if (stepCount > 0) {
         state.stageHasSimulated = true;
       }
+      if (catchupBatch?.caughtUp) finishRoomCatchup();
     }
   }
 
-  // Sync circular game object positions from physics bodies (perfect circle hitboxes)
-  if (state.gameObjects && state.gameObjects.length) {
-    for (const obj of state.gameObjects) {
-      if (obj.physicsBody) {
-        const pos = obj.physicsBody.getPosition();
-        obj.screenX = pos.x;
-        obj.screenY = pos.y;
-        if (typeof obj.physicsBody.getAngle === "function") {
-          obj.angle = obj.physicsBody.getAngle();
-        }
-        if (
-          obj instanceof Rotor &&
-          obj.spinMode === "auto" &&
-          typeof obj.physicsBody.setAngularVelocity === "function"
-        ) {
-          const targetVelocity = typeof obj.motorSpeed === "number" ? obj.motorSpeed : 1.5;
-          obj.physicsBody.setAngularVelocity(targetVelocity);
-        }
-      } else {
-        // non-physical objects (stars) use normalized coords
-        obj.screenX = obj.nx * state.canvasWidth;
-        obj.screenY = obj.ny * state.canvasHeight;
-      }
-    }
-  }
+  syncPhysicsGameObjects();
 
   const { allStarsCollected } = processBallObjectInteractions({
     gameObjects: state.gameObjects,

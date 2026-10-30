@@ -14,10 +14,13 @@ import {
   applyImpulseAtLocalPoint,
   isBodyTouchingSurface,
   attachBodyToBody,
+  getPhysicsScaleProfile,
 } from "../engine/physics/physics.js";
 import { getBallImpulseValues } from "../engine/physics/bodySetup.js";
+import { enqueuePhysicsEvent } from "../engine/physics/physicsState.js";
 import {
   exceedsLineLengthLimit,
+  getLogicalInputTolerance,
   getLogicalStrokeDistance,
   getStrokeDistance,
   shouldRejectStroke,
@@ -41,7 +44,6 @@ import {
 } from "../engine/core/gameController.js";
 import { recordPlaygroundStroke } from "../ui/playgroundHistory.js";
 import {
-  getServerTime,
   isRoomConnected,
   sendRoomBallLaunch,
   sendRoomStroke,
@@ -53,7 +55,6 @@ import { INK } from "../../theme.js";
 const MAX_SHARED_STROKE_POINTS = 256;
 const MAX_PREVIEW_BATCH_POINTS = 31;
 const PREVIEW_SEND_INTERVAL_MS = 50;
-const scheduledStrokeTimers = new Map();
 const pendingBallLaunches = new Set();
 const pendingBallLaunchTimers = new Map();
 let liveStrokeId = null;
@@ -143,7 +144,7 @@ function findStrokeAttachment(stroke, floorY, hasFloor = true) {
   );
 }
 
-function createAndRegisterStroke(points, previewSource = null) {
+function createAndRegisterStroke(points) {
   if (state.challengeModeEnabled && state.challengeModeStrokeCount >= 1) return false;
 
   const intersectsStripedArea = state.gameObjects.some(
@@ -171,7 +172,7 @@ function createAndRegisterStroke(points, previewSource = null) {
     return false;
   }
 
-  const floorY = (dom.canvas?.clientHeight || 0) - 24;
+  const floorY = getPhysicsScaleProfile()?.floorY ?? state.canvasHeight - 32;
   const attachment = findStrokeAttachment(points, floorY, state.difficultyRules.hasFloor);
   const attachmentBody = attachment?.physicsBody;
   const isMovingAttachment =
@@ -190,11 +191,11 @@ function createAndRegisterStroke(points, previewSource = null) {
     attachBodyToBody(strokeBody.physicsBody, attachmentBody, attachmentBody.getPosition());
   }
 
-  createStrokeTexture(strokeBody, previewSource);
+  createStrokeTexture(strokeBody);
   state.physicsStrokes.push(strokeBody);
   recordPlaygroundStroke(strokeBody);
   if (state.challengeModeEnabled) state.challengeModeStrokeCount += 1;
-  state.totalDrawnLength += getLogicalStrokeDistance(points, state.coordinateSystem);
+  state.totalDrawnLength += getLogicalStrokeDistance(points);
   updateDrawLimitProgressUI();
   if (state.currentStageNumber === 5 && attachment instanceof Rotor) {
     window.dispatchEvent(new CustomEvent("sketchybook:stage-five-stroke"));
@@ -223,7 +224,7 @@ function receiveRoomStroke(message) {
     return;
   }
 
-  const screenPoints = message.points.map((point) => state.coordinateSystem.toScreenPoint(point));
+  const logicalPoints = message.points;
   state.roomStrokePreviews = state.roomStrokePreviews.filter(
     (stroke) =>
       stroke.eventId !== message.eventId &&
@@ -233,14 +234,12 @@ function receiveRoomStroke(message) {
     eventId: message.eventId,
     strokeId: message.strokeId,
     playerId: message.playerId,
-    points: screenPoints,
+    points: logicalPoints,
     width: message.width,
     color: message.color,
   });
 
-  const delay = Math.max(0, message.applyAt - getServerTime());
-  const timerId = window.setTimeout(() => {
-    scheduledStrokeTimers.delete(message.eventId);
+  enqueuePhysicsEvent(state.pendingPhysicsEvents, message.applyAt, () => {
     state.roomStrokePreviews = state.roomStrokePreviews.filter(
       (stroke) => stroke.eventId !== message.eventId
     );
@@ -248,10 +247,9 @@ function receiveRoomStroke(message) {
       dom.playPage?.classList.contains("is-active") &&
       state.currentStageNumber === message.stageNumber
     ) {
-      createAndRegisterStroke(screenPoints);
+      createAndRegisterStroke(logicalPoints);
     }
-  }, delay);
-  scheduledStrokeTimers.set(message.eventId, timerId);
+  });
 }
 
 function applyBallLaunch() {
@@ -289,17 +287,14 @@ function receiveRoomBallLaunch(message) {
   pendingBallLaunchTimers.delete(message.eventId);
   pendingBallLaunches.delete(message.eventId);
 
-  const delay = Math.max(0, message.applyAt - getServerTime());
-  const timerId = window.setTimeout(() => {
-    scheduledStrokeTimers.delete(message.eventId);
+  enqueuePhysicsEvent(state.pendingPhysicsEvents, message.applyAt, () => {
     if (
       dom.playPage?.classList.contains("is-active") &&
       state.currentStageNumber === message.stageNumber
     ) {
       applyBallLaunch();
     }
-  }, delay);
-  scheduledStrokeTimers.set(message.eventId, timerId);
+  });
 }
 
 function receiveRoomStrokePreview(message) {
@@ -315,9 +310,9 @@ function receiveRoomStrokePreview(message) {
   const preview = state.roomStrokePreviews.find(
     (stroke) => stroke.playerId === message.playerId && stroke.strokeId === message.strokeId
   );
-  const screenPoints = message.points.map((point) => state.coordinateSystem.toScreenPoint(point));
+  const logicalPoints = message.points;
   if (preview) {
-    preview.points.push(...screenPoints.slice(preview.points.length ? 1 : 0));
+    preview.points.push(...logicalPoints.slice(preview.points.length ? 1 : 0));
     preview.sequence = message.sequence;
     return;
   }
@@ -326,7 +321,7 @@ function receiveRoomStrokePreview(message) {
     playerId: message.playerId,
     strokeId: message.strokeId,
     sequence: message.sequence,
-    points: screenPoints,
+    points: logicalPoints,
     color: INK,
     width: 8,
   });
@@ -352,8 +347,7 @@ function sendLiveStrokePreview(force = false) {
       ? state.currentStroke[liveStrokeSentPointCount - 1]
       : liveStrokeAnchor;
     const batch = [previousPoint, ...state.currentStroke.slice(liveStrokeSentPointCount, nextEnd)];
-    const logicalPoints = batch.map((point) => state.coordinateSystem.toLogicalPoint(point));
-    if (!sendRoomStrokePreview(liveStrokeId, liveStrokeSequence, logicalPoints)) return;
+    if (!sendRoomStrokePreview(liveStrokeId, liveStrokeSequence, batch)) return;
     liveStrokeSentPointCount = nextEnd;
     liveStrokeSequence += 1;
   }
@@ -370,20 +364,19 @@ function cancelLiveStrokePreview(notifyPeers = true) {
 }
 
 function clearRoomStrokePreviews() {
-  for (const timerId of scheduledStrokeTimers.values()) window.clearTimeout(timerId);
-  scheduledStrokeTimers.clear();
   for (const timerId of pendingBallLaunchTimers.values()) window.clearTimeout(timerId);
   pendingBallLaunchTimers.clear();
   pendingBallLaunches.clear();
+  state.pendingPhysicsEvents = [];
   state.roomStrokePreviews = [];
 }
 
 function getPoint(event) {
   const rect = dom.canvas.getBoundingClientRect();
-  return {
+  return state.coordinateSystem.toLogicalPoint({
     x: event.clientX - rect.left,
     y: event.clientY - rect.top,
-  };
+  });
 }
 
 function findBallAtPoint(clickPos) {
@@ -399,7 +392,7 @@ function findBallAtPoint(clickPos) {
       const dx = clickPos.x - bx;
       const dy = clickPos.y - by;
       const dist = Math.hypot(dx, dy);
-      if (dist <= pr + 6) {
+      if (dist <= pr + getLogicalInputTolerance(6, state.coordinateSystem)) {
         return obj;
       }
     }
@@ -408,7 +401,12 @@ function findBallAtPoint(clickPos) {
 }
 
 function startDrawing(event) {
-  if (state.stageCleared || (state.challengeModeEnabled && state.challengeModeStrokeCount >= 1)) {
+  if (
+    state.physicsCatchupPending ||
+    state.physicsCatchupActive ||
+    state.stageCleared ||
+    (state.challengeModeEnabled && state.challengeModeStrokeCount >= 1)
+  ) {
     return;
   }
   state.stageEventCount += 1;
@@ -437,9 +435,7 @@ function continueDrawing(event) {
   state.currentStroke.push(currentPoint);
   state.lastPoint = currentPoint;
   updateDrawLimitProgressUI({
-    previewLength:
-      state.totalDrawnLength +
-      getLogicalStrokeDistance(state.currentStroke, state.coordinateSystem),
+    previewLength: state.totalDrawnLength + getLogicalStrokeDistance(state.currentStroke),
   });
   // mark preview cache dirty so it'll be re-generated once per change
   state.currentStrokePreviewDirty = true;
@@ -486,9 +482,9 @@ function stopDrawing(event) {
   }
 
   // If the user drew a very short stroke (tiny jitter), treat it as a click.
-  const CLICK_DISTANCE_THRESHOLD = 6; // pixels
+  const clickDistanceThreshold = getLogicalInputTolerance(6, state.coordinateSystem);
   const totalDist = getStrokeDistance(state.currentStroke);
-  const logicalTotalDist = getLogicalStrokeDistance(state.currentStroke, state.coordinateSystem);
+  const logicalTotalDist = getLogicalStrokeDistance(state.currentStroke);
 
   const lineLengthLimit = getLineLengthLimit();
   if (
@@ -496,7 +492,6 @@ function stopDrawing(event) {
       totalDrawnLength: state.totalDrawnLength,
       stroke: state.currentStroke,
       lineLengthLimit,
-      coordinateSystem: state.coordinateSystem,
     })
   ) {
     const nextTotalDrawnLength = state.totalDrawnLength + logicalTotalDist;
@@ -514,7 +509,7 @@ function stopDrawing(event) {
     }
   }
 
-  if (totalDist <= CLICK_DISTANCE_THRESHOLD) {
+  if (totalDist <= clickDistanceThreshold) {
     cancelLiveStrokePreview();
     if (state.challengeModeEnabled) {
       state.currentStroke = null;
@@ -540,12 +535,10 @@ function stopDrawing(event) {
 
   if (isRoomConnected()) {
     sendLiveStrokePreview(true);
-    const logicalPoints = compactStroke(state.currentStroke).map((point) =>
-      state.coordinateSystem.toLogicalPoint(point)
-    );
+    const logicalPoints = compactStroke(state.currentStroke);
     sendRoomStroke(logicalPoints, { width: 8, color: INK, strokeId: liveStrokeId });
   } else {
-    createAndRegisterStroke(state.currentStroke, state.previewCanvas);
+    createAndRegisterStroke(state.currentStroke);
   }
   cancelLiveStrokePreview(false);
 
@@ -557,6 +550,7 @@ function stopDrawing(event) {
 }
 
 export function launchBallFromInput(eventRepeat = false) {
+  if (state.physicsCatchupPending || state.physicsCatchupActive) return;
   const isGameActive = dom.playPage?.classList.contains("is-active");
   if (isDrawLimitReached()) return;
 
@@ -611,6 +605,9 @@ export function initPointerInput() {
   window.addEventListener("sketchybook:stage-reset", clearRoomStrokePreviews);
   window.addEventListener("sketchybook:room-lobby", clearRoomStrokePreviews);
   window.addEventListener("sketchybook:room-closed", clearRoomStrokePreviews);
+  window.addEventListener("sketchybook:room-input-interrupted", () => {
+    cancelLiveStrokePreview();
+  });
   dom.canvas?.addEventListener("pointerdown", startDrawing);
   dom.canvas?.addEventListener("pointermove", continueDrawing);
   window.addEventListener("pointerup", stopDrawing);
@@ -626,6 +623,12 @@ export function initPointerInput() {
 
   window.addEventListener("keydown", async (event) => {
     const isGameActive = dom.playPage?.classList.contains("is-active");
+    if (state.physicsCatchupPending || state.physicsCatchupActive) {
+      if (event.key === " " || event.code === "Space" || event.key.toLowerCase() === "r") {
+        event.preventDefault();
+      }
+      return;
+    }
 
     if (isGameActive && (event.key === "r" || event.key === "R")) {
       event.preventDefault();

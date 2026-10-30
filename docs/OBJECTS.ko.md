@@ -187,4 +187,3 @@
 - `portal.height`: `0.1`
 - `stripedRect.width`: `0.12`
 - `stripedRect.height`: `0.08`
-

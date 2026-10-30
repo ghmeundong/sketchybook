@@ -59,9 +59,11 @@ window.addEventListener("visibilitychange", () => {
   syncGamePlayState();
 });
 window.addEventListener("focus", () => {
+  state.windowFocused = true;
   syncGamePlayState();
 });
 window.addEventListener("blur", () => {
+  state.windowFocused = false;
   syncGamePlayState();
 });
 
