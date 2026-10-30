@@ -12,6 +12,7 @@ import { isKoreanLocale } from "./localization.js";
 import { fetchAccountMaps, saveAccountMap } from "../services/accountMaps.js";
 import { isUserLoggedIn } from "../services/auth.js";
 import { fetchSharedMap, fetchSharedMaps, publishSharedMap } from "../services/sharedMaps.js";
+import { createGameObject } from "../game/stages/gameObjectFactory.js";
 
 const STORAGE_KEY = "sketchybook.customMaps";
 const MAX_JSON_EDITOR_CHARS = 64 * 1024;
@@ -904,7 +905,7 @@ function syncProperties() {
   if (!object) return;
   if (object.type === "text") propertyText.value = object.text || "";
   if (["circle", "ball", "star"].includes(object.type)) {
-    propertyRadius.value = String(object.radius ?? 0.035);
+    propertyRadius.value = String(object.radius ?? getCircleObjectDefault(object.type));
   }
   if (["complex", "rotor"].includes(object.type)) propertyClosed.checked = object.closed !== false;
   if (object.type === "rotor") propertySpin.value = object.spinMode || "free";
@@ -971,18 +972,20 @@ function onPointerDown(event) {
       x: point.x / point.width,
       y: point.y / point.height,
     };
-    if (["ball", "star"].includes(activeTool)) object.radius = 0.035;
+    const defaultObject = createGameObject({ type: activeTool });
+    if (["ball", "star", "circle"].includes(activeTool)) {
+      object.radius = defaultObject.radius;
+    }
     if (activeTool === "circle") {
-      object.radius = 0.05;
-      object.isStatic = true;
+      object.isStatic = defaultObject.isStatic;
     }
     if (activeTool === "portal") {
       const portalCount = objects.filter((item) => item.type === "portal").length;
-      object.width = 0.04;
-      object.height = 0.1;
+      object.width = defaultObject.width;
+      object.height = defaultObject.height;
       object.portalId = portalCount % 2 === 0 ? "orange" : "blue";
     }
-    if (activeTool === "text") object.text = "Text";
+    if (activeTool === "text") object.text = defaultObject.text;
     objects.push(object);
     selectedIndex = objects.length - 1;
     render();
@@ -1677,3 +1680,13 @@ function initializeMapEditor() {
 }
 
 export { initializeMapEditor };
+
+function getObjectDefault(type, property) {
+  const object = createGameObject({ type });
+  return object?.[property];
+}
+
+function getCircleObjectDefault(type) {
+  if (!["circle", "ball", "star"].includes(type)) return undefined;
+  return getObjectDefault(type, "radius");
+}
