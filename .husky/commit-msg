@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+commit_message_file="$1"
+
+if grep -Eiq '^[[:space:]]*Co-authored-by:[[:space:]]*Copilot[[:space:]]*<' "$commit_message_file"; then
+  echo "Commit rejected: Copilot cannot be added as a co-author."
+  echo "Remove the Copilot Co-authored-by trailer from the commit message and try again."
+  exit 1
+fi

@@ -1,0 +1,136 @@
+# Details
+
+Date : 2026-11-01 00:31:38
+
+Directory c:\\Users\\GHMEUNDONG\\WorkSpace\\sketchybook
+
+Total : 121 files,  31503 codes, 140 comments, 2774 blanks, all 34417 lines
+
+[Summary](results.md) / Details / [Diff Summary](diff.md) / [Diff Details](diff-details.md)
+
+## Files
+| filename | language | code | comment | blank | total |
+| :--- | :--- | ---: | ---: | ---: | ---: |
+| [.github/workflows/deploy.yml](/.github/workflows/deploy.yml) | YAML | 38 | 0 | 9 | 47 |
+| [.stylelintrc.json](/.stylelintrc.json) | JSON | 12 | 0 | 1 | 13 |
+| [README.md](/README.md) | Markdown | 64 | 0 | 29 | 93 |
+| [backend/package-lock.json](/backend/package-lock.json) | JSON | 1,576 | 0 | 1 | 1,577 |
+| [backend/package.json](/backend/package.json) | JSON | 23 | 0 | 1 | 24 |
+| [backend/src/index.js](/backend/src/index.js) | JavaScript | 1,233 | 4 | 138 | 1,375 |
+| [backend/wrangler.toml](/backend/wrangler.toml) | TOML | 18 | 3 | 8 | 29 |
+| [build-release.bat](/build-release.bat) | Batch | 35 | 0 | 9 | 44 |
+| [docs/ARCHITECTURE.md](/docs/ARCHITECTURE.md) | Markdown | 17 | 0 | 10 | 27 |
+| [docs/CODE\_STRUCTURE.md](/docs/CODE_STRUCTURE.md) | Markdown | 51 | 0 | 6 | 57 |
+| [docs/DEPLOYMENT.md](/docs/DEPLOYMENT.md) | Markdown | 12 | 0 | 7 | 19 |
+| [docs/DEVELOPMENT.md](/docs/DEVELOPMENT.md) | Markdown | 50 | 0 | 24 | 74 |
+| [docs/DIFFICULTY\_SYSTEM\_BRIEFING.md](/docs/DIFFICULTY_SYSTEM_BRIEFING.md) | Markdown | 291 | 0 | 99 | 390 |
+| [docs/MULTIPLAYER\_PLAN.md](/docs/MULTIPLAYER_PLAN.md) | Markdown | 150 | 0 | 72 | 222 |
+| [docs/OBJECTS.ko.md](/docs/OBJECTS.ko.md) | Markdown | 140 | 0 | 50 | 190 |
+| [docs/OBJECTS.md](/docs/OBJECTS.md) | Markdown | 244 | 0 | 60 | 304 |
+| [docs/TUTORIAL\_PLAN.md](/docs/TUTORIAL_PLAN.md) | Markdown | 48 | 0 | 25 | 73 |
+| [electron/main.cjs](/electron/main.cjs) | JavaScript | 70 | 0 | 12 | 82 |
+| [electron/preload.cjs](/electron/preload.cjs) | JavaScript | 11 | 0 | 3 | 14 |
+| [eslint.config.cjs](/eslint.config.cjs) | JavaScript | 35 | 0 | 9 | 44 |
+| [index.html](/index.html) | HTML | 832 | 1 | 6 | 839 |
+| [package-lock.json](/package-lock.json) | JSON | 7,934 | 0 | 1 | 7,935 |
+| [package.json](/package.json) | JSON | 83 | 0 | 1 | 84 |
+| [public/manifest.json](/public/manifest.json) | JSON | 18 | 0 | 1 | 19 |
+| [src/app/app.js](/src/app/app.js) | JavaScript | 637 | 5 | 82 | 724 |
+| [src/app/audioSettings.js](/src/app/audioSettings.js) | JavaScript | 36 | 0 | 7 | 43 |
+| [src/app/localization.js](/src/app/localization.js) | JavaScript | 628 | 2 | 12 | 642 |
+| [src/app/mapEditor.js](/src/app/mapEditor.js) | JavaScript | 1,605 | 0 | 88 | 1,693 |
+| [src/app/modeSelection.js](/src/app/modeSelection.js) | JavaScript | 831 | 0 | 69 | 900 |
+| [src/app/orientationPrompt.js](/src/app/orientationPrompt.js) | JavaScript | 109 | 0 | 26 | 135 |
+| [src/app/pageLoader.js](/src/app/pageLoader.js) | JavaScript | 10 | 1 | 1 | 12 |
+| [src/app/roughTooltip.js](/src/app/roughTooltip.js) | JavaScript | 136 | 0 | 15 | 151 |
+| [src/app/startupState.js](/src/app/startupState.js) | JavaScript | 3 | 0 | 1 | 4 |
+| [src/app/tutorialState.js](/src/app/tutorialState.js) | JavaScript | 149 | 4 | 34 | 187 |
+| [src/app/uiSounds.js](/src/app/uiSounds.js) | JavaScript | 33 | 0 | 6 | 39 |
+| [src/game/audio/drawingAudio.js](/src/game/audio/drawingAudio.js) | JavaScript | 111 | 0 | 15 | 126 |
+| [src/game/audio/drawingAudioInstance.js](/src/game/audio/drawingAudioInstance.js) | JavaScript | 7 | 2 | 2 | 11 |
+| [src/game/audio/gameAudio.js](/src/game/audio/gameAudio.js) | JavaScript | 209 | 0 | 24 | 233 |
+| [src/game/engine/config/challengeMode.js](/src/game/engine/config/challengeMode.js) | JavaScript | 22 | 0 | 8 | 30 |
+| [src/game/engine/config/difficultyLevels.js](/src/game/engine/config/difficultyLevels.js) | JavaScript | 102 | 38 | 14 | 154 |
+| [src/game/engine/config/inputRules.js](/src/game/engine/config/inputRules.js) | JavaScript | 34 | 0 | 3 | 37 |
+| [src/game/engine/config/tutorialPlay.js](/src/game/engine/config/tutorialPlay.js) | JavaScript | 15 | 0 | 4 | 19 |
+| [src/game/engine/core/coordinates.js](/src/game/engine/core/coordinates.js) | JavaScript | 47 | 0 | 3 | 50 |
+| [src/game/engine/core/domRefs.js](/src/game/engine/core/domRefs.js) | JavaScript | 25 | 1 | 2 | 28 |
+| [src/game/engine/core/fullscreen.js](/src/game/engine/core/fullscreen.js) | JavaScript | 5 | 0 | 2 | 7 |
+| [src/game/engine/core/gameController.js](/src/game/engine/core/gameController.js) | JavaScript | 1,418 | 8 | 121 | 1,547 |
+| [src/game/engine/core/gameState.js](/src/game/engine/core/gameState.js) | JavaScript | 59 | 10 | 7 | 76 |
+| [src/game/engine/core/geometry.js](/src/game/engine/core/geometry.js) | JavaScript | 196 | 0 | 34 | 230 |
+| [src/game/engine/physics/bodySetup.js](/src/game/engine/physics/bodySetup.js) | JavaScript | 98 | 3 | 4 | 105 |
+| [src/game/engine/physics/physics.js](/src/game/engine/physics/physics.js) | JavaScript | 592 | 8 | 95 | 695 |
+| [src/game/engine/physics/physicsState.js](/src/game/engine/physics/physicsState.js) | JavaScript | 50 | 0 | 8 | 58 |
+| [src/game/engine/systems/layoutSync.js](/src/game/engine/systems/layoutSync.js) | JavaScript | 3 | 0 | 1 | 4 |
+| [src/game/engine/systems/resizeState.js](/src/game/engine/systems/resizeState.js) | JavaScript | 29 | 0 | 7 | 36 |
+| [src/game/engine/systems/stageScoring.js](/src/game/engine/systems/stageScoring.js) | JavaScript | 15 | 0 | 5 | 20 |
+| [src/game/input/drawingPolicy.js](/src/game/input/drawingPolicy.js) | JavaScript | 41 | 0 | 7 | 48 |
+| [src/game/input/pointerInput.js](/src/game/input/pointerInput.js) | JavaScript | 593 | 5 | 64 | 662 |
+| [src/game/levels/loader/stageLoader.js](/src/game/levels/loader/stageLoader.js) | JavaScript | 30 | 0 | 7 | 37 |
+| [src/game/levels/pages/stagePages.js](/src/game/levels/pages/stagePages.js) | JavaScript | 7 | 0 | 2 | 9 |
+| [src/game/main.js](/src/game/main.js) | JavaScript | 69 | 1 | 7 | 77 |
+| [src/game/objects/Ball.js](/src/game/objects/Ball.js) | JavaScript | 81 | 1 | 11 | 93 |
+| [src/game/objects/CircleObject.js](/src/game/objects/CircleObject.js) | JavaScript | 74 | 0 | 9 | 83 |
+| [src/game/objects/ComplexObject.js](/src/game/objects/ComplexObject.js) | JavaScript | 170 | 0 | 18 | 188 |
+| [src/game/objects/Platform.js](/src/game/objects/Platform.js) | JavaScript | 67 | 0 | 9 | 76 |
+| [src/game/objects/Portal.js](/src/game/objects/Portal.js) | JavaScript | 85 | 0 | 11 | 96 |
+| [src/game/objects/Rotor.js](/src/game/objects/Rotor.js) | JavaScript | 312 | 0 | 28 | 340 |
+| [src/game/objects/Segment.js](/src/game/objects/Segment.js) | JavaScript | 78 | 1 | 10 | 89 |
+| [src/game/objects/Star.js](/src/game/objects/Star.js) | JavaScript | 72 | 0 | 11 | 83 |
+| [src/game/objects/StripedRectObject.js](/src/game/objects/StripedRectObject.js) | JavaScript | 65 | 0 | 9 | 74 |
+| [src/game/objects/TextLabel.js](/src/game/objects/TextLabel.js) | JavaScript | 113 | 0 | 11 | 124 |
+| [src/game/objects/index.js](/src/game/objects/index.js) | JavaScript | 10 | 0 | 1 | 11 |
+| [src/game/render/canvasObjectResize.js](/src/game/render/canvasObjectResize.js) | JavaScript | 122 | 0 | 7 | 129 |
+| [src/game/render/environmentCanvas.js](/src/game/render/environmentCanvas.js) | JavaScript | 264 | 0 | 38 | 302 |
+| [src/game/render/gameRenderer.js](/src/game/render/gameRenderer.js) | JavaScript | 268 | 6 | 39 | 313 |
+| [src/game/stages/gameObjectFactory.js](/src/game/stages/gameObjectFactory.js) | JavaScript | 110 | 0 | 5 | 115 |
+| [src/game/stages/registry.js](/src/game/stages/registry.js) | JavaScript | 428 | 0 | 10 | 438 |
+| [src/game/stages/stageTemplate.js](/src/game/stages/stageTemplate.js) | JavaScript | 40 | 1 | 5 | 46 |
+| [src/game/systems/gameObjectInteractions.js](/src/game/systems/gameObjectInteractions.js) | JavaScript | 103 | 0 | 18 | 121 |
+| [src/game/ui/firstStageTutorial.js](/src/game/ui/firstStageTutorial.js) | JavaScript | 679 | 0 | 65 | 744 |
+| [src/game/ui/gameUi.js](/src/game/ui/gameUi.js) | JavaScript | 240 | 0 | 30 | 270 |
+| [src/game/ui/playgroundHistory.js](/src/game/ui/playgroundHistory.js) | JavaScript | 78 | 0 | 12 | 90 |
+| [src/game/ui/roughFrame.js](/src/game/ui/roughFrame.js) | JavaScript | 65 | 2 | 10 | 77 |
+| [src/game/ui/selectionScreen.js](/src/game/ui/selectionScreen.js) | JavaScript | 113 | 0 | 16 | 129 |
+| [src/game/ui/stageProgress.js](/src/game/ui/stageProgress.js) | JavaScript | 177 | 0 | 33 | 210 |
+| [src/game/ui/uiIcons.js](/src/game/ui/uiIcons.js) | JavaScript | 223 | 0 | 15 | 238 |
+| [src/main.js](/src/main.js) | JavaScript | 15 | 0 | 2 | 17 |
+| [src/services/accountMaps.js](/src/services/accountMaps.js) | JavaScript | 30 | 0 | 5 | 35 |
+| [src/services/api.js](/src/services/api.js) | JavaScript | 33 | 1 | 5 | 39 |
+| [src/services/auth.js](/src/services/auth.js) | JavaScript | 156 | 10 | 25 | 191 |
+| [src/services/googleAuthUi.js](/src/services/googleAuthUi.js) | JavaScript | 205 | 6 | 30 | 241 |
+| [src/services/multiplayer.js](/src/services/multiplayer.js) | JavaScript | 229 | 0 | 20 | 249 |
+| [src/services/sharedMaps.js](/src/services/sharedMaps.js) | JavaScript | 30 | 0 | 5 | 35 |
+| [src/style.css](/src/style.css) | PostCSS | 151 | 3 | 19 | 173 |
+| [src/styles/base.css](/src/styles/base.css) | PostCSS | 140 | 3 | 20 | 163 |
+| [src/styles/game.css](/src/styles/game.css) | PostCSS | 820 | 3 | 125 | 948 |
+| [src/styles/screens.css](/src/styles/screens.css) | PostCSS | 2,562 | 3 | 404 | 2,969 |
+| [src/theme.js](/src/theme.js) | JavaScript | 31 | 3 | 3 | 37 |
+| [test/accountMaps.test.js](/test/accountMaps.test.js) | JavaScript | 86 | 0 | 11 | 97 |
+| [test/backendCORS.test.js](/test/backendCORS.test.js) | JavaScript | 511 | 0 | 74 | 585 |
+| [test/canvasObjectResize.test.js](/test/canvasObjectResize.test.js) | JavaScript | 27 | 0 | 7 | 34 |
+| [test/challengeMode.test.js](/test/challengeMode.test.js) | JavaScript | 33 | 0 | 6 | 39 |
+| [test/coordinates.test.js](/test/coordinates.test.js) | JavaScript | 47 | 0 | 12 | 59 |
+| [test/drawingAudio.test.js](/test/drawingAudio.test.js) | JavaScript | 48 | 0 | 8 | 56 |
+| [test/drawingPolicy.test.js](/test/drawingPolicy.test.js) | JavaScript | 91 | 0 | 9 | 100 |
+| [test/gameObjectFactory.test.js](/test/gameObjectFactory.test.js) | JavaScript | 72 | 0 | 12 | 84 |
+| [test/gameObjectInteractions.test.js](/test/gameObjectInteractions.test.js) | JavaScript | 39 | 0 | 7 | 46 |
+| [test/gameRenderer.test.js](/test/gameRenderer.test.js) | JavaScript | 17 | 0 | 4 | 21 |
+| [test/geometry.test.js](/test/geometry.test.js) | JavaScript | 53 | 0 | 8 | 61 |
+| [test/inputRules.test.js](/test/inputRules.test.js) | JavaScript | 67 | 0 | 7 | 74 |
+| [test/layoutSync.test.js](/test/layoutSync.test.js) | JavaScript | 9 | 0 | 2 | 11 |
+| [test/orientationLock.test.js](/test/orientationLock.test.js) | JavaScript | 41 | 0 | 10 | 51 |
+| [test/physics.test.js](/test/physics.test.js) | JavaScript | 168 | 0 | 28 | 196 |
+| [test/physicsScale.test.js](/test/physicsScale.test.js) | JavaScript | 112 | 0 | 18 | 130 |
+| [test/physicsState.test.js](/test/physicsState.test.js) | JavaScript | 134 | 0 | 19 | 153 |
+| [test/resizeState.test.js](/test/resizeState.test.js) | JavaScript | 45 | 0 | 5 | 50 |
+| [test/sharedMaps.test.js](/test/sharedMaps.test.js) | JavaScript | 132 | 0 | 13 | 145 |
+| [test/stageRegistry.test.js](/test/stageRegistry.test.js) | JavaScript | 11 | 0 | 4 | 15 |
+| [test/startupState.test.js](/test/startupState.test.js) | JavaScript | 29 | 0 | 4 | 33 |
+| [test/tutorialPlay.test.js](/test/tutorialPlay.test.js) | JavaScript | 68 | 0 | 5 | 73 |
+| [test/tutorialState.test.js](/test/tutorialState.test.js) | JavaScript | 173 | 0 | 24 | 197 |
+| [tools/normalize-drawing-audio.mjs](/tools/normalize-drawing-audio.mjs) | JavaScript | 66 | 0 | 11 | 77 |
+| [vite.config.js](/vite.config.js) | JavaScript | 46 | 1 | 3 | 50 |
+
+[Summary](results.md) / Details / [Diff Summary](diff.md) / [Diff Details](diff-details.md)

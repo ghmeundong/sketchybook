@@ -20,11 +20,12 @@
 - Stage 2 shows an animated cursor drawing a line between the two platforms. Drawing a valid line whose endpoints reach both platforms completes the tutorial.
 - Stage 3 demonstrates a real Space keypress and allows it to launch the ball. It then spotlights the reset button and demonstrates the `R` key. Pointer drawing and ball-click launching are blocked during this step. The tutorial completes when the stage is reset through the retry event or the stage is cleared.
 - Stage 5 independently demonstrates drawing a line from inside the rotor box toward the upper left. Its progress is stored separately, and any Stage 5 clear completes the hint regardless of the solving stroke.
+- Stage 9 demonstrates that drawing is blocked by the hatched circle. Its tutorial progress is tracked separately from the Stage 1-3 sequence.
 - There is no skip button; tutorial progress resumes at the saved step.
 - If the player leaves before finishing, the next visit to the relevant stage resumes the pending step. Multiplayer sessions do not show this single-player onboarding.
 - Existing in-game stage text remains the instruction; the tutorial overlay only demonstrates the action.
 
-The tutorial currently implements Stages 1, 2, 3, and the rotor hint in Stage 5. Replay access and contextual guidance for later mechanics remain planned.
+The tutorial currently implements Stages 1, 2, 3, the rotor hint in Stage 5, and the hatched-circle hint in Stage 9. Replay access and broader contextual guidance for later mechanics remain planned.
 
 ## Returning After an Interrupted Tutorial
 

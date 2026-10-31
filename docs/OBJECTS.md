@@ -25,9 +25,9 @@ The Map Maker's **JSON** tab edits the same object definitions used by stages. T
 - `version` is currently `1`.
 - `name` is the map title. `objects` is an array of stage object definitions.
 - Coordinates and dimensions from `0` to `1` are normalized to the canvas. For object sizes, values greater than `1` are interpreted as pixels by the engine.
-- Use **Apply JSON** to validate and apply edits. Invalid JSON or object fields are reported without replacing the current map. Apply is undoable.
+- The JSON editor validates and applies valid edits as you type. Invalid JSON or object fields are reported without replacing the current map. JSON input is limited to 64 KiB, and valid changes can be undone.
 - The JSON editor suggests supported `type` values and common fields while typing. Press `Tab` or `Enter` to accept a suggestion, and use the arrow keys to change the highlighted suggestion.
-- **Save** stores the map in this browser. **Export JSON** downloads a file that can be shared or edited externally.
+- **Save** requires you to sign in and stores maps in your account; a map must contain at least one ball and one star. **Export JSON** downloads a file that can be shared or edited externally without signing in.
 
 Supported types are `ball`, `circle`, `star`, `platform`, `stripedRect`, `portal`, `segment`, `poly`/`complex`, `rotor`, and `text`. See the definitions below for their fields and examples.
 
@@ -224,7 +224,7 @@ In the Map Maker, draw a segment by dragging from its first endpoint to its seco
 - `x`, `y`: normalized center coordinates for a circular rotor
 - `radius`: normalized radius for a circular rotor
 - `pointCount`: number of sample points for circle approximation (default `24`)
-- `closed`: boolean (default `false`, auto-set to `true` when `radius` is used)
+- `closed`: boolean (default `true`; set to `false` for an open shape)
 - `axisX`, `axisY`: normalized pivot position (default rotor center)
 - `spinMode`: `"free"` or `"auto"` (default `"free"`)
 - `motorSpeed`: number (positive or negative decides direction)
@@ -289,15 +289,8 @@ Notes
 - Physics bodies are created after canvas sizing; the coordinate conversion uses canvas pixel dimensions so normalized coordinates work across resolutions.
 - If you need a single rigid polygon collision body (instead of per-edge fixtures), add a `polygon` helper in `src/game/physics.js` and reference it from stage code.
 
-Adding objects to a stage
+Adding objects to a built-in stage
 
-- In your stage initializer (e.g. `src/game/stages/stage3.js`) include objects in the returned object:
-
-return {
-...,
-objects: [
-{ type: "ball", x:0.7, y:0.3, radius:0.02 },
-{ type: "poly", closed:true, points: [...] },
-...
-]
-};
+- Add the object definition to the matching stage's `objects` array in `src/game/stages/registry.js`.
+- Use `levels` when an object should appear only at selected difficulty levels.
+- Run `npm test` and `npm run build` after changing stage definitions.

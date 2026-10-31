@@ -14,7 +14,7 @@ The current backend is a Worker with D1, and the frontend already has a logical 
 
 ### Stroke event
 
-For the initial version, only submit a stroke when the player releases the pointer. The client sends a complete logical-coordinate stroke and its drawing properties. The DO validates it, assigns a monotonically increasing room sequence number and a future simulation tick, then broadcasts the accepted event to all room members, including the author.
+Submit the physics-affecting stroke when the player releases the pointer. The client sends a complete logical-coordinate stroke and its drawing properties. The DO validates it, assigns a monotonically increasing room sequence number and a future activation time, then broadcasts the accepted event to all room members, including the author. The current prototype also streams separate visual-only preview batches during drawing; previews never affect collision physics.
 
 Suggested event fields:
 
@@ -53,19 +53,20 @@ For a first cooperative prototype, accept small physics divergence and use perio
 ## MVP Rules and Scope
 
 - A stroke is shared and becomes collidable only after pointer release and the assigned apply tick.
-- Drawing previews are local-only until the accepted stroke is broadcast. Show a pending state if useful; remove or reconcile it when the server response arrives.
+- The current prototype streams visual-only previews to peers while drawing. On release, the accepted stroke replaces its preview and remains non-collidable until its assigned activation time.
 - If strokes must collide while still being drawn, send sequenced point batches during the stroke and schedule each batch on shared ticks. This is a later phase because it increases traffic and requires rules for incomplete or interrupted strokes.
 - Use the same stage, game mode, logical canvas dimensions, and initial game seed/state for all room members.
-- On join or reconnect, send a room snapshot containing the current tick, sequence number, active strokes, and enough game state to resume consistently.
-- Define room capacity, disconnect timeout, host/owner behavior, and what happens when the room creator leaves before implementation.
+- The Worker currently limits a room to four connected players and uses a six-character room code.
+- Initial room state is sent to joining clients, but replaying missed actions after a disconnect is not implemented. Snapshot and event-log recovery remain planned.
+- The room creator is the host for room settings and stage flow. Host handoff after departure or a frozen host remains unresolved.
 
-## Proposed Implementation Phases
+## Implementation Phases and Status
 
-1. **Protocol and local seam:** define stroke/event types and convert completed pointer strokes to logical coordinates without changing single-player behavior.
-2. **Room transport:** add a Durable Object room, WebSocket join/leave, validation, sequence assignment, and broadcast. Configure the DO binding and migrations in the Worker.
-3. **Scheduled stroke activation:** add a fixed multiplayer tick, ping/pong measurements, apply-tick scheduling, duplicate-event handling, and a late-event policy. Keep local previews non-collidable until activation.
-4. **Room recovery:** add snapshots, reconnect/resync behavior, room cleanup, and limits for payload size, point count, message rate, and room membership.
-5. **Consistency decision:** test across devices and networks. If physics divergence is unacceptable, prototype an authoritative simulation and snapshot interpolation before expanding multiplayer features.
+1. **Implemented:** completed strokes use logical coordinates and a dedicated multiplayer event flow without changing single-player input.
+2. **Implemented prototype:** a Durable Object room handles WebSocket membership, validation, sequence assignment, and broadcast.
+3. **Partially implemented:** release-time activation uses server timestamps, ping/pong estimates, ordered events, and fixed-step local physics. A shared room tick and complete late-event/replay policy remain planned.
+4. **Partially implemented:** rooms have membership and payload limits, and joining clients receive room state. Snapshot-based reconnect and missing-event replay are not implemented.
+5. **Open:** validate physics divergence across devices and decide whether host-authoritative simulation or snapshot correction is needed.
 
 ## Implemented Prototype
 
@@ -215,7 +216,8 @@ This ordering keeps the Durable Object as a sequence coordinator and snapshot re
 
 ## Open Decisions
 
-- Is a stroke allowed to affect the ball only after the pointer is released, or must it affect physics during drawing?
-- Is slight physics divergence acceptable for cooperative play, or must every player see the same outcome?
-- Should rooms be invite-code-only, public, or tied to authenticated accounts?
-- What player and stroke limits are appropriate for the first release?
+- What amount of physics divergence between independently simulated clients is acceptable for cooperative play?
+- Should a disconnected client be allowed to rejoin after an event replay window expires, and what recovery state is required?
+- Should host departure end the session, pause it, or transfer authority to another player?
+
+The current prototype streams visual stroke previews while drawing and activates collision only after release at the server-assigned time. Rooms are joined with a six-character code and are capped at four connected players. These are current implementation choices, not open decisions.

@@ -629,7 +629,6 @@ export function showStageClearOverlay(message = "Stage Cleared!") {
 
   state.stageClearMessage.querySelector(".stage-clear-title").textContent = message;
 
-  // Challenge 모드로 클리어한 경우 저장
   if (state.challengeModeEnabled && !state.isTutorialPlay) {
     setChallengeCleared(state.currentStageNumber);
   }
