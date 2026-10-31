@@ -3,6 +3,7 @@ export const dom = {
   globalToolbar: document.querySelector("[data-global-app-toolbar]"),
   board: document.querySelector("#game-board"),
   canvas: document.querySelector("#game-canvas"),
+  environmentCanvas: document.querySelector("#game-environment-canvas"),
   mobileLaunchButton: document.querySelector("[data-mobile-launch]"),
   drawLimitProgress: document.getElementById("draw-limit-progress"),
   drawLimitProgressTrackCanvas: document.getElementById("draw-limit-progress-track-canvas"),

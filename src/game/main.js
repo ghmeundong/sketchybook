@@ -13,6 +13,7 @@ import {
 import { initSelectionScreen } from "./ui/selectionScreen.js";
 import { initPointerInput } from "./input/pointerInput.js";
 import { unlockBackgroundMusic, unlockStageClearSound } from "./audio/gameAudio.js";
+import { initEnvironmentCanvas } from "./render/environmentCanvas.js";
 
 // Paper-texture page background.
 dom.body.style.backgroundImage = `url(${paperTexture})`;
@@ -72,3 +73,4 @@ dom.board?.addEventListener("contextmenu", (event) => {
 });
 
 initializePageFlow();
+initEnvironmentCanvas(dom.environmentCanvas, dom.board);

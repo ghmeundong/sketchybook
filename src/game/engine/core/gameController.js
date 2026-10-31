@@ -50,6 +50,7 @@ import {
   getCanvasPixelSize,
   getRenderDpr,
 } from "../../render/gameRenderer.js";
+import { resizeEnvironmentCanvas } from "../../render/environmentCanvas.js";
 import {
   playScoreStarSound,
   playStageClearSound,
@@ -1125,6 +1126,12 @@ export function resizeCanvas() {
   dom.canvas.style.top = `${viewTop}px`;
   dom.canvas.style.width = `${viewWidth}px`;
   dom.canvas.style.height = `${viewHeight}px`;
+
+  const boardRect = dom.board.getBoundingClientRect();
+  const canvasRect = dom.canvas.getBoundingClientRect();
+  resizeEnvironmentCanvas(boardRect, canvasRect, {
+    enabled: !state.challengeModeEnabled && state.difficultyRules?.hasFloor,
+  });
 
   state.ctx = dom.canvas.getContext("2d");
   if (!state.ctx) {
