@@ -166,7 +166,7 @@ function renderEnvironment() {
   if (!side || nearestDistance > HATCH_PROXIMITY_DISTANCE) return;
 
   const lightStrength = 1 - nearestDistance / HATCH_PROXIMITY_DISTANCE;
-  const spotlightRadius = HATCH_SPOTLIGHT_RADIUS * (0.65 + lightStrength * 0.35);
+  const spotlightRadius = HATCH_SPOTLIGHT_RADIUS * lightStrength;
   const boundaryX = side === "left" ? gameRect.left : gameRect.right;
   const horizontalDistance = boundaryX - lightX;
   const halfChord = Math.sqrt(
