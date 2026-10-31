@@ -1,6 +1,7 @@
 release/
 release-build/
 release-f11/
+.VSCodeCounter/
 # Logs
 logs
 *.log
