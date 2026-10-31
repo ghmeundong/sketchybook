@@ -612,7 +612,7 @@ export function applyAngularImpulseToBody(body, impulse) {
   }
 }
 
-export function updateStrokeBody(stroke, floorY, options = {}) {
+export function updateStrokeBody(stroke, floorY, _options = {}) {
   if (!stroke || !stroke.points?.length || !stroke.body) {
     return stroke;
   }

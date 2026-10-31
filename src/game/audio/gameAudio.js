@@ -17,7 +17,6 @@ backgroundMusic.volume = BACKGROUND_MUSIC_VOLUME * getMusicVolume();
 backgroundMusic.muted = true;
 
 let backgroundMusicFadeFrame = null;
-let backgroundMusicFadeTarget = null;
 let backgroundMusicTransitionId = 0;
 let backgroundMusicPlaybackRequestId = 0;
 let backgroundMusicEntryCheckTimer = null;
@@ -68,8 +67,6 @@ function fadeBackgroundMusic(targetVolume, duration) {
   const startVolume = backgroundMusic.volume;
   if (backgroundMusicFadeFrame) cancelAnimationFrame(backgroundMusicFadeFrame);
   const transitionId = ++backgroundMusicTransitionId;
-  backgroundMusicFadeTarget = nextVolume;
-
   if (nextVolume > 0 && backgroundMusic.paused) {
     requestBackgroundMusicPlayback();
   }
@@ -85,7 +82,6 @@ function fadeBackgroundMusic(targetVolume, duration) {
     }
 
     backgroundMusicFadeFrame = null;
-    backgroundMusicFadeTarget = null;
     if (nextVolume === 0) {
       backgroundMusic.pause();
       backgroundMusic.currentTime = 0;
@@ -102,7 +98,6 @@ export function syncBackgroundMusicForPage(page) {
     backgroundMusicFadeFrame = null;
     backgroundMusicTransitionId += 1;
     backgroundMusicPlaybackRequestId += 1;
-    backgroundMusicFadeTarget = null;
     fadeBackgroundMusic(0, BACKGROUND_MUSIC_FADE_OUT_DURATION);
     return;
   }
@@ -169,7 +164,6 @@ window.addEventListener("sketchybook:audio-settings-change", (event) => {
     if (backgroundMusicFadeFrame) cancelAnimationFrame(backgroundMusicFadeFrame);
     backgroundMusicFadeFrame = null;
     backgroundMusicTransitionId += 1;
-    backgroundMusicFadeTarget = null;
     backgroundMusic.volume = settings.music;
     backgroundMusic.muted = false;
     if (settings.music > 0) {

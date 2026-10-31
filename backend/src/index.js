@@ -767,7 +767,7 @@ async function saveSketchbook(payload) {
 }
 
 // 1. 스케치 전용 핸들러 (env 매개변수 추가로 싱크 매칭)
-async function handleSketchRequest(request, env) {
+async function handleSketchRequest(request, _env) {
   if (request.method === "GET") {
     const book = await fetchSketchbook();
     return jsonResponse({ imageData: book.imageData, vector: book.vector });
@@ -812,7 +812,7 @@ async function handleProgressRequest(request, env) {
   let payload;
   try {
     payload = await verifyIdToken(idToken, env);
-  } catch (error) {
+  } catch {
     return jsonResponse({ error: "Invalid auth token." }, 401);
   }
 

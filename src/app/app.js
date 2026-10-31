@@ -15,7 +15,6 @@ import {
 import {
   DIFFICULTY_LEVELS,
   DIFFICULTY_CONFIG,
-  getDifficultyList,
   getNextDifficulty,
   getPreviousDifficulty,
 } from "../game/engine/config/difficultyLevels.js";
