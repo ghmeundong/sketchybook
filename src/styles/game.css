@@ -940,3 +940,8 @@
   display: block;
   pointer-events: none;
 }
+
+.first-stage-tutorial-mobile-spotlight:not(.is-positioned),
+.first-stage-tutorial-mobile-label:not(.is-positioned) {
+  visibility: hidden;
+}

@@ -618,6 +618,7 @@ export function initPointerInput() {
 
   dom.mobileLaunchButton?.addEventListener("pointerdown", (event) => {
     event.preventDefault();
+    window.dispatchEvent(new CustomEvent("sketchybook:tutorial-spacebar"));
     launchBallFromInput();
   });
 

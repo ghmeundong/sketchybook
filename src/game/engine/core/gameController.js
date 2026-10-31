@@ -859,7 +859,9 @@ export async function startStage(stageNumber, { tutorialPlay = false } = {}) {
     const platforms = state.gameObjects.filter((object) => object instanceof Platform);
     startSecondStageTutorial(dom.board, dom.canvas, platforms, { force: state.isTutorialPlay });
   } else if (stageNumber === 3 && !isRoomConnected()) {
-    startThirdStageTutorial(dom.board, state.gameRetryButton, { force: state.isTutorialPlay });
+    startThirdStageTutorial(dom.board, state.gameRetryButton, dom.mobileLaunchButton, {
+      force: state.isTutorialPlay,
+    });
   } else if (stageNumber === 5 && !isRoomConnected()) {
     const rotor = state.gameObjects.find((object) => object instanceof Rotor);
     const platform = state.gameObjects.find((object) => object instanceof Platform);

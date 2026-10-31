@@ -31,7 +31,13 @@ const stageDefinitions = {
     title: "Stage 3",
     minEvents: 2,
     objects: [
-      { type: "text", x: 0.6, y: 0.2, text: "space bar also works, and R is for reset" },
+      {
+        type: "text",
+        x: 0.6,
+        y: 0.2,
+        text: "space bar also works, and R is for reset",
+        mobileText: "launch button also works, and reset button is for reset",
+      },
       { type: "ball", x: 0.7, y: 0.3 },
       { type: "platform", x: 0.3, y: 0.65 },
       { type: "platform", x: 0.7, y: 0.35 },

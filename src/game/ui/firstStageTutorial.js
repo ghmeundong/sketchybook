@@ -267,10 +267,14 @@ export function startSecondStageTutorial(board, canvas, platforms, { force = fal
   return true;
 }
 
-export function startThirdStageTutorial(board, retryButton, { force = false } = {}) {
+export function startThirdStageTutorial(board, retryButton, launchButton, { force = false } = {}) {
   removeActiveTutorial();
   const status = readThirdStageTutorialStatus();
   if ((!force && !shouldShowThirdStageTutorial(status)) || !board || !retryButton) return false;
+
+  const isMobileTutorial =
+    window.matchMedia?.("(hover: none) and (pointer: coarse)").matches ??
+    navigator.maxTouchPoints > 0;
 
   let tutorialStatus = force
     ? "in_progress_stage3_space"
@@ -280,6 +284,7 @@ export function startThirdStageTutorial(board, retryButton, { force = false } = 
 
   const overlay = document.createElement("div");
   overlay.className = "first-stage-tutorial first-stage-tutorial-keys";
+  if (isMobileTutorial) overlay.classList.add("is-mobile-tutorial");
   overlay.setAttribute("role", "group");
   overlay.setAttribute("aria-label", "Tutorial");
 
@@ -299,6 +304,14 @@ export function startThirdStageTutorial(board, retryButton, { force = false } = 
   spotlight.className = "first-stage-tutorial-reset-spotlight";
   spotlight.setAttribute("aria-hidden", "true");
 
+  const mobileLaunchSpotlight = document.createElement("span");
+  mobileLaunchSpotlight.className = "first-stage-tutorial-mobile-spotlight";
+  mobileLaunchSpotlight.setAttribute("aria-hidden", "true");
+
+  const mobileLaunchLabel = document.createElement("span");
+  mobileLaunchLabel.className = "first-stage-tutorial-mobile-label";
+  mobileLaunchLabel.textContent = translateText("Launch ball");
+
   const resetKeycap = document.createElement("kbd");
   resetKeycap.className = "first-stage-tutorial-reset-keycap";
   resetKeycap.setAttribute("aria-label", "R key");
@@ -311,7 +324,21 @@ export function startThirdStageTutorial(board, retryButton, { force = false } = 
   resetLabel.textContent = "R";
   resetKeycap.append(resetLabel);
 
-  overlay.append(keycapShadow, keycap, spotlight, resetKeycapShadow, resetKeycap);
+  const mobileResetLabel = document.createElement("span");
+  mobileResetLabel.className =
+    "first-stage-tutorial-mobile-label first-stage-tutorial-mobile-reset-label";
+  mobileResetLabel.textContent = translateText("Reset");
+
+  overlay.append(
+    keycapShadow,
+    keycap,
+    mobileLaunchSpotlight,
+    mobileLaunchLabel,
+    spotlight,
+    resetKeycapShadow,
+    resetKeycap,
+    mobileResetLabel
+  );
   board.append(overlay);
 
   const updateResetSpotlight = () => {
@@ -323,16 +350,55 @@ export function startThirdStageTutorial(board, retryButton, { force = false } = 
     spotlight.style.top = `${top - 8}px`;
     spotlight.style.width = `${buttonRect.width + 16}px`;
     spotlight.style.height = `${buttonRect.height + 16}px`;
+    spotlight.classList.add("is-positioned");
     resetKeycap.style.left = `${left + buttonRect.width / 2}px`;
     resetKeycap.style.top = `${top + buttonRect.height + 18}px`;
     resetKeycapShadow.style.left = resetKeycap.style.left;
     resetKeycapShadow.style.top = resetKeycap.style.top;
   };
 
+  const positionSpotlight = (element, button, gap = 8) => {
+    const boardRect = board.getBoundingClientRect();
+    const buttonRect = button.getBoundingClientRect();
+    element.style.left = `${buttonRect.left - boardRect.left - gap}px`;
+    element.style.top = `${buttonRect.top - boardRect.top - gap}px`;
+    element.style.width = `${buttonRect.width + gap * 2}px`;
+    element.style.height = `${buttonRect.height + gap * 2}px`;
+    element.classList.add("is-positioned");
+    return {
+      boardRect,
+      buttonRect,
+      left: buttonRect.left - boardRect.left,
+      top: buttonRect.top - boardRect.top,
+    };
+  };
+
+  const updateSpotlights = () => {
+    const isResetPhase = tutorialStatus === "in_progress_stage3_reset";
+    if (!isMobileTutorial) {
+      if (isResetPhase) updateResetSpotlight();
+      return;
+    }
+
+    if (!isResetPhase && launchButton) {
+      const { buttonRect } = positionSpotlight(mobileLaunchSpotlight, launchButton);
+      mobileLaunchLabel.style.left = `${positionSpotlight(mobileLaunchSpotlight, launchButton).left + buttonRect.width / 2}px`;
+      mobileLaunchLabel.style.top = `${positionSpotlight(mobileLaunchSpotlight, launchButton).top + buttonRect.height + 12}px`;
+      mobileLaunchLabel.classList.add("is-positioned");
+      return;
+    }
+
+    if (isResetPhase) {
+      const { buttonRect, left, top } = positionSpotlight(spotlight, retryButton);
+      mobileResetLabel.style.left = `${left + buttonRect.width / 2}px`;
+      mobileResetLabel.style.top = `${top + buttonRect.height + 12}px`;
+      mobileResetLabel.classList.add("is-positioned");
+    }
+  };
   const updatePhase = () => {
     const isResetPhase = tutorialStatus === "in_progress_stage3_reset";
     overlay.classList.toggle("is-reset-phase", isResetPhase);
-    if (isResetPhase) updateResetSpotlight();
+    updateSpotlights();
   };
   const onSpacebar = () => {
     const nextStatus = advanceThirdStageTutorial(tutorialStatus);
@@ -379,7 +445,7 @@ export function startThirdStageTutorial(board, retryButton, { force = false } = 
     onStageRetry,
     onStageClear,
     resizeObserver:
-      typeof ResizeObserver === "function" ? new ResizeObserver(updateResetSpotlight) : null,
+      typeof ResizeObserver === "function" ? new ResizeObserver(updateSpotlights) : null,
   };
   activeTutorial.resizeObserver?.observe(board);
   return true;

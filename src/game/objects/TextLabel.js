@@ -7,15 +7,20 @@ export class TextLabel {
       x,
       y,
       text,
+      mobileText,
       fontSize,
       color,
       fontFamily,
       shouldTranslate = true,
       useKoreanTextScale = true,
     } = opts || {};
+    const isMobile =
+      window.matchMedia?.("(hover: none) and (pointer: coarse)").matches ??
+      navigator.maxTouchPoints > 0;
     this.nx = typeof x === "number" ? x : 0.5;
     this.ny = typeof y === "number" ? y : 0.2;
-    this.sourceText = text || "";
+    this.sourceText = isMobile && mobileText ? mobileText : text || "";
+    this.mobileText = mobileText || null;
     this.shouldTranslate = shouldTranslate;
     this.useKoreanTextScale = useKoreanTextScale;
     this.text = this.shouldTranslate ? translateText(this.sourceText) : this.sourceText;

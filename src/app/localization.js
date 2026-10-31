@@ -354,6 +354,8 @@ const koreanText = {
   "draw a line to connect the platforms": "선을 그려 발판을 연결하세요",
   "space bar also works, and R is for reset":
     "스페이스바로 발사할 수도 있고 R 키로 다시 시작할 수 있습니다",
+  "launch button also works, and reset button is for reset":
+    "공 발사 버튼으로 발사할 수도 있고 리셋 버튼으로 다시 시작할 수 있습니다",
   "Tip: Drawn lines can attach to rotors or the ground.":
     "팁: 그린 선은 회전체나 바닥에 연결할 수 있습니다.",
   "ground and rotors are attachable": "바닥과 회전체에는 선을 연결할 수 있습니다.",
