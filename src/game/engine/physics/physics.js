@@ -4,6 +4,7 @@ planck.Settings.maxTranslation = 200.0;
 planck.Settings.maxRotation = 100.0;
 
 const DEFAULT_GRAVITY_Y = 238;
+const MAX_STROKE_PHYSICS_SEGMENTS = 256;
 const physicsWorld = planck.World({ gravity: { x: 0, y: DEFAULT_GRAVITY_Y } });
 let physicsGround = null;
 let physicsFloorY = null;
@@ -101,7 +102,7 @@ function ensurePhysicsGround(floorY, options = {}) {
   physicsLeftWall.createFixture({
     shape: planck.Edge(planck.Vec2(0, -10000), planck.Vec2(0, floorY)),
     density: 0,
-    friction: 0.5,
+    friction: 0,
   });
 
   // 4. 오른쪽 벽 (X: gameWidth)
@@ -109,7 +110,7 @@ function ensurePhysicsGround(floorY, options = {}) {
   physicsRightWall.createFixture({
     shape: planck.Edge(planck.Vec2(gameWidth, -10000), planck.Vec2(gameWidth, floorY)),
     density: 0,
-    friction: 0.5,
+    friction: 0,
   });
 
   physicsFloorY = floorY;
@@ -222,7 +223,15 @@ export function createStrokeBody(points) {
     return null;
   }
 
-  const sampleSpacing = 1.5;
+  let totalLength = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    totalLength += Math.hypot(
+      points[index].x - points[index - 1].x,
+      points[index].y - points[index - 1].y
+    );
+  }
+
+  const sampleSpacing = Math.max(1.5, totalLength / (MAX_STROKE_PHYSICS_SEGMENTS - 1));
   const sampledPoints = [points[0]];
   let distanceSinceSample = 0;
 

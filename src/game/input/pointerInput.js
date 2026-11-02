@@ -62,6 +62,7 @@ let liveStrokeSequence = 0;
 let liveStrokeSentPointCount = 0;
 let liveStrokeLastSentAt = 0;
 let liveStrokeAnchor = null;
+let liveStrokeDistance = 0;
 
 function segmentsCross(first, second) {
   const orientation = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
@@ -417,6 +418,7 @@ function startDrawing(event) {
   liveStrokeSentPointCount = 0;
   liveStrokeLastSentAt = 0;
   liveStrokeAnchor = state.lastPoint;
+  liveStrokeDistance = 0;
   drawingAudio.start(state.lastPoint);
   state.currentStroke = [];
   // reset preview cache for a new stroke
@@ -431,11 +433,18 @@ function continueDrawing(event) {
   }
 
   const currentPoint = getPoint(event);
-  drawingAudio.update(getPoint(event));
+  const previousStrokePoint = state.currentStroke[state.currentStroke.length - 1];
+  if (previousStrokePoint) {
+    liveStrokeDistance += Math.hypot(
+      currentPoint.x - previousStrokePoint.x,
+      currentPoint.y - previousStrokePoint.y
+    );
+  }
+  drawingAudio.update(currentPoint);
   state.currentStroke.push(currentPoint);
   state.lastPoint = currentPoint;
   updateDrawLimitProgressUI({
-    previewLength: state.totalDrawnLength + getLogicalStrokeDistance(state.currentStroke),
+    previewLength: state.totalDrawnLength + liveStrokeDistance,
   });
   // mark preview cache dirty so it'll be re-generated once per change
   state.currentStrokePreviewDirty = true;

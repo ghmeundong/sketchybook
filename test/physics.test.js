@@ -121,6 +121,10 @@ describe("createStrokeSegments", () => {
 });
 
 describe("createStrokeBody", () => {
+  beforeEach(() => {
+    resetPhysicsWorld();
+  });
+
   it("creates a body centered on the stroke centroid", () => {
     const stroke = createStrokeBody([
       { x: 0, y: 0 },
@@ -139,6 +143,40 @@ describe("createStrokeBody", () => {
       { x: 10, y: 0 },
       { x: 10, y: 10 },
     ]);
+  });
+
+  it("caps physical segments for long strokes while preserving the endpoint", () => {
+    const stroke = createStrokeBody([
+      { x: 0, y: 20 },
+      { x: 1500, y: 20 },
+    ]);
+    initializeStrokeBody(stroke, 90);
+
+    expect(stroke.physicsSegments.length).toBeLessThanOrEqual(256);
+    expect(stroke.points.at(-1).x).toBeCloseTo(1500);
+  });
+
+  it("slides along the side walls instead of sticking", () => {
+    const stroke = createStrokeBody([
+      { x: -1, y: 20 },
+      { x: 40, y: 20 },
+    ]);
+    initializeStrokeBody(stroke, 90);
+
+    stepPhysicsWorld({ deltaTime: 1 / 60 });
+    const contact = stroke.physicsBody.getContactList();
+    expect(contact).not.toBeNull();
+
+    const fixtureA = contact.contact.getFixtureA();
+    const fixtureB = contact.contact.getFixtureB();
+    const wallFixture = fixtureA.getBody() === stroke.physicsBody ? fixtureB : fixtureA;
+    expect(wallFixture.getFriction()).toBe(0);
+
+    for (let index = 0; index < 60; index += 1) {
+      stepPhysicsWorld({ deltaTime: 1 / 60 });
+    }
+
+    expect(stroke.physicsBody.getPosition().y).toBeGreaterThan(stroke.body.y + 20);
   });
 });
 
