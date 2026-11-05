@@ -30,6 +30,18 @@ game/
   objects/        Game object classes (Ball, Platform, Rotor, ...).
 ```
 
+## CSS ownership
+
+- `src/style.css` is the stylesheet entry point and imports the stylesheets below.
+- `src/styles/mode-selection.css` owns mode selection and multiplayer room UI.
+- `src/styles/start-screen.css` owns the start screen, toolbar, settings, and help UI.
+- `src/styles/stage-selection.css` owns stage selection and difficulty controls.
+- `src/styles/screens.css` owns shared screen layout and responsive screen overrides.
+- `src/styles/map-editor.css` owns the map browser and map editor UI.
+- `src/styles/orientation-prompt.css` owns the orientation prompt overlay.
+- `src/styles/localization.css` owns language-specific typography adjustments.
+- `src/styles/game.css` owns the in-game HUD, board, and tutorial UI.
+
 ## Rules
 
 1. **`main.js` files are bootstraps, not implementations.** `src/main.js` and

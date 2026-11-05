@@ -1,0 +1,126 @@
+.orientation-prompt {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: -webkit-fill-available;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 70%);
+  z-index: 10000;
+}
+
+/* .orientation-prompt.is-active {
+  display: flex;
+} */
+
+@media screen and (width <= 900px) and (orientation: portrait) {
+  html.has-orientation-prompt .orientation-prompt {
+    display: flex;
+  }
+
+  html.has-orientation-prompt body {
+    overflow: hidden;
+  }
+}
+
+.orientation-prompt-card {
+  width: min(100%, 22rem);
+  padding: 1.5rem;
+  border: 1px solid rgb(76 57 34 / 30%);
+  border-radius: 1rem;
+  background: var(--paper-card);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 25%);
+  text-align: center;
+  color: var(--ink);
+}
+
+.orientation-prompt-eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.orientation-prompt-title {
+  margin: 0 0 0.65rem;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.orientation-prompt-body {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.orientation-prompt-icon {
+  display: grid;
+  place-items: center;
+  margin: 0 auto 1.25rem;
+}
+
+.orientation-prompt-device {
+  display: block;
+  width: 4rem;
+  height: 6rem;
+  border: 0.2rem solid currentcolor;
+  border-radius: 0.8rem;
+  position: relative;
+  animation: orientation-device-rotate 2.4s ease-in-out infinite;
+}
+
+.orientation-prompt-device::before {
+  content: "";
+  position: absolute;
+  inset: 0.55rem;
+  border: 0.14rem solid currentcolor;
+  border-radius: 0.45rem;
+}
+
+.orientation-prompt-button {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: var(--ink);
+  color: var(--paper-bright);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.orientation-prompt-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.orientation-prompt-status {
+  min-height: 1.25rem;
+  margin: 0.65rem 0 0;
+  color: #725537;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+@keyframes orientation-device-rotate {
+  0%,
+  25% {
+    transform: rotate(0deg);
+  }
+
+  55%,
+  75% {
+    transform: rotate(90deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
+}
