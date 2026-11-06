@@ -62,20 +62,20 @@ Every stage is a small physics puzzle: study the scene, sketch a route, then lau
 
 ## Controls
 
-| Action | Desktop | Touch |
-| --- | --- | --- |
-| Draw a guide line | Click and drag | Drag |
-| Launch the ball | Click / tap the ball, or press `Space` | Tap the ball or launch button |
-| Retry the stage | Press `R` | Use the retry button |
+| Action            | Desktop                                | Touch                         |
+| ----------------- | -------------------------------------- | ----------------------------- |
+| Draw a guide line | Click and drag                         | Drag                          |
+| Launch the ball   | Click / tap the ball, or press `Space` | Tap the ball or launch button |
+| Retry the stage   | Press `R`                              | Use the retry button          |
 
 ## Difficulty
 
-| Level | What changes |
-| --- | --- |
-| Easy | A forgiving introduction with fewer drawing restrictions. |
-| Normal | The balanced default ruleset. |
-| Hard | Tighter drawing limits and additional constraints. |
-| Insane | The strictest rules and most demanding puzzles. |
+| Level  | What changes                                              |
+| ------ | --------------------------------------------------------- |
+| Easy   | A forgiving introduction with fewer drawing restrictions. |
+| Normal | The balanced default ruleset.                             |
+| Hard   | Tighter drawing limits and additional constraints.        |
+| Insane | The strictest rules and most demanding puzzles.           |
 
 Challenge mode adds extra constraints on supported difficulties.
 

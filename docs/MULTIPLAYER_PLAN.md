@@ -152,7 +152,6 @@ Dynamic and collidable objects must have stable, deterministic IDs across every 
   "starsCollected": ["star-1"],
   "activeStrokes": ["stroke-18"]
 }
-
 ```
 
 The host snapshot must be validated and relayed by the Durable Object, which keeps only the latest safe snapshot. Clients restore the snapshot, reset or reconstruct known bodies, clear queued replay outside the snapshot scope, and replay accepted events whose sequence is newer than the snapshot sequence. Until replay is complete, multiplayer input should remain locked to prevent a second local timeline from being introduced.

@@ -4,12 +4,12 @@ This document describes the current difficulty rules. The source of truth is [`d
 
 ## Current rules
 
-| Difficulty | Floor | Draw on ball | Maximum line length | Challenge Mode | Additional rule |
-| --- | --- | --- | ---: | --- | --- |
-| Easy | On | Allowed | No limit | Unavailable | Learning rules |
-| Normal | On | Allowed | 5,000 px | Unavailable | Standard rules |
-| Hard | Off | Blocked | 2,500 px | Optional | No floor safety net |
-| Insane | Off | Blocked | 1,250 px | Forced | Platforms also receive no-draw striped areas |
+| Difficulty | Floor | Draw on ball | Maximum line length | Challenge Mode | Additional rule                              |
+| ---------- | ----- | ------------ | ------------------: | -------------- | -------------------------------------------- |
+| Easy       | On    | Allowed      |            No limit | Unavailable    | Learning rules                               |
+| Normal     | On    | Allowed      |            5,000 px | Unavailable    | Standard rules                               |
+| Hard       | Off   | Blocked      |            2,500 px | Optional       | No floor safety net                          |
+| Insane     | Off   | Blocked      |            1,250 px | Forced         | Platforms also receive no-draw striped areas |
 
 Line length is measured in canvas pixels. Difficulty-specific objects can declare a `levels` value (a difficulty string or array); objects without it are shared across difficulties. Insane mode adds striped no-draw regions over platform objects.
 
