@@ -40,6 +40,7 @@ import { Ball, CircleObject, Platform, Rotor, Star } from "../../objects/index.j
 import { isUserLoggedIn, syncProgressForMode } from "../../../services/auth.js";
 import { fetchSharedMaps } from "../../../services/sharedMaps.js";
 import { createGameObjects } from "../../stages/gameObjectFactory.js";
+import { createMapTestDefinition } from "../../stages/mapTestDefinition.js";
 import { DIFFICULTY_LEVELS, getDifficultyRules } from "../config/difficultyLevels.js";
 import { dom, stagePageSize, totalStageCount, totalStagePages } from "./domRefs.js";
 import { state } from "./gameState.js";
@@ -882,8 +883,8 @@ export async function startPlayground({ mapTestDefinition = null } = {}) {
   state.isTutorialPlay = false;
   state.isMapTest = Boolean(mapTestDefinition);
   state.mapTestDefinition = mapTestDefinition;
-  state.currentDifficulty = DIFFICULTY_LEVELS.EASY;
-  state.difficultyRules = getDifficultyRules(DIFFICULTY_LEVELS.EASY);
+  state.currentDifficulty = mapTestDefinition?.difficulty || DIFFICULTY_LEVELS.EASY;
+  state.difficultyRules = getDifficultyRules(state.currentDifficulty);
   state.currentStageNumber = 1;
   setActivePage(dom.playPage);
   await tryEnterFullscreen();
@@ -901,19 +902,8 @@ export async function startPlayground({ mapTestDefinition = null } = {}) {
 }
 
 export async function startMapTest(mapDefinition) {
-  if (!mapDefinition || !Array.isArray(mapDefinition.objects)) return;
-  const mapTestDefinition = {
-    id: mapDefinition.id,
-    name: String(mapDefinition.name || "Untitled map"),
-    objects: mapDefinition.objects.map((object) => {
-      const copy = { ...object };
-      if (copy.type === "text" && !/[가-힣]/.test(String(copy.text || ""))) {
-        copy.fontFamily = "sketchyfont, serif";
-        copy.useKoreanTextScale = false;
-      }
-      return copy;
-    }),
-  };
+  const mapTestDefinition = createMapTestDefinition(mapDefinition);
+  if (!mapTestDefinition) return;
   await startPlayground({ mapTestDefinition });
   const playableObjects = [
     ...mapTestDefinition.objects,

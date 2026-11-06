@@ -8,12 +8,13 @@ Positions are normalized (0..1) relative to the canvas width/height unless other
 
 ## Map editor JSON reference
 
-The Map Maker's **JSON** tab edits the same object definitions used by stages. The root value is a map document with a version, a name, and an `objects` array:
+The Map Maker's **JSON** tab edits the same object definitions used by stages. The root value is a map document with a version, a name, a difficulty, and an `objects` array:
 
 ```json
 {
   "version": 1,
   "name": "First map",
+  "difficulty": "normal",
   "objects": [
     { "type": "ball", "x": 0.25, "y": 0.3, "radius": 0.02 },
     { "type": "platform", "x": 0.5, "y": 0.7, "width": 0.3, "height": 0.04 },
@@ -23,7 +24,8 @@ The Map Maker's **JSON** tab edits the same object definitions used by stages. T
 ```
 
 - `version` is currently `1`.
-- `name` is the map title. `objects` is an array of stage object definitions.
+- `name` is the map title. `difficulty` is `easy`, `normal`, `hard`, or `insane` and defaults to `easy` when omitted. `objects` is an array of stage object definitions.
+- Difficulty controls gameplay rules and objects' optional `levels` filters. Saved and shared maps retain their selected difficulty.
 - Coordinates and dimensions from `0` to `1` are normalized to the canvas. For object sizes, values greater than `1` are interpreted as pixels by the engine.
 - The JSON editor validates and applies valid edits as you type. Invalid JSON or object fields are reported without replacing the current map. JSON input is limited to 64 KiB, and valid changes can be undone.
 - The JSON editor suggests supported `type` values and common fields while typing. Press `Tab` or `Enter` to accept a suggestion, and use the arrow keys to change the highlighted suggestion.
@@ -281,15 +283,3 @@ Defaults summary
 - `portal.height`: 0.1
 - `stripedRect.width`: 0.12
 - `stripedRect.height`: 0.08
-
-Notes
-
-- The rendering system will generate a rough, hand-drawn texture for all of these objects when the stage loads (see `src/game/render/gameRenderer.js`).
-- Physics bodies are created after canvas sizing; the coordinate conversion uses canvas pixel dimensions so normalized coordinates work across resolutions.
-- If you need a single rigid polygon collision body (instead of per-edge fixtures), add a `polygon` helper in `src/game/physics.js` and reference it from stage code.
-
-Adding objects to a built-in stage
-
-- Add the object definition to the matching stage's `objects` array in `src/game/stages/registry.js`.
-- Use `levels` when an object should appear only at selected difficulty levels.
-- Run `npm test` and `npm run build` after changing stage definitions.

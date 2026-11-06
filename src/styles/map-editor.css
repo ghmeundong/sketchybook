@@ -570,6 +570,63 @@
   font-weight: 900;
 }
 
+.map-editor-difficulty-label {
+  position: relative;
+  display: grid;
+  min-width: 9rem;
+  flex: 0 0 9rem;
+  align-content: center;
+  gap: 0.2rem;
+}
+
+.map-editor-difficulty-label span {
+  color: var(--ink-soft);
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.map-editor-difficulty-slider {
+  display: grid;
+  min-height: 1.65rem;
+  grid-template-columns: 1.65rem minmax(0, 1fr) 1.65rem;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.map-editor-difficulty-slider .difficulty-nav-btn {
+  position: relative;
+  display: grid;
+  width: 1.65rem;
+  height: 1.65rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-strong);
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+
+.map-editor-difficulty-slider .difficulty-nav-btn:hover {
+  opacity: 0.7;
+}
+
+.map-editor-difficulty-slider .difficulty-nav-btn:active {
+  opacity: 0.5;
+}
+
+.map-editor-difficulty-slider .difficulty-nav-btn:focus-visible {
+  outline: 2px solid #bd6c36;
+  outline-offset: 2px;
+}
+
+.map-editor-difficulty-slider .difficulty-name {
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .map-editor-name-input {
   position: relative;
   width: 100%;

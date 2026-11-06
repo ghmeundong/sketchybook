@@ -8,11 +8,17 @@ import { createActionIconCanvas } from "../game/ui/uiIcons.js";
 import { FONT_DISPLAY, GOLD, INK, INK_SOFT } from "../theme.js";
 import objectsReference from "../../docs/OBJECTS.md?raw";
 import objectsReferenceKo from "../../docs/OBJECTS.ko.md?raw";
-import { isKoreanLocale } from "./localization.js";
+import { isKoreanLocale, translateText } from "./localization.js";
 import { fetchAccountMaps, saveAccountMap } from "../services/accountMaps.js";
 import { isUserLoggedIn } from "../services/auth.js";
 import { fetchSharedMap, fetchSharedMaps, publishSharedMap } from "../services/sharedMaps.js";
 import { createGameObject } from "../game/stages/gameObjectFactory.js";
+import {
+  DIFFICULTY_CONFIG,
+  DIFFICULTY_LEVELS,
+  getNextDifficulty,
+  getPreviousDifficulty,
+} from "../game/engine/config/difficultyLevels.js";
 
 const STORAGE_KEY = "sketchybook.customMaps";
 const MAX_JSON_EDITOR_CHARS = 64 * 1024;
@@ -23,6 +29,9 @@ const MAX_SHAPE_POINTS = 128;
 const MAX_TEXT_OBJECT_CHARS = 200;
 const canvas = document.querySelector("[data-map-canvas]");
 const nameInput = document.querySelector("[data-map-name]");
+const difficultyPreviousButton = document.querySelector("[data-map-difficulty-prev]");
+const difficultyNextButton = document.querySelector("[data-map-difficulty-next]");
+const difficultyName = document.querySelector("[data-map-difficulty-name]");
 const status = document.querySelector("[data-map-status]");
 const undoButton = document.querySelector("[data-map-undo]");
 const libraryToggle = document.querySelector("[data-map-library-toggle]");
@@ -68,6 +77,7 @@ let polygonDraft = null;
 let propertySnapshot = null;
 let editorView = "canvas";
 let jsonSessionSnapshot = null;
+let selectedMapDifficulty = DIFFICULTY_LEVELS.EASY;
 let activeSuggestions = [];
 let selectedSuggestionIndex = 0;
 let currentMapId = createMapId();
@@ -85,6 +95,22 @@ function createMapId() {
 
 function setStatus(message) {
   if (status) status.textContent = message;
+}
+
+function updateMapDifficultyDisplay() {
+  if (!difficultyName) return;
+  difficultyName.textContent = translateText(DIFFICULTY_CONFIG[selectedMapDifficulty].name);
+}
+
+function setMapDifficulty(difficulty, syncJson = true) {
+  selectedMapDifficulty = Object.values(DIFFICULTY_LEVELS).includes(difficulty)
+    ? difficulty
+    : DIFFICULTY_LEVELS.EASY;
+  updateMapDifficultyDisplay();
+  if (syncJson && editorView === "json") {
+    jsonEditor.value = JSON.stringify(serializeCurrentMap(), null, 2);
+    renderJsonHighlight();
+  }
 }
 
 function showMapToast(message) {
@@ -331,6 +357,7 @@ async function openSharedMap(mapId) {
     if (!requireMapEditorLogin()) return;
     objects = map.objects.map((object) => ({ ...object }));
     nameInput.value = map.name || "Untitled map";
+    setMapDifficulty(map.difficulty, false);
     currentMapId = createMapId();
     history = [];
     selectedIndex = -1;
@@ -360,6 +387,7 @@ async function shareMap() {
     const result = await publishSharedMap(currentMapId, {
       version: 1,
       name: nameInput.value.trim() || "Untitled map",
+      difficulty: selectedMapDifficulty,
       objects,
     });
     showMapToast("Map shared with the community.");
@@ -643,6 +671,7 @@ function serializeCurrentMap() {
   return {
     version: 1,
     name: nameInput.value.trim() || "Untitled map",
+    difficulty: selectedMapDifficulty,
     objects,
   };
 }
@@ -701,6 +730,12 @@ function validateMapJson(value) {
   }
   if (!Array.isArray(data.objects)) {
     throw new Error('The map must contain an "objects" array.');
+  }
+  if (
+    data.difficulty !== undefined &&
+    !Object.values(DIFFICULTY_LEVELS).includes(data.difficulty)
+  ) {
+    throw new Error('Map difficulty must be "easy", "normal", "hard", or "insane".');
   }
   if (data.objects.length > MAX_MAP_OBJECTS) {
     throw new Error(`Map must contain no more than ${MAX_MAP_OBJECTS} objects.`);
@@ -785,6 +820,7 @@ function applyMapJson() {
       return nextObject;
     });
     if (typeof data.name === "string" && data.name.trim()) nameInput.value = data.name.slice(0, 40);
+    setMapDifficulty(data.difficulty, false);
     selectedIndex = -1;
     syncProperties();
     jsonStatus.textContent = `${objects.length} object${objects.length === 1 ? "" : "s"} applied live.`;
@@ -1530,6 +1566,7 @@ function loadMap(mapId) {
   if (!map) return;
   currentMapId = map.id;
   nameInput.value = map.name || "Untitled map";
+  setMapDifficulty(map.difficulty, false);
   objects = Array.isArray(map.objects) ? map.objects : [];
   history = [];
   selectedIndex = -1;
@@ -1546,6 +1583,7 @@ function startNewMap() {
   history = [];
   selectedIndex = -1;
   nameInput.value = "Untitled map";
+  setMapDifficulty(DIFFICULTY_LEVELS.EASY, false);
   undoButton.disabled = true;
   if (editorView === "json") setEditorView("canvas");
   render();
@@ -1571,6 +1609,7 @@ async function saveMap() {
     id: currentMapId,
     name: nameInput.value.trim() || "Untitled map",
     version: 1,
+    difficulty: selectedMapDifficulty,
     objects,
     updatedAt: new Date().toISOString(),
   };
@@ -1588,6 +1627,7 @@ function exportMap() {
   const map = {
     version: 1,
     name: nameInput.value.trim() || "Untitled map",
+    difficulty: selectedMapDifficulty,
     objects,
   };
   const blob = new Blob([JSON.stringify(map, null, 2)], { type: "application/json" });
@@ -1614,8 +1654,8 @@ function initializeMapEditor() {
   mapToast.appendChild(mapToastMessage);
   document.body.appendChild(mapToast);
   attachRoughFrame(mapToast, {
-    inset: 4,
-    outside: 0,
+    inset: 0,
+    outside: 4,
     strokeWidth: 2,
     roughness: 2,
     fill: "rgba(250, 244, 216, 0.96)",
@@ -1649,6 +1689,13 @@ function initializeMapEditor() {
   mapBoardRefreshButton.appendChild(
     createActionIconCanvas("retry", { w: 48, h: 40, strokeWidth: 2.5 })
   );
+  difficultyPreviousButton.appendChild(
+    createActionIconCanvas("prev", { w: 24, h: 24, strokeWidth: 2 })
+  );
+  difficultyNextButton.appendChild(
+    createActionIconCanvas("next", { w: 24, h: 24, strokeWidth: 2 })
+  );
+  updateMapDifficultyDisplay();
   drawMapCreateOutline();
   const closeReference = () => {
     referencePanel.hidden = true;
@@ -1667,7 +1714,13 @@ function initializeMapEditor() {
   });
   document.querySelector("[data-map-save]").addEventListener("click", saveMap);
   mapPlayButton.addEventListener("click", () => {
-    void startMapTest({ name: nameInput.value, objects });
+    void startMapTest({ name: nameInput.value, difficulty: selectedMapDifficulty, objects });
+  });
+  difficultyPreviousButton.addEventListener("click", () => {
+    setMapDifficulty(getPreviousDifficulty(selectedMapDifficulty));
+  });
+  difficultyNextButton.addEventListener("click", () => {
+    setMapDifficulty(getNextDifficulty(selectedMapDifficulty));
   });
   mapShareButton.addEventListener("click", () => void shareMap());
   document.querySelector("[data-map-export]").addEventListener("click", exportMap);
@@ -1691,6 +1744,7 @@ function initializeMapEditor() {
   };
   renderReference();
   window.addEventListener("sketchybook:language-change", () => {
+    updateMapDifficultyDisplay();
     if (!referencePanel.hidden) renderReference();
   });
   referenceButton.addEventListener("click", () => {

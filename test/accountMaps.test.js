@@ -41,6 +41,7 @@ function createAccountMapsDatabase() {
 
 const map = {
   name: "Private map",
+  difficulty: "insane",
   objects: [
     { type: "ball", x: 0.2, y: 0.3, radius: 0.03 },
     { type: "star", x: 0.8, y: 0.7, radius: 0.03 },
@@ -86,7 +87,7 @@ describe("account maps API", () => {
 
     const ownerResponse = await backend.fetch(authenticatedRequest("user-a", "GET"), env);
     await expect(ownerResponse.json()).resolves.toMatchObject({
-      maps: [{ id: "map-1", name: "Private map", objects: map.objects }],
+      maps: [{ id: "map-1", name: "Private map", difficulty: "insane", objects: map.objects }],
     });
 
     const otherResponse = await backend.fetch(authenticatedRequest("user-b", "GET"), env);

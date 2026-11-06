@@ -928,6 +928,9 @@ function validateSharedMap(map) {
   if (typeof map.name !== "string" || !map.name.trim() || map.name.length > 40) {
     return "Map name must be between 1 and 40 characters.";
   }
+  if (map.difficulty !== undefined && !VALID_DIFFICULTIES.has(map.difficulty)) {
+    return "Map difficulty must be easy, normal, hard, or insane.";
+  }
   if (!Array.isArray(map.objects) || map.objects.length > MAX_SHARED_MAP_OBJECTS) {
     return `Map must contain no more than ${MAX_SHARED_MAP_OBJECTS} objects.`;
   }
@@ -1018,14 +1021,18 @@ async function handleSharedMapsRequest(request, env) {
     const result = await env.DB.prepare(
       "SELECT id, name, author_name, map_json, created_at, updated_at FROM shared_maps ORDER BY updated_at DESC LIMIT 100"
     ).all();
-    const maps = (result.results || []).map((row) => ({
-      id: row.id,
-      name: row.name,
-      authorName: row.author_name,
-      objects: JSON.parse(row.map_json).objects,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
+    const maps = (result.results || []).map((row) => {
+      const map = JSON.parse(row.map_json);
+      return {
+        id: row.id,
+        name: row.name,
+        authorName: row.author_name,
+        difficulty: map.difficulty || "easy",
+        objects: map.objects,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+    });
     return jsonResponse({ ok: true, maps });
   }
 
@@ -1045,6 +1052,7 @@ async function handleSharedMapsRequest(request, env) {
         id: row.id,
         name: row.name,
         authorName: row.author_name,
+        difficulty: map.difficulty || "easy",
         objects: map.objects,
         createdAt: row.created_at,
       },
@@ -1073,7 +1081,12 @@ async function handleSharedMapsRequest(request, env) {
   const map = body.map;
   const validationError = validateSharedMap(map);
   if (validationError) return errorResponse(validationError, 400);
-  const mapJson = JSON.stringify({ version: 1, name: map.name.trim(), objects: map.objects });
+  const mapJson = JSON.stringify({
+    version: 1,
+    name: map.name.trim(),
+    difficulty: map.difficulty || "easy",
+    objects: map.objects,
+  });
   if (new TextEncoder().encode(mapJson).byteLength > MAX_SHARED_MAP_BYTES) {
     return errorResponse("Map data is too large.", 413);
   }
@@ -1134,6 +1147,7 @@ async function handleAccountMapsRequest(request, env) {
     const maps = (result.results || []).map((row) => ({
       id: row.source_id,
       name: row.name,
+      difficulty: JSON.parse(row.map_json).difficulty || "easy",
       objects: JSON.parse(row.map_json).objects,
       updatedAt: row.updated_at,
     }));
@@ -1156,6 +1170,7 @@ async function handleAccountMapsRequest(request, env) {
   const mapJson = JSON.stringify({
     version: 1,
     name: body.map.name.trim(),
+    difficulty: body.map.difficulty || "easy",
     objects: body.map.objects,
   });
   if (new TextEncoder().encode(mapJson).byteLength > MAX_SHARED_MAP_BYTES) {

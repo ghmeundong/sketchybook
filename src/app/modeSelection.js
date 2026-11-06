@@ -262,8 +262,8 @@ function initializeModeSelection() {
   roomToast.appendChild(roomToastMessage);
   document.body.appendChild(roomToast);
   attachRoughFrame(roomToast, {
-    inset: 4,
-    outside: 0,
+    inset: 0,
+    outside: 4,
     strokeWidth: 2,
     roughness: 2,
     fill: "rgba(250, 244, 216, 0.96)",

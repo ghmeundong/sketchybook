@@ -39,6 +39,7 @@ import {
   initializeStage,
   resizeCanvas,
   hideStageClearOverlay,
+  startMapTest,
   startPlayground,
   startStage,
 } from "../engine/core/gameController.js";
@@ -649,7 +650,9 @@ export function initPointerInput() {
       if (!window.dispatchEvent(retryEvent)) return;
       if (completeTutorialStageThreeAfterReset()) return;
       hideStageClearOverlay();
-      if (state.isPlayground) {
+      if (state.isMapTest && state.mapTestDefinition) {
+        await startMapTest(state.mapTestDefinition);
+      } else if (state.isPlayground) {
         await startPlayground();
       } else if (state.isTutorialPlay) {
         await startStage(state.currentStageNumber, { tutorialPlay: true });

@@ -57,6 +57,7 @@ function createSharedMapsDatabase() {
 const validMap = {
   version: 1,
   name: "Community map",
+  difficulty: "hard",
   objects: [
     { type: "ball", x: 0.2, y: 0.3, radius: 0.03 },
     { type: "star", x: 0.8, y: 0.7, radius: 0.03 },
@@ -117,6 +118,10 @@ describe("shared map API", () => {
     expect(invalidResponse.status).toBe(400);
     expect(database.rows.size).toBe(0);
 
+    const invalidDifficultyResponse = await upload({ ...validMap, difficulty: "impossible" });
+    expect(invalidDifficultyResponse.status).toBe(400);
+    expect(database.rows.size).toBe(0);
+
     const uploadResponse = await upload(validMap);
     expect(uploadResponse.status).toBe(200);
     const uploaded = await uploadResponse.json();
@@ -129,6 +134,7 @@ describe("shared map API", () => {
       id: uploaded.id,
       name: "Community map",
       authorName: "Map Author",
+      difficulty: "hard",
       objects: validMap.objects,
     });
 
@@ -138,7 +144,12 @@ describe("shared map API", () => {
     );
     expect(detailResponse.status).toBe(200);
     await expect(detailResponse.json()).resolves.toMatchObject({
-      map: { id: uploaded.id, name: "Community map", objects: validMap.objects },
+      map: {
+        id: uploaded.id,
+        name: "Community map",
+        difficulty: "hard",
+        objects: validMap.objects,
+      },
     });
   });
 });

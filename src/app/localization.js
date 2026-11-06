@@ -35,6 +35,7 @@ const koreanText = {
   ROOM: "방 코드",
   "Copy invite link": "초대 링크 복사",
   Difficulty: "난이도",
+  "Map difficulty": "맵 난이도",
   Normal: "보통",
   "Floor on / normal draw / line limit 5000 / challenge mode unavailable":
     "바닥 있음 / 일반 그리기 / 선 길이 제한 5000 / 도전 모드 사용 불가",
