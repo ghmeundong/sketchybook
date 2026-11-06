@@ -90,8 +90,10 @@ const MULTIPLAYER_PHYSICS_STEP_MS = 1000 / 60;
 const MAX_MULTIPLAYER_STEPS_PER_FRAME = 8;
 const MAX_ROOM_CATCHUP_STEPS_PER_FRAME = 120;
 const ROOM_SYNC_TOLERANCE_MS = 100;
+const ROOM_SYNC_RETRY_DELAY_MS = 250;
 let tutorialStageThreeSpacebarUsed = false;
 let tutorialStageThreeResetPending = false;
+let roomSyncRetryTimer = null;
 
 state.currentDifficulty = getInitialDifficulty();
 state.difficultyRules = getDifficultyRules(state.currentDifficulty);
@@ -127,6 +129,10 @@ function setRoomCatchupOverlay(visible) {
 }
 
 function resetRoomCatchup() {
+  if (roomSyncRetryTimer !== null) {
+    window.clearTimeout(roomSyncRetryTimer);
+    roomSyncRetryTimer = null;
+  }
   state.physicsCatchupNeeded = false;
   state.physicsCatchupPending = false;
   state.physicsCatchupActive = false;
@@ -164,15 +170,27 @@ function finishRoomCatchup() {
 }
 
 function receiveRoomSync(message) {
+  if (!state.physicsCatchupNeeded) return;
   if (
-    !state.physicsCatchupNeeded ||
     !Number.isFinite(message?.serverTime) ||
     message.status !== "started" ||
     message.stageNumber !== state.currentStageNumber
   ) {
+    if (state.physicsCatchupRequestInFlight && roomSyncRetryTimer === null) {
+      roomSyncRetryTimer = window.setTimeout(() => {
+        roomSyncRetryTimer = null;
+        if (!state.physicsCatchupNeeded || !isRoomConnected()) return;
+        state.physicsCatchupRequestInFlight = false;
+        requestRoomCatchupSync();
+      }, ROOM_SYNC_RETRY_DELAY_MS);
+    }
     return;
   }
 
+  if (roomSyncRetryTimer !== null) {
+    window.clearTimeout(roomSyncRetryTimer);
+    roomSyncRetryTimer = null;
+  }
   state.physicsCatchupRequestInFlight = false;
   if (state.physicsSimulationTimeMs == null) {
     state.physicsSimulationTimeMs = message.serverTime;
