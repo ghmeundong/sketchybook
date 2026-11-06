@@ -42,12 +42,12 @@ Supported types are `ball`, `circle`, `star`, `platform`, `stripedRect`, `portal
 - `radius`: normalized size (0..1) or pixels if > 1
 - default: `0.02`
 
-```js
+```json
 {
-  type: "ball",
-  x: 0.7,
-  y: 0.3,
-  radius: 0.02
+  "type": "ball",
+  "x": 0.7,
+  "y": 0.3,
+  "radius": 0.02
 }
 ```
 
@@ -83,13 +83,13 @@ Collectible goal object.
 - `width`, `height`: normalized size or pixels if > 1
 - defaults: `width: 0.1`, `height: 0.05`
 
-```js
+```json
 {
-  type: "platform",
-  x: 0.3,
-  y: 0.65,
-  width: 0.1,
-  height: 0.05
+  "type": "platform",
+  "x": 0.3,
+  "y": 0.65,
+  "width": 0.1,
+  "height": 0.05
 }
 ```
 
@@ -107,21 +107,24 @@ A red hatched area. It is a visual/drawing restriction region rather than a soli
 
 ### Portal
 
-A portal entrance. Portals with matching IDs are paired by the game.
+A portal entrance. Portals pair by complementary color IDs: `orange` with `blue`, and `green` with `purple`.
 
 - `type`: `"portal"`
 - `x`, `y`: normalized center position (default `0.5`, `0.5`)
 - `width`, `height`: normalized size or pixels if > 1 (defaults `0.02`, `0.1`)
-- `portalId`: pair/color ID. Built-in IDs are `orange`, `blue`, `green`, and `purple`; unmatched IDs use the fallback portal color.
-- The portal's color comes from `portalId`; use the same ID on two portals to pair them.
+- `portalId`: color and pair ID. Built-in IDs are `orange`, `blue`, `green`, and `purple`; unmatched IDs use the fallback portal color.
+- Complementary IDs pair as `orange`-`blue` and `green`-`purple`.
+- The map editor supports up to two portal pairs.
 
 ```json
 {
   "version": 1,
-  "name": "Portal pair",
+  "name": "Portal pairs",
   "objects": [
     { "type": "portal", "x": 0.25, "y": 0.5, "width": 0.025, "height": 0.12, "portalId": "orange" },
-    { "type": "portal", "x": 0.75, "y": 0.5, "width": 0.025, "height": 0.12, "portalId": "orange" }
+    { "type": "portal", "x": 0.75, "y": 0.5, "width": 0.025, "height": 0.12, "portalId": "blue" },
+    { "type": "portal", "x": 0.25, "y": 0.75, "width": 0.025, "height": 0.12, "portalId": "green" },
+    { "type": "portal", "x": 0.75, "y": 0.75, "width": 0.025, "height": 0.12, "portalId": "purple" }
   ]
 }
 ```
@@ -131,13 +134,13 @@ A portal entrance. Portals with matching IDs are paired by the game.
 - `type`: `"segment"`
 - `x1`, `y1`, `x2`, `y2`: normalized end points
 
-```js
+```json
 {
-  type: "segment",
-  x1: 0.2,
-  y1: 0.6,
-  x2: 0.8,
-  y2: 0.6
+  "type": "segment",
+  "x1": 0.2,
+  "y1": 0.6,
+  "x2": 0.8,
+  "y2": 0.6
 }
 ```
 
@@ -152,14 +155,15 @@ In the Map Maker, draw a segment by dragging from its first endpoint to its seco
 - `color`, `fontFamily`: optional
 - defaults: `fontSize`: `0.04`, `color`: `#4f3b24`, `fontFamily`: `MyeongjoFont, serif`
 
-```js
+```json
 {
-  type: "text",
-  x: 0.7,
-  y: 0.2,
-  text: "Hello",
-  fontSize: 0.03,
-  color: "#4f3b24"
+  "type": "text",
+  "x": 0.7,
+  "y": 0.2,
+  "text": "Hello",
+  "fontSize": 0.03,
+  "color": "#4f3b24",
+  "fontFamily": "MyeongjoFont, serif"
 }
 ```
 
@@ -172,43 +176,40 @@ In the Map Maker, draw a segment by dragging from its first endpoint to its seco
 - `closed`: boolean (`true` closes last->first edge)
 - `isStatic`: boolean (default `true`)
 
-```js
-// closed triangle using poly (polygon)
+```json
 {
-  type: "poly",
-  closed: true,
-  points: [
-    { x: 0.2, y: 0.6 },
-    { x: 0.5, y: 0.2 },
-    { x: 0.8, y: 0.6 }
+  "type": "poly",
+  "closed": true,
+  "points": [
+    { "x": 0.2, "y": 0.6 },
+    { "x": 0.5, "y": 0.2 },
+    { "x": 0.8, "y": 0.6 }
   ]
 }
 ```
 
-```js
-// same shape using complex alias
+```json
 {
-  type: "complex",
-  closed: true,
-  points: [
-    { x: 0.2, y: 0.6 },
-    { x: 0.5, y: 0.2 },
-    { x: 0.8, y: 0.6 }
+  "type": "complex",
+  "closed": true,
+  "points": [
+    { "x": 0.2, "y": 0.6 },
+    { "x": 0.5, "y": 0.2 },
+    { "x": 0.8, "y": 0.6 }
   ]
 }
 ```
 
-```js
-// open polyline (series of edges)
+```json
 {
-  type: "poly",
-  closed: false,
-  isStatic: true,
-  points: [
-    { x: 0.15, y: 0.7 },
-    { x: 0.35, y: 0.5 },
-    { x: 0.55, y: 0.55 },
-    { x: 0.75, y: 0.4 }
+  "type": "poly",
+  "closed": false,
+  "isStatic": true,
+  "points": [
+    { "x": 0.15, "y": 0.7 },
+    { "x": 0.35, "y": 0.5 },
+    { "x": 0.55, "y": 0.55 },
+    { "x": 0.75, "y": 0.4 }
   ]
 }
 ```
@@ -231,36 +232,34 @@ In the Map Maker, draw a segment by dragging from its first endpoint to its seco
 - `maxMotorTorque`: number
 - `isStatic`: boolean (default `false`)
 
-```js
-// free-form rotor polygon
+```json
 {
-  type: "rotor",
-  points: [
-    { x: 0.3, y: 0.4 },
-    { x: 0.7, y: 0.4 },
-    { x: 0.75, y: 0.5 },
-    { x: 0.7, y: 0.6 },
-    { x: 0.3, y: 0.6 }
+  "type": "rotor",
+  "points": [
+    { "x": 0.3, "y": 0.4 },
+    { "x": 0.7, "y": 0.4 },
+    { "x": 0.75, "y": 0.5 },
+    { "x": 0.7, "y": 0.6 },
+    { "x": 0.3, "y": 0.6 }
   ],
-  closed: true,
-  axisX: 0.5,
-  axisY: 0.5,
-  spinMode: "auto",
-  motorSpeed: -2.0,
-  maxMotorTorque: 400
+  "closed": true,
+  "axisX": 0.5,
+  "axisY": 0.5,
+  "spinMode": "auto",
+  "motorSpeed": -2.0,
+  "maxMotorTorque": 400
 }
 ```
 
-```js
-// circular rotor
+```json
 {
-  type: "rotor",
-  x: 0.5,
-  y: 0.5,
-  radius: 0.15,
-  spinMode: "auto",
-  motorSpeed: 1.2,
-  maxMotorTorque: 200
+  "type": "rotor",
+  "x": 0.5,
+  "y": 0.5,
+  "radius": 0.15,
+  "spinMode": "auto",
+  "motorSpeed": 1.2,
+  "maxMotorTorque": 200
 }
 ```
 

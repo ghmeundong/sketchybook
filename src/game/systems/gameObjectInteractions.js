@@ -1,6 +1,13 @@
 import planck from "planck";
 import { Ball, Portal, Star } from "../objects/index.js";
 
+const PORTAL_PAIRS = {
+  orange: "blue",
+  blue: "orange",
+  green: "purple",
+  purple: "green",
+};
+
 function getObjectScreenPosition(object, canvasWidth, canvasHeight) {
   return {
     x: object.screenX != null ? object.screenX : object.nx * canvasWidth,
@@ -45,7 +52,8 @@ function teleportBallThroughPortals(ball, portals, canvasWidth, canvasHeight) {
       continue;
     }
 
-    const target = portals.find((other) => other.portalId !== portal.portalId);
+    const targetPortalId = PORTAL_PAIRS[portal.portalId];
+    const target = portals.find((other) => other.portalId === targetPortalId);
     if (!target) {
       break;
     }

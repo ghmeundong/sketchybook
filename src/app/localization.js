@@ -519,7 +519,7 @@ export function translateText(value) {
 function shouldSkipElement(element) {
   return Boolean(
     element?.closest(
-      "script, style, textarea, [data-no-translate], .map-json-suggestions, .map-card-name, .my-map-card-title, .room-player-list li, .multiplayer-selection-players li, .auth-user-name"
+      "script, style, textarea, [data-no-translate], .map-reference-content code, .map-json-suggestions, .map-card-name, .my-map-card-title, .room-player-list li, .multiplayer-selection-players li, .auth-user-name"
     )
   );
 }

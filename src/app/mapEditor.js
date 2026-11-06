@@ -3,9 +3,9 @@ import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { dom } from "../game/engine/core/domRefs.js";
 import { setActivePage, startMapTest } from "../game/engine/core/gameController.js";
-import { attachRoughFrame } from "../game/ui/roughFrame.js";
+import { attachRoughFrame, drawRoughFrameRect } from "../game/ui/roughFrame.js";
 import { createActionIconCanvas } from "../game/ui/uiIcons.js";
-import { GOLD, INK, INK_SOFT } from "../theme.js";
+import { FONT_DISPLAY, GOLD, INK, INK_SOFT } from "../theme.js";
 import objectsReference from "../../docs/OBJECTS.md?raw";
 import objectsReferenceKo from "../../docs/OBJECTS.ko.md?raw";
 import { isKoreanLocale } from "./localization.js";
@@ -17,6 +17,8 @@ import { createGameObject } from "../game/stages/gameObjectFactory.js";
 const STORAGE_KEY = "sketchybook.customMaps";
 const MAX_JSON_EDITOR_CHARS = 64 * 1024;
 const MAX_MAP_OBJECTS = 100;
+const MAX_PORTALS = 4;
+const PORTAL_IDS = ["orange", "blue", "green", "purple"];
 const MAX_SHAPE_POINTS = 128;
 const MAX_TEXT_OBJECT_CHARS = 200;
 const canvas = document.querySelector("[data-map-canvas]");
@@ -166,7 +168,13 @@ function drawSharedMapPreview(previewCanvas, map) {
     } else if (object.type === "portal") {
       rc.ellipse(x, y, object.width * width, object.height * height, {
         ...options,
-        stroke: object.portalId === "blue" ? "#4387c4" : "#e88936",
+        stroke:
+          {
+            orange: "#e88936",
+            blue: "#4387c4",
+            green: "#50a35b",
+            purple: "#8d63b8",
+          }[object.portalId] || "#8d63b8",
       });
     } else if (object.type === "stripedRect") {
       rc.rectangle(
@@ -697,6 +705,9 @@ function validateMapJson(value) {
   if (data.objects.length > MAX_MAP_OBJECTS) {
     throw new Error(`Map must contain no more than ${MAX_MAP_OBJECTS} objects.`);
   }
+  if (data.objects.filter((object) => object?.type === "portal").length > MAX_PORTALS) {
+    throw new Error(`Map must contain no more than ${MAX_PORTALS} portals.`);
+  }
 
   data.objects.forEach((object, index) => {
     if (!object || typeof object !== "object" || Array.isArray(object)) {
@@ -709,6 +720,10 @@ function validateMapJson(value) {
     if (object.type === "segment") {
       if (![object.x1, object.y1, object.x2, object.y2].every(isFiniteNumber)) {
         throw new Error(`Line ${index + 1} needs numeric x1, y1, x2, and y2 values.`);
+      }
+    } else if (object.type === "rotor" && !Array.isArray(object.points)) {
+      if (![object.x, object.y, object.radius].every(isFiniteNumber) || object.radius <= 0) {
+        throw new Error(`Rotor ${index + 1} needs a positive radius and numeric x and y values.`);
       }
     } else if (["complex", "poly", "rotor"].includes(object.type)) {
       if (
@@ -980,10 +995,16 @@ function onPointerDown(event) {
       object.isStatic = defaultObject.isStatic;
     }
     if (activeTool === "portal") {
-      const portalCount = objects.filter((item) => item.type === "portal").length;
+      const portalObjects = objects.filter((item) => item.type === "portal");
+      if (portalObjects.length >= MAX_PORTALS) {
+        setStatus("A map can contain up to two portal pairs.");
+        return;
+      }
       object.width = defaultObject.width;
       object.height = defaultObject.height;
-      object.portalId = portalCount % 2 === 0 ? "orange" : "blue";
+      object.portalId = PORTAL_IDS.find(
+        (portalId) => !portalObjects.some((portal) => portal.portalId === portalId)
+      );
     }
     if (activeTool === "text") object.text = defaultObject.text;
     objects.push(object);
@@ -1126,7 +1147,13 @@ function drawObject(rc, context, object, width, height, selected, seed) {
     return;
   }
   if (object.type === "portal") {
-    const color = { orange: "#e88936", blue: "#4387c4" }[object.portalId] || "#8d63b8";
+    const color =
+      {
+        orange: "#e88936",
+        blue: "#4387c4",
+        green: "#50a35b",
+        purple: "#8d63b8",
+      }[object.portalId] || "#8d63b8";
     rc.ellipse(x, y, object.width * width, object.height * height, {
       ...style,
       stroke: color,
@@ -1135,6 +1162,19 @@ function drawObject(rc, context, object, width, height, selected, seed) {
     return;
   }
   if (["complex", "rotor"].includes(object.type)) {
+    if (object.type === "rotor" && !Array.isArray(object.points)) {
+      const rotorRadius =
+        object.radius > 1 ? object.radius : object.radius * Math.min(width, height);
+      rc.circle(x, y, rotorRadius * 2, style);
+      rc.circle((object.axisX ?? object.x) * width, (object.axisY ?? object.y) * height, 9, {
+        stroke: "#c92d39",
+        fill: "#e64956",
+        fillStyle: "solid",
+        roughness: 1.5,
+        seed: seed + 1,
+      });
+      return;
+    }
     const points = object.points.map((item) => [item.x * width, item.y * height]);
     if (object.type === "complex" && object.closed && points.length > 2) {
       rc.polygon(points, { ...style, fill: "#fff6eb", fillStyle: "solid" });
@@ -1159,14 +1199,26 @@ function drawObject(rc, context, object, width, height, selected, seed) {
   }
   if (object.type === "text") {
     context.save();
-    context.font = "bold 18px serif";
+    const useKoreanTextStyle = object.useKoreanTextScale !== false && isKoreanLocale();
+    const fontSize =
+      (object.fontSize > 1
+        ? object.fontSize
+        : Math.max(10, Math.round((object.fontSize ?? 0.04) * height))) *
+      (useKoreanTextStyle ? 1.05 : 1);
+    const fontFamily = object.fontFamily || FONT_DISPLAY;
+    context.font = `${useKoreanTextStyle ? "700 " : ""}${fontSize}px ${fontFamily}`;
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.lineWidth = selected ? 2 : 1;
-    context.strokeStyle = selected ? "#bd6c36" : "#fffdf5";
-    context.fillStyle = INK;
-    context.strokeText(object.text || "Text", x, y);
-    context.fillText(object.text || "Text", x, y);
+    context.fillStyle = object.color || INK;
+    const lines = String(object.text || "Text")
+      .split("\n")
+      .map((line) => line.trim());
+    const lineHeight = fontSize * 1.4;
+    let lineY = y - (lineHeight * (lines.length - 1)) / 2;
+    lines.forEach((line) => {
+      context.fillText(line, x, lineY);
+      lineY += lineHeight;
+    });
     context.restore();
     return;
   }
@@ -1186,6 +1238,87 @@ function drawObject(rc, context, object, width, height, selected, seed) {
     return;
   }
   rc.circle(x, y, radius * 2, { ...style, fill: INK, fillStyle: "hachure", hachureGap: 4 });
+}
+
+function renderReferenceExamples() {
+  referenceContent.querySelectorAll("pre > code.language-json").forEach((code) => {
+    const wrapper = document.createElement("section");
+    wrapper.className = "map-reference-example";
+
+    const editor = document.createElement("textarea");
+    editor.className = "map-reference-example-editor";
+    editor.setAttribute("aria-label", isKoreanLocale() ? "JSON 예제 편집" : "Edit JSON example");
+    editor.spellcheck = false;
+    editor.value = code.textContent;
+
+    const preview = document.createElement("canvas");
+    preview.className = "map-reference-example-preview";
+    preview.width = 720;
+    preview.height = 405;
+    preview.setAttribute("role", "img");
+    preview.setAttribute(
+      "aria-label",
+      isKoreanLocale() ? "JSON 예제 미리보기" : "JSON example preview"
+    );
+
+    const message = document.createElement("p");
+    message.className = "map-reference-example-status";
+    message.setAttribute("role", "status");
+    message.setAttribute("aria-live", "polite");
+
+    wrapper.append(editor, preview, message);
+    code.parentElement.replaceWith(wrapper);
+
+    const updatePreview = () => {
+      try {
+        const parsed = JSON.parse(editor.value);
+        const definitions = Array.isArray(parsed)
+          ? parsed
+          : Array.isArray(parsed?.objects)
+            ? parsed.objects
+            : [parsed];
+        const map = validateMapJson(JSON.stringify({ objects: definitions }));
+        const context = preview.getContext("2d");
+        context.fillStyle = "#fffdf5";
+        context.fillRect(0, 0, preview.width, preview.height);
+        context.strokeStyle = "rgba(61, 53, 43, 0.08)";
+        context.lineWidth = 1;
+        for (let x = 24; x < preview.width; x += 24) {
+          context.beginPath();
+          context.moveTo(x, 0);
+          context.lineTo(x, preview.height);
+          context.stroke();
+        }
+        for (let y = 24; y < preview.height; y += 24) {
+          context.beginPath();
+          context.moveTo(0, y);
+          context.lineTo(preview.width, y);
+          context.stroke();
+        }
+        const roughCanvas = rough.canvas(preview);
+        map.objects.forEach((object, index) => {
+          drawObject(roughCanvas, context, object, preview.width, preview.height, false, index + 1);
+        });
+        drawRoughFrameRect(roughCanvas, 3, 3, preview.width - 6, preview.height - 6, {
+          roughness: 1.7,
+          strokeWidth: 1.4,
+          seed: 2026,
+        });
+        message.textContent = isKoreanLocale()
+          ? `미리보기 업데이트됨 · 오브젝트 ${map.objects.length}개`
+          : `Preview updated · ${map.objects.length} objects`;
+        message.dataset.state = "valid";
+      } catch (error) {
+        message.textContent = isKoreanLocale()
+          ? `JSON 오류: ${error.message}`
+          : `JSON error: ${error.message}`;
+        message.dataset.state = "invalid";
+      }
+    };
+
+    editor.addEventListener("input", updatePreview);
+    updatePreview();
+  });
 }
 
 function getObjectBounds(object, width, height) {
@@ -1551,9 +1684,17 @@ function initializeMapEditor() {
   window.addEventListener("sketchybook:map-board-open", () => {
     void refreshLibrary();
   });
-  const reference = isKoreanLocale() ? objectsReferenceKo : objectsReference;
-  referenceContent.innerHTML = DOMPurify.sanitize(marked.parse(reference));
+  const renderReference = () => {
+    const reference = isKoreanLocale() ? objectsReferenceKo : objectsReference;
+    referenceContent.innerHTML = DOMPurify.sanitize(marked.parse(reference));
+    renderReferenceExamples();
+  };
+  renderReference();
+  window.addEventListener("sketchybook:language-change", () => {
+    if (!referencePanel.hidden) renderReference();
+  });
   referenceButton.addEventListener("click", () => {
+    renderReference();
     referencePanel.hidden = false;
     referenceButton.setAttribute("aria-expanded", "true");
     backButton.setAttribute("aria-label", "Close JSON Guide");

@@ -33,17 +33,17 @@
 
 ## 기본 오브젝트
 
-### 공 (`ball`)
+### `ball` (공)
 
 - `x`, `y`: 정규화된 위치
 - `radius`: 정규화 크기 또는 1보다 큰 픽셀 값
 - 기본 반지름: `0.02`
 
-```js
-{ type: "ball", x: 0.7, y: 0.3, radius: 0.02 }
+```json
+{ "type": "ball", "x": 0.7, "y": 0.3, "radius": 0.02 }
 ```
 
-### 원 (`circle`)
+### `circle` (원)
 
 정적 또는 동적 물리 오브젝트입니다. 공과 달리 정적 오브젝트로 설정할 수 있습니다.
 
@@ -55,7 +55,7 @@
 { "type": "circle", "x": 0.5, "y": 0.55, "radius": 0.05, "isStatic": true }
 ```
 
-### 별 (`star`)
+### `star` (별)
 
 획득해야 하는 목표 오브젝트입니다.
 
@@ -66,17 +66,17 @@
 { "type": "star", "x": 0.8, "y": 0.3, "radius": 0.025 }
 ```
 
-### 발판 (`platform`)
+### `platform` (발판)
 
 - `x`, `y`: 중심 위치
 - `width`, `height`: 정규화 크기 또는 1보다 큰 픽셀 값
 - 기본 크기: 너비 `0.1`, 높이 `0.05`
 
-```js
-{ type: "platform", x: 0.3, y: 0.65, width: 0.1, height: 0.05 }
+```json
+{ "type": "platform", "x": 0.3, "y": 0.65, "width": 0.1, "height": 0.05 }
 ```
 
-### 줄무늬 위험 지대 (`stripedRect`)
+### `stripedRect` (줄무늬 위험 지대)
 
 빨간색 빗금 영역입니다. 단단한 발판이 아니라 그리기를 제한하는 시각 영역입니다.
 
@@ -87,37 +87,39 @@
 { "type": "stripedRect", "x": 0.5, "y": 0.5, "width": 0.08, "height": 0.7 }
 ```
 
-### 포털 (`portal`)
+### `portal` (포털)
 
-같은 ID를 가진 포털끼리 연결됩니다.
+포털은 색상 ID에 따라 두 쌍으로 연결됩니다: `orange`-`blue`, `green`-`purple`.
 
 - `x`, `y`: 중심 위치. 기본값은 `0.5`, `0.5`입니다.
 - `width`, `height`: 정규화 크기 또는 픽셀 값. 기본값은 `0.02`, `0.1`입니다.
-- `portalId`: 짝과 색상을 정하는 ID입니다. 기본 색상 ID는 `orange`, `blue`, `green`, `purple`입니다.
-- 두 포털에 같은 ID를 지정하면 서로 연결됩니다.
+- `portalId`: 포털의 색상과 연결할 짝을 정하는 ID입니다. 기본 ID는 `orange`, `blue`, `green`, `purple`이며, 각각 `orange`-`blue`, `green`-`purple`로 연결됩니다.
+- 맵 에디터에서는 포털을 최대 두 쌍까지 추가할 수 있습니다.
 
 ```json
 {
   "version": 1,
-  "name": "포털 한 쌍",
+  "name": "포털 두 쌍",
   "objects": [
     { "type": "portal", "x": 0.25, "y": 0.5, "width": 0.025, "height": 0.12, "portalId": "orange" },
-    { "type": "portal", "x": 0.75, "y": 0.5, "width": 0.025, "height": 0.12, "portalId": "orange" }
+    { "type": "portal", "x": 0.75, "y": 0.5, "width": 0.025, "height": 0.12, "portalId": "blue" },
+    { "type": "portal", "x": 0.25, "y": 0.75, "width": 0.025, "height": 0.12, "portalId": "green" },
+    { "type": "portal", "x": 0.75, "y": 0.75, "width": 0.025, "height": 0.12, "portalId": "purple" }
   ]
 }
 ```
 
-### 선분 (`segment`)
+### `segment` (선분)
 
 - `x1`, `y1`, `x2`, `y2`: 정규화된 양 끝점 좌표
 
-```js
-{ type: "segment", x1: 0.2, y1: 0.6, x2: 0.8, y2: 0.6 }
+```json
+{ "type": "segment", "x1": 0.2, "y1": 0.6, "x2": 0.8, "y2": 0.6 }
 ```
 
 맵 메이커에서 첫 점에서 다음 점까지 드래그해 선분을 그립니다.
 
-### 텍스트 (`text`)
+### `text` (텍스트)
 
 - `x`, `y`: 정규화된 위치
 - `text`: 표시할 문자열
@@ -125,27 +127,27 @@
 - `color`, `fontFamily`: 선택 속성
 - 기본값: 크기 `0.04`, 색상 `#4f3b24`, 글꼴 `MyeongjoFont, serif`
 
-```js
-{ type: "text", x: 0.7, y: 0.2, text: "안녕하세요", fontSize: 0.03, color: "#4f3b24" }
+```json
+{ "type": "text", "x": 0.7, "y": 0.2, "text": "안녕하세요", "fontSize": 0.03, "color": "#4f3b24", "fontFamily": "ryuryufont, myeongjofont, serif" }
 ```
 
-### 다각형·꺾은선 (`poly`, `complex`)
+### `poly` / `complex` (다각형·꺾은선)
 
 - `points`: 정규화 좌표 배열 `[{x:..., y:...}, ...]`
 - `closed`: 마지막 점과 첫 점을 연결할지 여부
 - `isStatic`: 정적 여부. 기본값은 `true`입니다.
 
-```js
+```json
 {
-  type: "complex",
-  closed: true,
-  points: [{ x: 0.2, y: 0.6 }, { x: 0.5, y: 0.2 }, { x: 0.8, y: 0.6 }]
+  "type": "complex",
+  "closed": true,
+  "points": [{ "x": 0.2, "y": 0.6 }, { "x": 0.5, "y": 0.2 }, { "x": 0.8, "y": 0.6 }]
 }
 ```
 
 열린 도형은 `closed: false`로 설정합니다.
 
-### 회전 발판 (`rotor`)
+### `rotor` (회전 발판)
 
 `rotor`는 축을 중심으로 회전하는 도형입니다.
 
@@ -159,16 +161,16 @@
 - `maxMotorTorque`: 최대 모터 토크
 - `isStatic`: 정적 여부. 기본값은 `false`입니다.
 
-```js
+```json
 {
-  type: "rotor",
-  points: [{ x: 0.3, y: 0.4 }, { x: 0.7, y: 0.4 }, { x: 0.75, y: 0.5 }],
-  closed: true,
-  axisX: 0.5,
-  axisY: 0.5,
-  spinMode: "auto",
-  motorSpeed: -2,
-  maxMotorTorque: 400
+  "type": "rotor",
+  "points": [{ "x": 0.3, "y": 0.4 }, { "x": 0.7, "y": 0.4 }, { "x": 0.75, "y": 0.5 }],
+  "closed": true,
+  "axisX": 0.5,
+  "axisY": 0.5,
+  "spinMode": "auto",
+  "motorSpeed": -2,
+  "maxMotorTorque": 400
 }
 ```
 

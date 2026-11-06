@@ -472,6 +472,50 @@
   font-size: 0.8rem;
 }
 
+.map-reference-example {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.9fr);
+  gap: 0.65rem;
+  margin: 0.85rem 0 1.2rem;
+}
+
+.map-reference-example-editor {
+  width: 100%;
+  min-width: 0;
+  min-height: 12rem;
+  resize: vertical;
+  padding: 0.8rem;
+  border: 1px solid rgb(61 53 43 / 22%);
+  border-left: 3px solid #bd6c36;
+  background: #f5f0e3;
+  color: var(--ink-strong);
+  font-family: var(--font-mono, Consolas, monospace);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  tab-size: 2;
+}
+
+.map-reference-example-preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  align-self: start;
+  aspect-ratio: 16 / 9;
+  background: #fffdf5;
+}
+
+.map-reference-example-status {
+  grid-column: 1 / -1;
+  min-height: 1.3em;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+}
+
+.map-reference-example-status[data-state="invalid"] {
+  color: #a52e28;
+}
+
 .map-reference-content hr {
   margin: 1.5rem 0;
   border: 0;
@@ -952,6 +996,10 @@ html[lang="ko"] .map-editor-json-workspace textarea {
   .map-reference-content {
     padding: 0.65rem;
     font-size: 0.7rem;
+  }
+
+  .map-reference-example {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .map-reference-content h1 {
