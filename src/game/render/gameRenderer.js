@@ -138,10 +138,13 @@ export function createStrokeTexture(stroke) {
   }));
 
   // Generate from logical points so a blank or scaled preview cannot erase a stroke.
+  const dpr = getRenderDpr();
+  const pixelSize = getCanvasPixelSize(width, height, dpr);
   const offscreen = document.createElement("canvas");
-  offscreen.width = width;
-  offscreen.height = height;
+  offscreen.width = pixelSize.width;
+  offscreen.height = pixelSize.height;
   const offscreenCtx = offscreen.getContext("2d");
+  offscreenCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const offscreenRough = rough.canvas(offscreen);
   offscreenCtx.clearRect(0, 0, width, height);
 
