@@ -1399,6 +1399,7 @@ function syncPhysicsGameObjects() {
 export function tick(timestamp = 0) {
   const isGameActive = dom.playPage?.classList.contains("is-active");
   const isPageVisible = !document.hidden && state.windowFocused;
+  const multiplayer = isRoomConnected();
   const shouldRunSimulation = shouldAdvancePhysics({ isGameActive, isPageVisible });
 
   if (!shouldRunSimulation) {
@@ -1407,7 +1408,7 @@ export function tick(timestamp = 0) {
     return;
   }
 
-  if (isRoomConnected() && state.physicsCatchupNeeded) {
+  if (multiplayer && state.physicsCatchupNeeded) {
     setRoomCatchupOverlay(true);
     requestRoomCatchupSync();
   }
@@ -1438,8 +1439,8 @@ export function tick(timestamp = 0) {
         });
       setPhysicsScaleProfile(nextProfile);
 
-      const isCatchingUp = isRoomConnected() && state.physicsCatchupActive;
-      const isWaitingForRoomSync = isRoomConnected() && state.physicsCatchupPending;
+      const isCatchingUp = multiplayer && state.physicsCatchupActive;
+      const isWaitingForRoomSync = multiplayer && state.physicsCatchupPending;
       const catchupBatch = isCatchingUp
         ? createPhysicsCatchupBatch({
             currentTimeMs: state.physicsSimulationTimeMs,
@@ -1449,7 +1450,7 @@ export function tick(timestamp = 0) {
           })
         : null;
       const stepBatch =
-        !isCatchingUp && !isWaitingForRoomSync
+        multiplayer && !isCatchingUp && !isWaitingForRoomSync
           ? consumePhysicsStepBatch({
               elapsedMs: elapsed,
               accumulatedMs: state.physicsAccumulatorMs,
@@ -1457,13 +1458,13 @@ export function tick(timestamp = 0) {
               maxSteps: MAX_MULTIPLAYER_STEPS_PER_FRAME,
             })
           : null;
-      const stepCount = catchupBatch?.stepCount ?? stepBatch?.stepCount ?? 0;
-      const deltaSeconds = MULTIPLAYER_PHYSICS_STEP_MS / 1000;
+      const stepCount = multiplayer ? (catchupBatch?.stepCount ?? stepBatch?.stepCount ?? 0) : 1;
+      const deltaSeconds = multiplayer ? MULTIPLAYER_PHYSICS_STEP_MS / 1000 : elapsed / 1000;
       let simulationTimeMs = state.physicsSimulationTimeMs;
 
       for (let step = 0; step < stepCount; step += 1) {
-        simulationTimeMs += MULTIPLAYER_PHYSICS_STEP_MS;
-        if (isRoomConnected()) {
+        simulationTimeMs += multiplayer ? MULTIPLAYER_PHYSICS_STEP_MS : elapsed;
+        if (multiplayer) {
           const dueEvents = consumeDuePhysicsEvents(state.pendingPhysicsEvents, simulationTimeMs);
           state.pendingPhysicsEvents = dueEvents.pendingEvents;
           dueEvents.dueEvents.forEach((event) => {
@@ -1511,6 +1512,8 @@ export function tick(timestamp = 0) {
         state.physicsAccumulatorMs = catchupBatch.remainingMs;
       } else if (stepBatch) {
         state.physicsAccumulatorMs = stepBatch.remainingMs;
+      } else if (!multiplayer) {
+        state.physicsAccumulatorMs = 0;
       }
       state.physicsSimulationTimeMs = simulationTimeMs;
       if (stepCount > 0) {

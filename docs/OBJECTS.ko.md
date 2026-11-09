@@ -29,7 +29,7 @@
 - 입력 중 지원되는 `type`과 일반 필드를 추천합니다. `Tab` 또는 `Enter`로 추천 항목을 적용하고 방향키로 선택 항목을 바꿀 수 있습니다.
 - **저장**은 로그인해야 사용할 수 있으며, 맵을 계정에 보관합니다. 저장하려면 공과 별이 각각 하나 이상 있어야 합니다. **JSON 내보내기**는 로그인 없이도 공유하거나 외부에서 편집할 파일을 내려받습니다.
 
-지원하는 유형은 `ball`, `circle`, `star`, `platform`, `stripedRect`, `portal`, `segment`, `poly`/`complex`, `rotor`, `text`입니다.
+지원하는 유형은 `ball`, `circle`, `star`, `platform`, `stripedRect`, `portal`, `segment`, `poly`/`complex`, `rotor`, `text`입니다. 각 유형의 속성과 예시는 아래 설명을 참고하세요.
 
 ---
 
@@ -135,19 +135,52 @@
 
 ### `poly` / `complex` (다각형·꺾은선)
 
+- `type`: `"poly"` 또는 `"complex"`
 - `points`: 정규화 좌표 배열 `[{x:..., y:...}, ...]`
-- `closed`: 마지막 점과 첫 점을 연결할지 여부
+- `closed`: `true`이면 마지막 점과 첫 점을 연결해 채워진 다각형을 만듭니다. `false`이면 열린 꺾은선입니다.
 - `isStatic`: 정적 여부. 기본값은 `true`입니다.
+
+```json
+{
+  "type": "poly",
+  "closed": true,
+  "points": [
+    { "x": 0.2, "y": 0.6 },
+    { "x": 0.5, "y": 0.2 },
+    { "x": 0.8, "y": 0.6 }
+  ]
+}
+```
+
+`complex`는 `poly`와 같은 도형을 만드는 별칭입니다.
 
 ```json
 {
   "type": "complex",
   "closed": true,
-  "points": [{ "x": 0.2, "y": 0.6 }, { "x": 0.5, "y": 0.2 }, { "x": 0.8, "y": 0.6 }]
+  "points": [
+    { "x": 0.2, "y": 0.6 },
+    { "x": 0.5, "y": 0.2 },
+    { "x": 0.8, "y": 0.6 }
+  ]
 }
 ```
 
-열린 도형은 `closed: false`로 설정합니다.
+열린 꺾은선 예시:
+
+```json
+{
+  "type": "poly",
+  "closed": false,
+  "isStatic": true,
+  "points": [
+    { "x": 0.15, "y": 0.7 },
+    { "x": 0.35, "y": 0.5 },
+    { "x": 0.55, "y": 0.55 },
+    { "x": 0.75, "y": 0.4 }
+  ]
+}
+```
 
 ### `rotor` (회전 발판)
 

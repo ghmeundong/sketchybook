@@ -178,6 +178,8 @@ In the Map Maker, draw a segment by dragging from its first endpoint to its seco
 - `closed`: boolean (`true` closes last->first edge)
 - `isStatic`: boolean (default `true`)
 
+Use `closed: true` for a filled polygon and `closed: false` for an open polyline.
+
 ```json
 {
   "type": "poly",
@@ -190,6 +192,8 @@ In the Map Maker, draw a segment by dragging from its first endpoint to its seco
 }
 ```
 
+`complex` is an alias for `poly` and creates the same shape:
+
 ```json
 {
   "type": "complex",
@@ -201,6 +205,8 @@ In the Map Maker, draw a segment by dragging from its first endpoint to its seco
   ]
 }
 ```
+
+An open polyline example:
 
 ```json
 {

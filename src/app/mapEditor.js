@@ -958,7 +958,9 @@ function syncProperties() {
   if (["circle", "ball", "star"].includes(object.type)) {
     propertyRadius.value = String(object.radius ?? getCircleObjectDefault(object.type));
   }
-  if (["complex", "rotor"].includes(object.type)) propertyClosed.checked = object.closed !== false;
+  if (["complex", "poly", "rotor"].includes(object.type)) {
+    propertyClosed.checked = object.closed !== false;
+  }
   if (object.type === "rotor") propertySpin.value = object.spinMode || "free";
 }
 
@@ -1197,7 +1199,7 @@ function drawObject(rc, context, object, width, height, selected, seed) {
     });
     return;
   }
-  if (["complex", "rotor"].includes(object.type)) {
+  if (["complex", "poly", "rotor"].includes(object.type)) {
     if (object.type === "rotor" && !Array.isArray(object.points)) {
       const rotorRadius =
         object.radius > 1 ? object.radius : object.radius * Math.min(width, height);
@@ -1212,7 +1214,7 @@ function drawObject(rc, context, object, width, height, selected, seed) {
       return;
     }
     const points = object.points.map((item) => [item.x * width, item.y * height]);
-    if (object.type === "complex" && object.closed && points.length > 2) {
+    if (object.type !== "rotor" && object.closed && points.length > 2) {
       rc.polygon(points, { ...style, fill: "#fff6eb", fillStyle: "solid" });
     } else {
       for (let index = 0; index < points.length - 1; index += 1) {
@@ -1806,7 +1808,7 @@ function initializeMapEditor() {
   propertyRadius.addEventListener("blur", commitPropertyHistory);
   propertyClosed.addEventListener("change", () => {
     const object = objects[selectedIndex];
-    if (!object || !["complex", "rotor"].includes(object.type)) return;
+    if (!object || !["complex", "poly", "rotor"].includes(object.type)) return;
     saveHistory();
     object.closed = propertyClosed.checked;
     render();
