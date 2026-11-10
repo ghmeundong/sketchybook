@@ -91,6 +91,7 @@ const MAX_MULTIPLAYER_STEPS_PER_FRAME = 8;
 const MAX_ROOM_CATCHUP_STEPS_PER_FRAME = 120;
 const ROOM_SYNC_TOLERANCE_MS = 100;
 const ROOM_SYNC_RETRY_DELAY_MS = 250;
+const ROOM_SYNC_RESPONSE_TIMEOUT_MS = 2000;
 let tutorialStageThreeSpacebarUsed = false;
 let tutorialStageThreeResetPending = false;
 let roomSyncRetryTimer = null;
@@ -141,10 +142,25 @@ function resetRoomCatchup() {
   setRoomCatchupOverlay(false);
 }
 
+function scheduleRoomCatchupRetry(delayMs) {
+  if (roomSyncRetryTimer !== null) {
+    window.clearTimeout(roomSyncRetryTimer);
+  }
+  roomSyncRetryTimer = window.setTimeout(() => {
+    roomSyncRetryTimer = null;
+    if (!state.physicsCatchupNeeded || !isRoomConnected()) return;
+    state.physicsCatchupRequestInFlight = false;
+    requestRoomCatchupSync();
+  }, delayMs);
+}
+
 function requestRoomCatchupSync() {
   if (!isRoomConnected() || state.physicsCatchupRequestInFlight) return;
   state.physicsCatchupPending = true;
   state.physicsCatchupRequestInFlight = requestRoomSync();
+  if (state.physicsCatchupRequestInFlight) {
+    scheduleRoomCatchupRetry(ROOM_SYNC_RESPONSE_TIMEOUT_MS);
+  }
 }
 
 function finishRoomCatchup() {
@@ -176,14 +192,8 @@ function receiveRoomSync(message) {
     message.status !== "started" ||
     message.stageNumber !== state.currentStageNumber
   ) {
-    if (state.physicsCatchupRequestInFlight && roomSyncRetryTimer === null) {
-      roomSyncRetryTimer = window.setTimeout(() => {
-        roomSyncRetryTimer = null;
-        if (!state.physicsCatchupNeeded || !isRoomConnected()) return;
-        state.physicsCatchupRequestInFlight = false;
-        requestRoomCatchupSync();
-      }, ROOM_SYNC_RETRY_DELAY_MS);
-    }
+    state.physicsCatchupRequestInFlight = false;
+    scheduleRoomCatchupRetry(ROOM_SYNC_RETRY_DELAY_MS);
     return;
   }
 
