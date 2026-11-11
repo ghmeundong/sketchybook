@@ -130,7 +130,15 @@
 - 기본값: 크기 `0.04`, 색상 `#4f3b24`, 글꼴 `MyeongjoFont, serif`
 
 ```json
-{ "type": "text", "x": 0.7, "y": 0.2, "text": "안녕하세요", "fontSize": 0.03, "color": "#4f3b24", "fontFamily": "ryuryufont, myeongjofont, serif" }
+{
+  "type": "text",
+  "x": 0.7,
+  "y": 0.2,
+  "text": "안녕하세요",
+  "fontSize": 0.03,
+  "color": "#4f3b24",
+  "fontFamily": "ryuryufont, myeongjofont, serif"
+}
 ```
 
 ### `poly` / `complex` (다각형·꺾은선)
@@ -199,7 +207,11 @@
 ```json
 {
   "type": "rotor",
-  "points": [{ "x": 0.3, "y": 0.4 }, { "x": 0.7, "y": 0.4 }, { "x": 0.75, "y": 0.5 }],
+  "points": [
+    { "x": 0.3, "y": 0.4 },
+    { "x": 0.7, "y": 0.4 },
+    { "x": 0.75, "y": 0.5 }
+  ],
   "closed": true,
   "axisX": 0.5,
   "axisY": 0.5,
